@@ -16,7 +16,7 @@ The Quota System is particularly advantageous for implementing efficient micro-t
 
 ### 5.2 Mechanism of Gas Refund
 
-The backend calculates what cash-back a user with a quota should receive per day (00:00 am to 23:59 pm UTC). At 01:00 am, the airdrop starts, where the gas price is returned to each user in accordance with the calculation that will be presented below.
+The gas price is returned as "cash-back" to each valid user in accordance with the calculation that will be presented below.
 
 EOA (Externally Owned Address) is an Ether address owned by a pair of keys, in contrast to the Smart Contract Address, which is controlled by a code deployed on the blockchain (wallet).
 
