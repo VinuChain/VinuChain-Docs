@@ -12,14 +12,21 @@ description: Roadmap for VinuChain $VC
 
 ### 2026
 
-* Development:
-  * VinuChain "Odin" Network Upgrade
-  * VinuChain Tokens & Contracts List repo ✅
-  * VinuSwap DEX native coin (auto-wrap) support
-  * VinuSwap DEX tokens list support
+* **Development**:
+  * VinuChain 2.0 - "ELEMONT" Network Upgrade
+  * dApp: VinuGames (Gaming Platform)
+  * dApp: VinuNFT (NFT Marketplace)
+  * VinuSwap DEX 2.0 - UI Upgrade
   * VinuSwap DEX listing on CoinMarketCap
   * VinuSwap DEX listing on CoinGecko
-  * dApp: VinuNFT (NFT Marketplace)
+  * VinuExplorer Upgrade ✅
+  * VinuChain Validator Dashboard ✅
+  * VinuChain Lists repository (contracts & tokens list) ✅
+  * VinuSwap DEX: native coin (auto-wrap) support ✅
+  * VinuSwap DEX: decentralized listings support  ✅
+  * Documentation: VinuSwap, VinuFinance ✅
+* **Listings**:
+  * Coindisco ✅
 
 ### 2025
 
