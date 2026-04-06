@@ -197,7 +197,7 @@ First, start the **Opera read-only node** to interact with it and to create a va
 (validator)$ cd build/
 (validator)$ nohup ./opera --port 3000 --nat any 
 --genesis ../vinuchain-genesis-testnet.g --genesis.allowExperimental 
---bootnodes enode://e2a95c1b8d85b018b8e88133bec342801b42e19b59a52e030462d04a5549f02fc57215b4ca97771ec6b3a0d30a78603fdccd2b5091c44f6ac439d6c8be8bc539@54.203.151.219:3000
+--bootnodes enode://e2a95c1b8d85b018b8e88133bec342801b42e19b59a52e030462d04a5549f02fc57215b4ca97771ec6b3a0d30a78603fdccd2b5091c44f6ac439d6c8be8bc539@44.239.129.39:3000
 > opera.log &
 ```
 

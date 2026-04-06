@@ -53,7 +53,7 @@ You can turn on and off **http** and **ws** options, use your ports and addresse
     --ws.port 4100 \
     --ws.api=eth,debug,net,admin,web3,personal,txpool,vc,dag \
     --ws.rpcprefix "/" \
-    --bootnodes enode://105ecea3fafaa01a329b9ce988d69ad7d9af233b04ad2c3b637b2f42862623c38f358bd7a7cfead5ae61991681965629abe2749131168bdd9ce573f8085380ab@node-0.vinuchain-rpc.com:3000 \
+    --bootnodes enode://0281626c7d7fc8696300688cbb19f3781aabd981d74cd16f3f5cd7885a32da4d1d9d64afbb2416b93654935a3088afbe1a4a05d823ff2146e5d1d0c2cbdeca46@188.165.195.122:3000 \
     --verbosity=3 --tracing > ./opera_read_node.log &
 ```
 
@@ -88,7 +88,7 @@ You can turn on and off **http** and **ws** options, use your ports and addresse
     --ws.port 4100 \
     --ws.api=eth,debug,net,admin,web3,personal,txpool,vc,dag \
     --ws.rpcprefix "/" \
-    --bootnodes enode://105ecea3fafaa01a329b9ce988d69ad7d9af233b04ad2c3b637b2f42862623c38f358bd7a7cfead5ae61991681965629abe2749131168bdd9ce573f8085380ab@node-0.vinuchain-rpc.com:3000 \
+    --bootnodes enode://0281626c7d7fc8696300688cbb19f3781aabd981d74cd16f3f5cd7885a32da4d1d9d64afbb2416b93654935a3088afbe1a4a05d823ff2146e5d1d0c2cbdeca46@188.165.195.122:3000 \
     --verbosity=3 --tracing > ./opera_read_node.log &
 ```
 
