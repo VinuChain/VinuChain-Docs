@@ -77,7 +77,8 @@ You can turn on and off **http** and **ws** options, use your ports and addresse
 (validator)$ cd build
 
 (validator)$ nohup ./opera \
-    --genesis ../vitainu-genesis-mainnet-with-contracts.g \
+    --genesis ../vitainu-genesis-testnet-20240621.g \
+    --genesis.allowExperimental \
     --datadir ./datadir \
     --http \
     --http.addr=your_hostname \
@@ -88,7 +89,7 @@ You can turn on and off **http** and **ws** options, use your ports and addresse
     --ws.port 4100 \
     --ws.api=eth,debug,net,admin,web3,personal,txpool,vc,dag \
     --ws.rpcprefix "/" \
-    --bootnodes enode://0281626c7d7fc8696300688cbb19f3781aabd981d74cd16f3f5cd7885a32da4d1d9d64afbb2416b93654935a3088afbe1a4a05d823ff2146e5d1d0c2cbdeca46@188.165.195.122:3000 \
+    --bootnodes enode://e2a95c1b8d85b018b8e88133bec342801b42e19b59a52e030462d04a5549f02fc57215b4ca97771ec6b3a0d30a78603fdccd2b5091c44f6ac439d6c8be8bc539@44.239.129.39:3000 \
     --verbosity=3 --tracing > ./opera_read_node.log &
 ```
 

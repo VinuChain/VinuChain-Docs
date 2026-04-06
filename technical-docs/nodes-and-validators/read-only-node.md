@@ -100,8 +100,8 @@ First, install the required build tools:
 
 ```
 # Install go
-(validator)$ wget https://go.dev/dl/go1.19.3.linux-amd64.tar.gz
-(validator)$ sudo tar -xvf go1.19.3.linux-amd64.tar.gz
+(validator)$ wget https://go.dev/dl/go1.22.5.linux-amd64.tar.gz
+(validator)$ sudo tar -xvf go1.22.5.linux-amd64.tar.gz
 (validator)$ sudo mv go /usr/local
 ```
 
@@ -125,6 +125,12 @@ export PATH=$GOPATH/bin:$GOROOT/bin:$PATH
 ```
 
 If the final line did not work for you, try `(validator)$ . ~/.bash_aliases` instead.
+
+Alternatively, install Go via snap:
+
+```
+(validator)$ sudo snap install go --classic
+```
 
 **Validate your Go installation**
 
@@ -171,7 +177,7 @@ You can download a genesis file from the Drive above, or from the following comm
 
 ```
 # Download Testnet genesis file
-(validator)$ curl https://vinu-blockchain-genesis.s3.us-east-1.amazonaws.com/testnet_genesis_20240429.g 
+(validator)$ curl https://vinu-blockchain-genesis.s3.amazonaws.com/vitainu-genesis-testnet-20240621.g \
 --output vinuchain-genesis-testnet.g
 ```
 

@@ -18,7 +18,7 @@ description: How to become a Validator / Install Node
 *   Minimum Hardware Requirements:&#x20;
 
     ```
-    m5.xlarge (4 CPUs and 16GB), 500GB SSD
+    m6i.large or better (2 vCPUs, 8GB RAM), 200GB SSD
     ```
 *   Unlock Period:
 
