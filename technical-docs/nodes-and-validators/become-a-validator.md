@@ -2,7 +2,7 @@
 description: How to become a Validator / Install Node
 ---
 
-# Become a Validator
+# Install Validator Node
 
 ## Validator Parameters
 
@@ -15,7 +15,7 @@ description: How to become a Validator / Install Node
     ```
     15x the self-stake amount
     ```
-*   Minimum Hardware Requirements:&#x20;
+*   Minimum Hardware Requirements:
 
     ```
     m6i.large or better (2 vCPUs, 8GB RAM), 200GB SSD
@@ -34,7 +34,7 @@ description: How to become a Validator / Install Node
 
 ## Validators
 
-After installing a [Read-Only Node](read-only-node.md), you can upgrade to a VinuChain validator by registering your validator node on-chain. To do this, you need to have at least 200,000 VC to create a validator wallet. The wallet is the validator’s identity in the network which it uses to authenticate, sign messages, etc.&#x20;
+After installing a [Read-Only Node](read-only-node.md), you can upgrade to a VinuChain validator by registering your validator node on-chain. To do this, you need to have at least 200,000 VC to create a validator wallet. The wallet is the validator’s identity in the network which it uses to authenticate, sign messages, etc.
 
 A validator is a network participant responsible for confirming and validating transactions, producing new blocks, and securing the network's consensus protocol. Validators play a critical role in maintaining the integrity and security of the VinuChain blockchain.
 
@@ -55,9 +55,9 @@ After entering the command, you will get prompted to enter a password for the ac
 
 <figure><img src="../../.gitbook/assets/gdhdsf.png" alt=""><figcaption></figcaption></figure>
 
-NEVER share your private key or keystore with anyone!&#x20;
+NEVER share your private key or keystore with anyone!
 
-### **Fund your validator wallet**&#x20;
+### **Fund your validator wallet**
 
 The next step is to fund your validator wallet with enough VC to become a validator. That means you need to have at least **200,000 VC** in the wallet you just created (send a little more to cover transaction fees). After successfully sending the VC to your newly created Opera wallet, you can **register your validator via the SFC Smart Contract.**
 
@@ -93,7 +93,7 @@ impossible to decrypt the key!
 
 ## Create your validator via the SFC
 
-You should wait for your node to sync to the latest block of the network before proceeding.&#x20;
+You should wait for your node to sync to the latest block of the network before proceeding.
 
 ### Attach to Opera console
 
@@ -112,7 +112,7 @@ By doing so, you will get a JavaScript console where you can directly interact w
 
 Now **initialize the SFC contract ABI variable**
 
-Parse to javascript terminal everything from [https://pastebin.com/sbDq7T92](https://pastebin.com/sbDq7T92).&#x20;
+Parse to javascript terminal everything from [https://pastebin.com/sbDq7T92](https://pastebin.com/sbDq7T92).
 
 Here is the raw code from the link should it be broken:
 
@@ -126,7 +126,7 @@ and **initialize the SFC contract object itself**:
 sfcc = web3.vc.contract(abi).at("0xfc00face00000000000000000000000000000000")
 ```
 
-After initializing both variables, you can now interact with the network’s SFC.&#x20;
+After initializing both variables, you can now interact with the network’s SFC.
 
 ### Sanity check
 
@@ -159,7 +159,7 @@ This should return **0**, as you are not registered as a validator yet:
 
 ### Unlock validator wallet
 
-Next, unlock your validator wallet to be able to execute the registration transaction (make sure to use the password you set before).&#x20;
+Next, unlock your validator wallet to be able to execute the registration transaction (make sure to use the password you set before).
 
 Note that, you can perform this step (unlockAccount + createValidator) in a separate machine (different from the machine you'll run your validator node), or it'd be even more secure if you use hardware wallet to do it.
 
@@ -176,9 +176,9 @@ This will return “**true**” if unlocking the wallet was successful:
 
 ### Register your validator
 
-Next, send the `createValidator` transaction to register your validator **(the value is the representation of the smallest VC unit, so it must be divided by 1e18.**&#x20;
+Next, send the `createValidator` transaction to register your validator **(the value is the representation of the smallest VC unit, so it must be divided by 1e18.**
 
-Alternatively, you can use `web3.toWei("200000.0", "vc")).`&#x20;
+Alternatively, you can use `web3.toWei("200000.0", "vc")).`
 
 ```
 # Register your validator
@@ -206,7 +206,7 @@ Look for the **status: “0x1”** at the bottom, which means the transaction wa
 
 You can also copy the `transactionHash` and go the VinuChain [BlockScanner](https://vinuscan.com) and check your transaction there:
 
-> https://vinuscan.com/transactions/\[YOURTX]&#x20;
+> https://vinuscan.com/transactions/\[YOURTX]
 
 This would look something like the below:
 
@@ -225,7 +225,7 @@ It should now return something other than “**0**”:
 
 <figure><img src="../../.gitbook/assets/ubsbjs.png" alt=""><figcaption></figcaption></figure>
 
-Congratulations, you are now a VinuChain validator!&#x20;
+Congratulations, you are now a VinuChain validator!
 
 Close the Opera console window by typing “exit”.
 
@@ -235,9 +235,9 @@ Close the Opera console window by typing “exit”.
 
 Before you run off celebrating, you need to **restart your node in validator mode**!
 
-Make sure your node is already synced to the latest block in read mode, and it's synced in --syncmode full.&#x20;
+Make sure your node is already synced to the latest block in read mode, and it's synced in --syncmode full.
 
-* Stop the opera process (read mode):&#x20;
+* Stop the opera process (read mode):
 
 ```
 pkill opera
@@ -267,7 +267,7 @@ nohup ./opera
 
 ```
 nohup ./opera 
---bootnodes enode://0281626c7d7fc8696300688cbb19f3781aabd981d74cd16f3f5cd7885a32da4d1d9d64afbb2416b93654935a3088afbe1a4a05d823ff2146e5d1d0c2cbdeca46@188.165.195.122:3000 
+--bootnodes enode://e2a95c1b8d85b018b8e88133bec342801b42e19b59a52e030462d04a5549f02fc57215b4ca97771ec6b3a0d30a78603fdccd2b5091c44f6ac439d6c8be8bc539@44.239.129.39:3000
 --validator.id ID 
 --validator.pubkey VALIDATOR_PUBKEY 
 --validator.password PATH_TO_PASSWORDFILE > validator.log &
