@@ -298,17 +298,20 @@ cp $HOME/vinuchain-upgrade/build/opera /path/to/opera
 
 Replace `/path/to/opera` with the actual path to your running binary. Common
 locations:
+
 - `$HOME/opera`
 - `/opt/opera`
 - `/usr/local/bin/opera` (if installed system-wide)
 
 **How to find your binary path:**
+
 ```bash
 which opera          # If in your PATH
 pgrep -a opera      # Shows the full command line of the running process
 ```
 
 **Verify the version changed:**
+
 ```bash
 /path/to/opera version
 # Expected: Version: 2.0.0-elemont
@@ -350,6 +353,7 @@ tail -f validator.log
 ```
 
 **Optional flags** (add only if you were using them before):
+
 - `--datadir /custom/path` — if chain data is not in the default `~/.opera` location
 - `--nat extip:YOUR_PUBLIC_IP` — if needed for P2P networking configuration
 
@@ -387,6 +391,7 @@ For testing or development, you can run in the foreground:
 ```
 
 **Optional flags:**
+
 - `--datadir /path/to/chaindata` — if chain data is in a custom location
   (default: `~/.opera`)
 
