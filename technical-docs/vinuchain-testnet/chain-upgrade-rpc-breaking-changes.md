@@ -173,6 +173,7 @@ transaction to the SFC contract.
   is discarded anyway if the validator is later marked a cheater.
 
 **Example scenario:**
+
 1. Validator `A` produces 10 blocks in epoch N, earning 100 VC in fees (after
    30% burn).
 2. Validator `A` is detected as a cheater during epoch N.
@@ -251,6 +252,7 @@ The `MaxConcurrentRPC` configuration now enforces HTTP/WebSocket request
 concurrency limits in-process. Requires the go-vinu v1.20.9+ upgrade.
 
 **Impact:**
+
 - Prevents RPC endpoint saturation under load
 - Queues excess requests gracefully instead of accepting unlimited connections
 - Operators can tune `MaxConcurrentRPC` to match server capacity
