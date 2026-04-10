@@ -1,4 +1,4 @@
-# VinuChain v1.0.1-elemont — Validator Upgrade Guide
+# VinuChain v1.0.2-elemont — Validator Upgrade Guide
 
 {% hint style="danger" %}
 **This is a mandatory hard fork.** Validators still running the old
@@ -9,8 +9,8 @@ network and unable to produce blocks until they upgrade.
 {% hint style="info" %}
 **TL;DR**
 
-- **Target tag:** `v1.0.1-elemont`
-- **Binary version string:** `2.0.0-elemont` (the tag name and the
+- **Target tag:** `v1.0.2-elemont`
+- **Binary version string:** `2.0.1-elemont` (the tag name and the
   `opera version` output are intentionally different — see note below)
 - **Mandatory:** yes, all validators
 - **Activation:** per-node at the **next epoch seal** after restart
@@ -19,11 +19,30 @@ network and unable to produce blocks until they upgrade.
 - **Build requirements:** Go 1.25+, C compiler, ~50 GB free disk
 {% endhint %}
 
+{% hint style="warning" %}
+**Patch release for the elemont hard fork.** v1.0.2-elemont supersedes
+v1.0.1-elemont with a correctness fix to the SFC V2 `restakeRewards`
+snapshot-scale logic (the previous release double-counted pre-existing
+stashed lockup rewards when extending a lockup). On **testnet**, this
+release enables a new `SfcV2Patch` flag that re-flashes the SFC bytecode
+at the next epoch seal to install the corrected version (41,773 bytes →
+43,743 bytes). On **mainnet**, `SfcV2Patch` is a no-op because mainnet
+has not yet activated SfcV2 — the first SfcV2 activation will install
+the corrected bytecode directly.
+
+**If you are already on v1.0.1-elemont:** the upgrade is an incremental
+binary swap. No datadir reset, no peer reconnection, no new validator
+registration. Follow the same steps below as you did for v1.0.1-elemont;
+the only observable difference is the extra `Staged SfcV2Patch upgrade`
+log line and the `Re-applying SFC V2 bytecode upgrade (patch)` line at
+the next epoch seal.
+{% endhint %}
+
 {% hint style="info" %}
 **Version string vs git tag.** The release is cut from git tag
-`v1.0.1-elemont`, but the binary reports `2.0.0-elemont`. The tag is the
+`v1.0.2-elemont`, but the binary reports `2.0.1-elemont`. The tag is the
 release name; the version string comes from `version/version.go`
-(`VersionMajor=2`, `VersionMinor=0`, `VersionPatch=0`,
+(`VersionMajor=2`, `VersionMinor=0`, `VersionPatch=1`,
 `VersionMeta=elemont`). Both refer to the same release.
 {% endhint %}
 
@@ -263,7 +282,7 @@ out of space fails cleanly without affecting the running node.
 ```bash
 git clone https://github.com/VinuChain/VinuChain.git $HOME/vinuchain-upgrade
 cd $HOME/vinuchain-upgrade
-git checkout v1.0.1-elemont
+git checkout v1.0.2-elemont
 make opera
 # Binary is at $HOME/vinuchain-upgrade/build/opera
 ```
@@ -287,12 +306,12 @@ path:
 ```bash
 cd $HOME/vinuchain-upgrade/build
 ./opera version
-# Expected: Version: 2.0.0-elemont
+# Expected: Version: 2.0.1-elemont
 ```
 
 {% hint style="info" %}
-`opera version` prints `2.0.0-elemont` — this is correct even though
-the git tag is `v1.0.1-elemont`. See the note at the top of this page.
+`opera version` prints `2.0.1-elemont` — this is correct even though
+the git tag is `v1.0.2-elemont`. See the note at the top of this page.
 {% endhint %}
 
 {% endstep %}
@@ -451,11 +470,17 @@ binary:
 
                         v2.0  -  ELEMONT
 
-  Version: 2.0.0-elemont
+  Version: 2.0.1-elemont
 ```
 
-Immediately after the banner, you should see **three log lines** (the
-binary staging the hardcoded upgrade flags into pending rules):
+Immediately after the banner, you should see **staging log lines** —
+one for each upgrade flag that is set in the binary's hardcoded rules
+but not yet in the stored pending rules. What you see depends on which
+release you are upgrading from and which network you are on:
+
+**Fresh upgrade to v1.0.2-elemont from pre-elemont (e.g., v1.0.0-rc.1):**
+all three hard-fork flags need to be staged, so you will see three lines
+(plus a fourth on testnet — see below):
 
 ```text
 INFO Staged SfcV2 upgrade from binary rules; will activate at next epoch seal
@@ -463,14 +488,34 @@ INFO Staged Podgorica upgrade from binary rules; will activate at next epoch sea
 INFO Staged Elemont upgrade from binary rules; will activate at next epoch seal
 ```
 
+**Incremental upgrade from v1.0.1-elemont to v1.0.2-elemont (testnet
+only):** SfcV2/Podgorica/Elemont are already active on your node's
+stored rules, so the only new flag to stage is `SfcV2Patch`:
+
+```text
+INFO Staged SfcV2Patch upgrade from binary rules; will activate at next epoch seal
+```
+
+{% hint style="info" %}
+**Testnet-only: SfcV2Patch.** The `SfcV2Patch` staging line appears
+**only on testnet**. It fires a re-install of the SFC V2 bytecode at
+the next epoch seal, correcting a `restakeRewards` arithmetic bug in
+the v1.0.1-elemont SFC V2 bytecode. Mainnet does not see this line
+because mainnet's first SfcV2 activation already picks up the corrected
+bytecode directly from `GetContractBin()` — no re-flash mechanism is
+needed there.
+{% endhint %}
+
 Then, at the **next epoch seal** on your node (up to ~4 hours after
 startup — this is the `MaxEpochDuration` cap; epochs can seal earlier
-if triggered by gas, event count, or cheaters), you should see **two
-log lines**:
+if triggered by gas, event count, or cheaters), you should see the
+activation log lines corresponding to whichever flags transitioned
+`false→true`:
 
 ```text
 INFO Applying SFC V2 bytecode upgrade              block=<N>
 INFO Activating Podgorica fee refund encoding      block=<N>
+INFO Re-applying SFC V2 bytecode upgrade (patch)   block=<N>   # testnet only, v1.0.2-elemont
 ```
 
 The Elemont consensus fixes activate **silently** at the same epoch seal —
@@ -478,20 +523,33 @@ there is no separate log line for Elemont, but it is active and consensus
 rules have changed (visible in different block hashes vs peers running
 older versions).
 
-Once you have seen the banner, all three startup staging lines, **and**
-both seal-time activation lines at the next seal, the upgrade is
-complete on your node. You can verify Elemont is active by confirming
-your block hashes match peers running the Elemont binary.
+Once you have seen the banner, the staging lines, **and** the
+corresponding seal-time activation lines at the next seal, the upgrade
+is complete on your node. You can verify Elemont is active by confirming
+your block hashes match peers running the Elemont binary, and you can
+verify the v1.0.2-elemont patch re-flash by checking the SFC bytecode
+size at `0xfc00face00000000000000000000000000000000`:
+
+```bash
+curl -s -X POST http://localhost:18545/ \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","method":"eth_getCode","params":["0xfc00face00000000000000000000000000000000","latest"],"id":1}' \
+  | python3 -c "import sys,json;c=json.load(sys.stdin)['result'];print(f'{(len(c)-2)//2} bytes')"
+# Expected post-patch: 43743 bytes
+# v1.0.1-elemont (pre-patch) returned: 41773 bytes
+```
 
 #### Verification checklist
 
 | Check | Expected |
 | --- | --- |
 | Startup banner | `VINUCHAIN  v2.0 - ELEMONT` ASCII art printed to stderr |
-| `opera version` | `Version: 2.0.0-elemont` |
-| Startup log | 3× `Staged ... upgrade from binary rules; will activate at next epoch seal` |
-| Next epoch seal log | `Applying SFC V2 bytecode upgrade block=<N>` + `Activating Podgorica fee refund encoding block=<N>` |
+| `opera version` | `Version: 2.0.1-elemont` |
+| Startup log (fresh upgrade) | 3× `Staged ... upgrade from binary rules; will activate at next epoch seal` |
+| Startup log (incremental from v1.0.1, testnet) | 1× `Staged SfcV2Patch upgrade from binary rules; will activate at next epoch seal` |
+| Next epoch seal log | `Applying SFC V2 bytecode upgrade` + `Activating Podgorica fee refund encoding` (fresh) **or** `Re-applying SFC V2 bytecode upgrade (patch)` (testnet incremental) |
 | First post-seal block | `feeRefund` appears on eligible receipts; base fee burn credited to `0x0000…0000` |
+| SFC bytecode at `0xfc00face…` | `43743` bytes (post-v1.0.2 patch) |
 | Block hash vs peer | Identical |
 
 {% endstep %}
@@ -602,7 +660,7 @@ published snapshot or genesis.
 1. Check logs: `journalctl -u opera -f` (systemd) or the Docker /
    terminal output for your install method.
 2. Verify the binary version is correct: `opera version` must print
-   `2.0.0-elemont`.
+   `2.0.1-elemont`.
 3. If the database is reported as corrupted, stop the node, delete the
    chaindata directory, and re-sync from a published snapshot (or from
    genesis if no snapshot is available). See the late-upgrade recovery
@@ -645,14 +703,22 @@ The upgrade does **not** activate at a specific block height. Instead,
 on each node:
 
 1. The operator installs the new binary and restarts.
-2. On startup, the binary stages the new flags (`Podgorica`, `SfcV2`,
-   `Elemont`) into the pending `DirtyRules` on the stored block state,
-   logging the three `Staged … upgrade from binary rules` lines.
+2. On startup, the binary stages any new flags (`Podgorica`, `SfcV2`,
+   `Elemont`, and on testnet `SfcV2Patch`) into the pending
+   `DirtyRules` on the stored block state, logging one
+   `Staged … upgrade from binary rules` line per staged flag. For a
+   fresh upgrade to v1.0.2-elemont from a pre-elemont binary, that is
+   three lines on mainnet or four lines on testnet. For an incremental
+   upgrade from v1.0.1-elemont to v1.0.2-elemont, that is one line on
+   testnet (`SfcV2Patch`) or zero lines on mainnet (which does not set
+   `SfcV2Patch` — see patch release note in the TL;DR).
 3. At the next epoch seal on that node (up to ~4 hours — the
    `MaxEpochDuration` cap; can be shorter if triggered by gas, event
    count, or cheaters), the staged rules take effect: the SFC V2
    bytecode is installed in chain state, the Podgorica fee refund
-   encoding turns on, and the Elemont consensus fixes apply.
+   encoding turns on, the Elemont consensus fixes apply, and (testnet
+   only, v1.0.2+) the SFC V2 bytecode is re-installed with the
+   corrected `restakeRewards` arithmetic.
 4. From that point, all nodes must be on the new binary to process
    subsequent blocks correctly.
 
@@ -670,13 +736,18 @@ need to restart simultaneously. All validators should be upgraded
 3. **During the window**, each operator performs the binary swap
    (Upgrade Steps 1 → 5).
 4. **Confirm in the coordination channel** — each operator confirms
-   they see the three `Staged … upgrade from binary rules` log lines.
+   they see the expected `Staged … upgrade from binary rules` log
+   lines for their upgrade path (see "How the upgrade activates" above
+   for the per-path line counts).
 5. **Wait for epoch seal** — the next epoch seal triggers the atomic
-   activation. All operators verify the two seal-time log lines
+   activation. All operators verify the seal-time log lines
    (`Applying SFC V2 bytecode upgrade` and
-   `Activating Podgorica fee refund encoding`), then spot-check that a
-   post-seal eligible-staker transaction carries `feeRefund` and that
-   the zero-address balance is growing block over block.
+   `Activating Podgorica fee refund encoding` on a fresh upgrade, or
+   `Re-applying SFC V2 bytecode upgrade (patch)` on a testnet
+   incremental from v1.0.1), then spot-check that a post-seal
+   eligible-staker transaction carries `feeRefund`, that the
+   zero-address balance is growing block over block, and (v1.0.2+)
+   that the SFC bytecode size at `0xfc00face…` is 43,743 bytes.
 
 ### Recovering a validator that missed the upgrade
 
@@ -848,4 +919,4 @@ team through the official coordination channels.
 
 ---
 
-*Last updated: 2026-04-10 · VinuChain commit `2baf08b` · Tag `v1.0.1-elemont`*
+*Last updated: 2026-04-11 · VinuChain commit `04b1716` · Tag `v1.0.2-elemont`*
