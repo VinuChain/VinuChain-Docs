@@ -288,45 +288,20 @@ If you prefer system paths, use `/opt/vinuchain-upgrade` instead of
 
 {% step %}
 
-### Replace the binary
+### Verify the new binary
 
-Copy the newly-built binary to its current location:
-
-```bash
-cp $HOME/vinuchain-upgrade/build/opera /path/to/opera
-```
-
-Replace `/path/to/opera` with the actual path to your running binary. Common
-locations:
-
-- `$HOME/opera`
-- `/opt/opera`
-- `/usr/local/bin/opera` (if installed system-wide)
-
-**How to find your binary path:**
+The newly-built binary is at:
 
 ```bash
-which opera          # If in your PATH
-pgrep -a opera      # Shows the full command line of the running process
-```
-
-**Verify the version changed:**
-
-```bash
-/path/to/opera version
+$HOME/vinuchain-upgrade/build/opera version
 # Expected: Version: 2.0.0-elemont
 ```
-
-{% hint style="info" %}
-**Your datadir does not change.** The binary upgrade is independent of your
-`--datadir` setting (e.g., `~/.opera` or `~/.vinuchain`). Only replace the
-binary file itself; do not move or rename your datadir.
-{% endhint %}
 
 {% hint style="info" %}
 `opera version` prints `2.0.0-elemont` — this is correct even though
 the git tag is `v1.0.1-elemont`. See the note at the top of this page.
 {% endhint %}
+
 {% endstep %}
 
 {% step %}
@@ -336,10 +311,10 @@ the git tag is `v1.0.1-elemont`. See the note at the top of this page.
 {% tabs %}
 {% tab title="nohup (standard)" %}
 
-Use the same command you used to start the node before the upgrade:
+Start the node from the upgraded binary:
 
 ```bash
-nohup ./opera \
+nohup $HOME/vinuchain-upgrade/build/opera \
   --validator.id YOUR_VALIDATOR_ID \
   --validator.pubkey 0xYOUR_PUBKEY \
   --validator.password /path/to/password.txt \
@@ -636,10 +611,9 @@ it takes hours to days.
 ```bash
 pkill -TERM opera
 sleep 2  # Give the process time to exit
-cp $HOME/vinuchain-upgrade/build/opera ./opera
 
-# Restart using the same command as before
-nohup ./opera \
+# Restart using the upgraded binary
+nohup $HOME/vinuchain-upgrade/build/opera \
   --validator.id YOUR_VALIDATOR_ID \
   --validator.pubkey 0xYOUR_PUBKEY \
   --validator.password /path/to/password.txt \
@@ -720,8 +694,8 @@ pkill -TERM opera
 sleep 2
 rm -rf ~/.opera/chaindata           # or ~/.vinuchain/chaindata if using that path
 
-# Restart the node
-nohup ./opera \
+# Restart the node from upgraded binary
+nohup $HOME/vinuchain-upgrade/build/opera \
   --validator.id YOUR_VALIDATOR_ID \
   --validator.pubkey 0xYOUR_PUBKEY \
   --validator.password /path/to/password.txt \
