@@ -27,8 +27,6 @@
   * [Install Read-Only Node](technical-docs/nodes-and-validators/read-only-node.md)
   * [Install Validator Node](technical-docs/nodes-and-validators/become-a-validator.md)
   * [Install API Node](technical-docs/nodes-and-validators/api-node.md)
-  * [Chain Upgrade Guide (v1.0.1-elemont)](technical-docs/vinuchain-testnet/chain-upgrade-guide.md)
-  * [RPC Breaking Changes (Elemont)](technical-docs/vinuchain-testnet/chain-upgrade-rpc-breaking-changes.md)
 * [VinuChain Testnet](technical-docs/vinuchain-testnet/README.md)
   * [Connect to Testnet](technical-docs/vinuchain-testnet/connect-to-testnet.md)
   * [Install Read-Only Node](technical-docs/nodes-and-validators/read-only-node.md)
