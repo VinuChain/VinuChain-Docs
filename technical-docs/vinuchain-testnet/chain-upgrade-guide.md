@@ -266,9 +266,17 @@ cp -r ~/.vinuchain ~/.vinuchain.backup-pre-elemont
 
 ### Download and build the new binary
 
-Pre-stage the binary in a persistent location. Avoid `/tmp` — some Linux
-distributions clear `/tmp` on reboot, which would wipe a pre-staged
-build.
+Pick a persistent path with at least ~2GB free for the source tree, the
+Go module cache, and the resulting `~38MB` binary. Either `$HOME` or a
+system path like `/opt` works — choose whichever lives on a partition
+with headroom (mainnet operators with large chaindata may prefer `/opt`
+or another volume so the build doesn't compete with `$HOME` for space).
+Avoid `/tmp`: some Linux distributions clear it on reboot, which would
+wipe a pre-staged build.
+
+The build directory is independent of your node's `--datadir`. The
+build process never reads or writes chain data, so a build that runs
+out of space fails cleanly without affecting the running node.
 
 {% code title="Build the release tag" overflow="wrap" %}
 
@@ -282,8 +290,10 @@ make opera
 
 {% endcode %}
 
-If you prefer system paths, use `/opt/vinuchain-upgrade` instead of
-`$HOME/vinuchain-upgrade`.
+Substitute `/opt/vinuchain-upgrade` (or any other path) if `$HOME` is
+not the right partition for your setup — every later command in this
+guide that references `$HOME/vinuchain-upgrade` should be adjusted to
+match.
 {% endstep %}
 
 {% step %}
