@@ -290,6 +290,13 @@ If you prefer system paths, use `/opt/vinuchain-upgrade` instead of
 
 ### Replace the binary
 
+{% hint style="info" %}
+**Your datadir does not change.** The binary upgrade is independent of your
+`--datadir` setting. If you are currently using `~/.opera`, keep using it.
+If you are using `~/.vinuchain`, keep using it. Only replace the binary file
+itself; do not move or rename your datadir.
+{% endhint %}
+
 {% tabs %}
 {% tab title="nohup (standard)" %}
 
@@ -309,12 +316,25 @@ Substitute `/path/to/opera` with the actual path to your running binary
 
 {% tab title="Systemd" %}
 
+Replace the binary in its current location. If your service file references
+`/usr/local/bin/opera`, copy there. Otherwise, use the actual path:
+
 ```bash
+# Option 1: If service file uses /usr/local/bin/opera
 sudo cp $HOME/vinuchain-upgrade/build/opera /usr/local/bin/opera
 
+# Option 2: If service file uses a different path (e.g., $HOME/opera)
+cp $HOME/vinuchain-upgrade/build/opera /path/to/opera
+
 # Verify version
-opera version
+opera version  # or /path/to/opera version if not in PATH
 # Expected: Version: 2.0.0-elemont
+```
+
+Check your systemd service file to see which path it uses:
+
+```bash
+grep "ExecStart=" /etc/systemd/system/opera.service
 ```
 
 {% endtab %}
