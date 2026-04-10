@@ -290,80 +290,35 @@ If you prefer system paths, use `/opt/vinuchain-upgrade` instead of
 
 ### Replace the binary
 
+Copy the newly-built binary to its current location:
+
+```bash
+cp $HOME/vinuchain-upgrade/build/opera /path/to/opera
+```
+
+Replace `/path/to/opera` with the actual path to your running binary. Common
+locations:
+- `$HOME/opera`
+- `/opt/opera`
+- `/usr/local/bin/opera` (if installed system-wide)
+
+**How to find your binary path:**
+```bash
+which opera          # If in your PATH
+pgrep -a opera      # Shows the full command line of the running process
+```
+
+**Verify the version changed:**
+```bash
+/path/to/opera version
+# Expected: Version: 2.0.0-elemont
+```
+
 {% hint style="info" %}
 **Your datadir does not change.** The binary upgrade is independent of your
-`--datadir` setting. If you are currently using `~/.opera`, keep using it.
-If you are using `~/.vinuchain`, keep using it. Only replace the binary file
-itself; do not move or rename your datadir.
+`--datadir` setting (e.g., `~/.opera` or `~/.vinuchain`). Only replace the
+binary file itself; do not move or rename your datadir.
 {% endhint %}
-
-{% tabs %}
-{% tab title="nohup (standard)" %}
-
-```bash
-# Replace the binary in its current location
-cp $HOME/vinuchain-upgrade/build/opera /path/to/opera
-
-# Verify version
-/path/to/opera version
-# Expected: Version: 2.0.0-elemont
-```
-
-Substitute `/path/to/opera` with the actual path to your running binary
-(e.g., `$HOME/opera`, `/opt/opera`, etc.).
-
-{% endtab %}
-
-{% tab title="Systemd" %}
-
-Replace the binary in its current location. If your service file references
-`/usr/local/bin/opera`, copy there. Otherwise, use the actual path:
-
-```bash
-# Option 1: If service file uses /usr/local/bin/opera
-sudo cp $HOME/vinuchain-upgrade/build/opera /usr/local/bin/opera
-
-# Option 2: If service file uses a different path (e.g., $HOME/opera)
-cp $HOME/vinuchain-upgrade/build/opera /path/to/opera
-
-# Verify version
-opera version  # or /path/to/opera version if not in PATH
-# Expected: Version: 2.0.0-elemont
-```
-
-Check your systemd service file to see which path it uses:
-
-```bash
-grep "ExecStart=" /etc/systemd/system/opera.service
-```
-
-{% endtab %}
-
-{% tab title="Docker" %}
-
-```bash
-cd $HOME/vinuchain-upgrade
-docker build -t opera:v1.0.1-elemont -f docker/Dockerfile.opera .
-
-# Retag as the image name your runtime uses, e.g.:
-docker tag opera:v1.0.1-elemont opera:latest
-```
-
-{% endtab %}
-
-{% tab title="Manual" %}
-
-```bash
-# Replace wherever your opera binary lives
-cp $HOME/vinuchain-upgrade/build/opera /path/to/opera
-
-# Verify version
-/path/to/opera version
-# Expected: Version: 2.0.0-elemont
-```
-
-{% endtab %}
-{% endtabs %}
 
 {% hint style="info" %}
 `opera version` prints `2.0.0-elemont` — this is correct even though
@@ -381,23 +336,22 @@ the git tag is `v1.0.1-elemont`. See the note at the top of this page.
 Use the same command you used to start the node before the upgrade:
 
 ```bash
-nohup /path/to/opera \
-  --datadir ~/.vinuchain \
+nohup ./opera \
   --validator.id YOUR_VALIDATOR_ID \
   --validator.pubkey 0xYOUR_PUBKEY \
   --validator.password /path/to/password.txt \
-  --nat extip:YOUR_PUBLIC_IP \
-  --nousb > nohup.log 2>&1 &
+  > validator.log &
 ```
 
 Monitor the logs:
 
 ```bash
-tail -f nohup.log
+tail -f validator.log
 ```
 
-Replace `/path/to/opera` with the actual path to your binary, and adjust
-`~/.vinuchain` if you use the legacy `~/.opera` datadir path.
+**Optional flags** (add only if you were using them before):
+- `--datadir /custom/path` — if chain data is not in the default `~/.opera` location
+- `--nat extip:YOUR_PUBLIC_IP` — if needed for P2P networking configuration
 
 {% endtab %}
 
@@ -426,17 +380,16 @@ datadir volume and exposes the same ports.
 For testing or development, you can run in the foreground:
 
 ```bash
-opera \
-  --datadir ~/.vinuchain \
+./opera \
   --validator.id YOUR_VALIDATOR_ID \
   --validator.pubkey 0xYOUR_PUBKEY \
-  --validator.password /path/to/password.txt \
-  --nat extip:YOUR_PUBLIC_IP \
-  --nousb
+  --validator.password /path/to/password.txt
 ```
 
-Replace `~/.vinuchain` with `~/.opera` if you are on the legacy
-datadir path.
+**Optional flags:**
+- `--datadir /path/to/chaindata` — if chain data is in a custom location
+  (default: `~/.opera`)
+
 {% endtab %}
 {% endtabs %}
 {% endstep %}
@@ -678,16 +631,14 @@ it takes hours to days.
 ```bash
 pkill -TERM opera
 sleep 2  # Give the process time to exit
-cp $HOME/vinuchain-upgrade/build/opera /path/to/opera
+cp $HOME/vinuchain-upgrade/build/opera ./opera
 
-# Restart using the same nohup command as before
-nohup /path/to/opera \
-  --datadir ~/.vinuchain \
+# Restart using the same command as before
+nohup ./opera \
   --validator.id YOUR_VALIDATOR_ID \
   --validator.pubkey 0xYOUR_PUBKEY \
   --validator.password /path/to/password.txt \
-  --nat extip:YOUR_PUBLIC_IP \
-  --nousb > nohup.log 2>&1 &
+  > validator.log &
 ```
 
 {% endtab %}
@@ -719,7 +670,7 @@ docker start opera
 {% tab title="nohup (standard)" %}
 
 ```bash
-tail -f nohup.log
+tail -f validator.log
 ```
 
 {% endtab %}
@@ -762,16 +713,14 @@ make sure your pre-upgrade backup still exists.
 ```bash
 pkill -TERM opera
 sleep 2
-rm -rf ~/.vinuchain/chaindata       # or ~/.opera/chaindata on legacy path
+rm -rf ~/.opera/chaindata           # or ~/.vinuchain/chaindata if using that path
 
 # Restart the node
-nohup /path/to/opera \
-  --datadir ~/.vinuchain \
+nohup ./opera \
   --validator.id YOUR_VALIDATOR_ID \
   --validator.pubkey 0xYOUR_PUBKEY \
   --validator.password /path/to/password.txt \
-  --nat extip:YOUR_PUBLIC_IP \
-  --nousb > nohup.log 2>&1 &
+  > validator.log &
 
 # Node will resync from genesis — this can take hours to days
 ```
