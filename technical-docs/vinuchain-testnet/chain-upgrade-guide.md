@@ -38,8 +38,28 @@ network.
 | Feature | What It Does |
 | --------- | ------------- |
 | **Podgorica** | Activates the payback fee refund system — eligible stakers receive gas fee refunds |
-| **SfcV2** | Replaces the SFC (Staking for Consensus) contract with V2 bytecode and enables a 30% base fee burn |
+| **SfcV2** | Upgrades the SFC (Staking for Consensus) contract bytecode with V2 logic and implements 30% base fee burn |
 | **Elemont** | Consensus-level fixes for cheater detection, epoch advancement, median time, and validator handling |
+
+#### SfcV2 — specific changes
+
+SfcV2 gates the following staking and fee mechanism changes, all of which
+activate atomically when the flag is set:
+
+- **SFC V2 contract bytecode** — the staking contract is replaced with the
+  V2 implementation, which includes updated logic for delegation, rewards,
+  and validator interactions. The V2 contract is backward-compatible with
+  existing delegation and staking state.
+- **30% base fee burn** — 30% of the **base fee portion** of each
+  transaction's fee is burned (sent to the zero address `0x0000…0000`)
+  instead of flowing entirely to the block validator. The remaining 70% of
+  base fees and all priority tips continue to reward validators as before.
+- **Effective supply reduction** — as base fees accumulate at the zero
+  address, the effective circulating supply gradually decreases over time.
+
+Source: `gossip/blockproc/drivermodule/driver_txs.go` (burn logic);
+`opera/contracts/sfc/contract.go` (V2 bytecode); `block_processor.go`
+(bytecode installation).
 
 #### Elemont — specific fixes
 
@@ -58,6 +78,26 @@ which activate atomically when the flag is set:
   stable sort so ties no longer depend on input order.
 - **Empty-pubkey validator skip at epoch seal** — validators with an
   empty public key are skipped during epoch seal instead of aborting.
+
+#### Why Elemont fixes matter
+
+These fixes address edge cases in consensus safety and determinism:
+
+- **NoCheaters merged view + cheater fee zeroing** — prevents validators
+  flagged as cheaters from earning fees on disputed blocks, reducing
+  incentive for consensus attacks.
+- **AdvanceEpochs 32-byte decode** — ensures governance proposals are
+  decoded correctly across all validators (prevents divergence from
+  truncation bugs).
+- **vecmt tie-breaking + MedianTime stable sort** — make event selection
+  and time computation deterministic, preventing non-deterministic block
+  hashes when multiple events have equal priority.
+- **Empty-pubkey skip** — prevents epoch seal panics from malformed
+  validator registrations, improving uptime.
+
+**Impact on block hashes:** All Elemont fixes are consensus-critical, meaning
+post-activation block hashes will differ from a pre-Elemont binary running on
+the same transactions. This is expected and correct.
 
 Source: `opera/rules.go` (`Upgrades.Elemont` comment block).
 
@@ -367,16 +407,22 @@ INFO Staged Elemont upgrade from binary rules; will activate at next epoch seal
 Then, at the **next epoch seal** on your node (up to ~4 hours after
 startup — this is the `MaxEpochDuration` cap; epochs can seal earlier
 if triggered by gas, event count, or cheaters), you should see **two
-more log lines**:
+log lines**:
 
 ```text
 INFO Applying SFC V2 bytecode upgrade              block=<N>
 INFO Activating Podgorica fee refund encoding      block=<N>
 ```
 
+The Elemont consensus fixes activate **silently** at the same epoch seal —
+there is no separate log line for Elemont, but it is active and consensus
+rules have changed (visible in different block hashes vs peers running
+older versions).
+
 Once you have seen the banner, all three startup staging lines, **and**
 both seal-time activation lines at the next seal, the upgrade is
-complete on your node.
+complete on your node. You can verify Elemont is active by confirming
+your block hashes match peers running the Elemont binary.
 
 #### Verification checklist
 
