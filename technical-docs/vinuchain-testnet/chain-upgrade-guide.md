@@ -280,10 +280,13 @@ match.
 
 ### Verify the new binary
 
-The newly-built binary is at:
+The newly-built binary is at `vinuchain-upgrade/build/opera`. Move into
+that directory so the rest of the steps can use a relative `./opera`
+path:
 
 ```bash
-$HOME/vinuchain-upgrade/build/opera version
+cd $HOME/vinuchain-upgrade/build
+./opera version
 # Expected: Version: 2.0.0-elemont
 ```
 
@@ -301,14 +304,17 @@ the git tag is `v1.0.1-elemont`. See the note at the top of this page.
 {% tabs %}
 {% tab title="nohup (standard)" %}
 
-Start the node from the upgraded binary:
+From the build directory you `cd`'d into in the previous step, start
+the node:
 
 ```bash
-nohup $HOME/vinuchain-upgrade/build/opera \
+cd $HOME/vinuchain-upgrade/build
+
+nohup ./opera \
   --bootnodes "enode://e2a95c1b8d85b018b8e88133bec342801b42e19b59a52e030462d04a5549f02fc57215b4ca97771ec6b3a0d30a78603fdccd2b5091c44f6ac439d6c8be8bc539@44.239.129.39:3000,enode://7a45d086b9c82bd3677a76d36e003b9490066d56b612f33d05cb4d242212acd4e5cab4abbcb15a0df9aa499e41b4b4e868d82ba1c509c1990c9217dfe4607775@44.239.129.39:3001,enode://d8e37eeba79b2c52dcba6e396ff907f27a6a8f7db34528cb8636bc3271291657a01c5649bff53429cea8a23b03fac13a178813c34c6d17d14f7b810a988393b5@44.239.129.39:3002,enode://3f15b5ac22dea3e37a90cd9378cf0cd4ed9ea122851846c8108fcc7d2c7e709ea4a089cf3da93c0d3d3053250417cf0ea9ad9eff0aa77ff07d76b6cf267a2937@44.239.129.39:3003" \
   --validator.id YOUR_VALIDATOR_ID \
   --validator.pubkey 0xYOUR_PUBKEY \
-  --validator.password /path/to/password.txt \
+  --validator.password /absolute/path/to/password.txt \
   > validator.log &
 ```
 
@@ -316,6 +322,30 @@ The `--bootnodes` value above lists all four live testnet validators at
 `44.239.129.39` (ports 3000–3003). Use them as-is — they are the same
 enodes hardcoded into the binary's testnet defaults and will give a new
 or restarted node a working entrypoint into the peer mesh.
+
+{% hint style="warning" %}
+**Always use full absolute paths for `--validator.password` (and any
+other file flags).** Because we `cd`'d into `vinuchain-upgrade/build`
+before running `./opera`, opera's working directory is now `build/`.
+Any relative path you pass — `pw.txt`, `./pw.txt`, `secrets/pw.txt` —
+is resolved against `build/`, **not** against your home directory or
+wherever your real password file lives.
+
+Examples:
+
+- Password file in your home secrets directory:
+  `--validator.password /home/ubuntu/secrets/pw.txt`
+- **Even if the password file is inside the build folder**, write the
+  full absolute path:
+  `--validator.password $HOME/vinuchain-upgrade/build/pw.txt`
+
+Never rely on `./pw.txt` or a bare `pw.txt` — it's the easiest way to
+end up with `Failed to unlock validator key: open pw.txt: no such file
+or directory` and waste an upgrade window debugging path resolution.
+
+The same rule applies to `--datadir`, `--genesis`, and any other flag
+that takes a path.
+{% endhint %}
 
 Monitor the logs:
 
@@ -664,7 +694,8 @@ pkill -TERM opera
 sleep 2  # Give the process time to exit
 
 # Restart using the upgraded binary
-nohup $HOME/vinuchain-upgrade/build/opera \
+cd $HOME/vinuchain-upgrade/build
+nohup ./opera \
   --validator.id YOUR_VALIDATOR_ID \
   --validator.pubkey 0xYOUR_PUBKEY \
   --validator.password /path/to/password.txt \
@@ -748,10 +779,11 @@ sleep 2
 rm -rf ~/.opera/chaindata           # or ~/.vinuchain/chaindata if using that path
 
 # Restart the node from upgraded binary
-nohup $HOME/vinuchain-upgrade/build/opera \
+cd $HOME/vinuchain-upgrade/build
+nohup ./opera \
   --validator.id YOUR_VALIDATOR_ID \
   --validator.pubkey 0xYOUR_PUBKEY \
-  --validator.password /path/to/password.txt \
+  --validator.password /absolute/path/to/password.txt \
   > validator.log &
 
 # Node will resync from genesis — this can take hours to days
