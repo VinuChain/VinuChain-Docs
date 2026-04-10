@@ -315,11 +315,17 @@ Start the node from the upgraded binary:
 
 ```bash
 nohup $HOME/vinuchain-upgrade/build/opera \
+  --bootnodes "enode://e2a95c1b8d85b018b8e88133bec342801b42e19b59a52e030462d04a5549f02fc57215b4ca97771ec6b3a0d30a78603fdccd2b5091c44f6ac439d6c8be8bc539@44.239.129.39:3000,enode://7a45d086b9c82bd3677a76d36e003b9490066d56b612f33d05cb4d242212acd4e5cab4abbcb15a0df9aa499e41b4b4e868d82ba1c509c1990c9217dfe4607775@44.239.129.39:3001,enode://d8e37eeba79b2c52dcba6e396ff907f27a6a8f7db34528cb8636bc3271291657a01c5649bff53429cea8a23b03fac13a178813c34c6d17d14f7b810a988393b5@44.239.129.39:3002,enode://3f15b5ac22dea3e37a90cd9378cf0cd4ed9ea122851846c8108fcc7d2c7e709ea4a089cf3da93c0d3d3053250417cf0ea9ad9eff0aa77ff07d76b6cf267a2937@44.239.129.39:3003" \
   --validator.id YOUR_VALIDATOR_ID \
   --validator.pubkey 0xYOUR_PUBKEY \
   --validator.password /path/to/password.txt \
   > validator.log &
 ```
+
+The `--bootnodes` value above lists all four live testnet validators at
+`44.239.129.39` (ports 3000–3003). Use them as-is — they are the same
+enodes hardcoded into the binary's testnet defaults and will give a new
+or restarted node a working entrypoint into the peer mesh.
 
 Monitor the logs:
 
@@ -331,6 +337,31 @@ tail -f validator.log
 
 - `--datadir /custom/path` — if chain data is not in the default `~/.opera` location
 - `--nat extip:YOUR_PUBLIC_IP` — if needed for P2P networking configuration
+
+{% hint style="info" %}
+**Slow peer discovery on small networks?** On a small or freshly
+restarted testnet, discv5 discovery via `--bootnodes` can take several
+minutes to populate the peer table — and may fail entirely if the
+bootnode itself is restarting at the same time. The most reliable fix
+is to drop a `static-nodes.json` file inside `<datadir>/go-opera/` that
+lists every peer enode you want a persistent connection to. Opera reads
+it on every startup and dials those peers immediately, bypassing
+discovery.
+
+```bash
+mkdir -p $HOME/.opera/go-opera
+cat > $HOME/.opera/go-opera/static-nodes.json <<'EOF'
+[
+  "enode://e2a95c1b8d85b018b8e88133bec342801b42e19b59a52e030462d04a5549f02fc57215b4ca97771ec6b3a0d30a78603fdccd2b5091c44f6ac439d6c8be8bc539@44.239.129.39:3000",
+  "enode://7a45d086b9c82bd3677a76d36e003b9490066d56b612f33d05cb4d242212acd4e5cab4abbcb15a0df9aa499e41b4b4e868d82ba1c509c1990c9217dfe4607775@44.239.129.39:3001",
+  "enode://d8e37eeba79b2c52dcba6e396ff907f27a6a8f7db34528cb8636bc3271291657a01c5649bff53429cea8a23b03fac13a178813c34c6d17d14f7b810a988393b5@44.239.129.39:3002",
+  "enode://3f15b5ac22dea3e37a90cd9378cf0cd4ed9ea122851846c8108fcc7d2c7e709ea4a089cf3da93c0d3d3053250417cf0ea9ad9eff0aa77ff07d76b6cf267a2937@44.239.129.39:3003"
+]
+EOF
+```
+
+Adjust the path if you use a non-default `--datadir`.
+{% endhint %}
 
 {% endtab %}
 
