@@ -200,6 +200,18 @@ force a full resync.
 {% endhint %}
 
 {% tabs %}
+{% tab title="nohup (standard)" %}
+
+```bash
+pkill -TERM opera
+```
+
+If the process doesn't exit cleanly within ~10 seconds, check the logs.
+`pkill` sends SIGTERM by default, allowing graceful shutdown. Only use
+`pkill -KILL opera` as a last resort if the process is stuck.
+
+{% endtab %}
+
 {% tab title="Systemd" %}
 
 ```bash
@@ -216,7 +228,7 @@ docker stop opera
 
 {% endtab %}
 
-{% tab title="Manual" %}
+{% tab title="Manual (foreground)" %}
 Send `Ctrl+C` (SIGINT) to the foreground process and wait for it to
 exit cleanly. In tmux/screen, attach first, then send the interrupt.
 {% endtab %}
@@ -279,6 +291,22 @@ If you prefer system paths, use `/opt/vinuchain-upgrade` instead of
 ### Replace the binary
 
 {% tabs %}
+{% tab title="nohup (standard)" %}
+
+```bash
+# Replace the binary in its current location
+cp $HOME/vinuchain-upgrade/build/opera /path/to/opera
+
+# Verify version
+/path/to/opera version
+# Expected: Version: 2.0.0-elemont
+```
+
+Substitute `/path/to/opera` with the actual path to your running binary
+(e.g., `$HOME/opera`, `/opt/opera`, etc.).
+
+{% endtab %}
+
 {% tab title="Systemd" %}
 
 ```bash
@@ -328,6 +356,31 @@ the git tag is `v1.0.1-elemont`. See the note at the top of this page.
 ### Start your node
 
 {% tabs %}
+{% tab title="nohup (standard)" %}
+
+Use the same command you used to start the node before the upgrade:
+
+```bash
+nohup /path/to/opera \
+  --datadir ~/.vinuchain \
+  --validator.id YOUR_VALIDATOR_ID \
+  --validator.pubkey 0xYOUR_PUBKEY \
+  --validator.password /path/to/password.txt \
+  --nat extip:YOUR_PUBLIC_IP \
+  --nousb > nohup.log 2>&1 &
+```
+
+Monitor the logs:
+
+```bash
+tail -f nohup.log
+```
+
+Replace `/path/to/opera` with the actual path to your binary, and adjust
+`~/.vinuchain` if you use the legacy `~/.opera` datadir path.
+
+{% endtab %}
+
 {% tab title="Systemd" %}
 
 ```bash
@@ -348,7 +401,9 @@ Ensure your `docker run` command (or compose file) still mounts the
 datadir volume and exposes the same ports.
 {% endtab %}
 
-{% tab title="Manual (validator)" %}
+{% tab title="Manual (foreground)" %}
+
+For testing or development, you can run in the foreground:
 
 ```bash
 opera \
@@ -598,6 +653,25 @@ it takes hours to days.
 **Step 1 — Install and restart on the new binary.**
 
 {% tabs %}
+{% tab title="nohup (standard)" %}
+
+```bash
+pkill -TERM opera
+sleep 2  # Give the process time to exit
+cp $HOME/vinuchain-upgrade/build/opera /path/to/opera
+
+# Restart using the same nohup command as before
+nohup /path/to/opera \
+  --datadir ~/.vinuchain \
+  --validator.id YOUR_VALIDATOR_ID \
+  --validator.pubkey 0xYOUR_PUBKEY \
+  --validator.password /path/to/password.txt \
+  --nat extip:YOUR_PUBLIC_IP \
+  --nousb > nohup.log 2>&1 &
+```
+
+{% endtab %}
+
 {% tab title="Systemd" %}
 
 ```bash
@@ -621,10 +695,31 @@ docker start opera
 
 **Step 2 — Watch the logs for sync progress.**
 
+{% tabs %}
+{% tab title="nohup (standard)" %}
+
+```bash
+tail -f nohup.log
+```
+
+{% endtab %}
+
+{% tab title="Systemd" %}
+
 ```bash
 sudo journalctl -u opera -f
-# or: docker logs -f opera
 ```
+
+{% endtab %}
+
+{% tab title="Docker" %}
+
+```bash
+docker logs -f opera
+```
+
+{% endtab %}
+{% endtabs %}
 
 If you see block numbers advancing and normal sync messages, the node
 is recovering on its own. Let it catch up to the chain head before
@@ -641,12 +736,51 @@ invalid-block errors in the logs for more than a few minutes), and
 make sure your pre-upgrade backup still exists.
 {% endhint %}
 
+{% tabs %}
+{% tab title="nohup (standard)" %}
+
+```bash
+pkill -TERM opera
+sleep 2
+rm -rf ~/.vinuchain/chaindata       # or ~/.opera/chaindata on legacy path
+
+# Restart the node
+nohup /path/to/opera \
+  --datadir ~/.vinuchain \
+  --validator.id YOUR_VALIDATOR_ID \
+  --validator.pubkey 0xYOUR_PUBKEY \
+  --validator.password /path/to/password.txt \
+  --nat extip:YOUR_PUBLIC_IP \
+  --nousb > nohup.log 2>&1 &
+
+# Node will resync from genesis — this can take hours to days
+```
+
+{% endtab %}
+
+{% tab title="Systemd" %}
+
 ```bash
 sudo systemctl stop opera
 rm -rf ~/.vinuchain/chaindata       # or ~/.opera/chaindata on legacy path
 sudo systemctl start opera
 # Node will resync from genesis — this can take hours to days
 ```
+
+{% endtab %}
+
+{% tab title="Docker" %}
+
+```bash
+docker stop opera
+docker run --rm -v opera_chaindata:/chaindata \
+  busybox rm -rf /chaindata/chaindata
+docker start opera
+# Node will resync from genesis — this can take hours to days
+```
+
+{% endtab %}
+{% endtabs %}
 
 If the VinuChain team publishes a database snapshot, importing it is
 much faster than a genesis resync.
