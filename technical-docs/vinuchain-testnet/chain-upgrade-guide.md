@@ -86,9 +86,48 @@ Source: `opera/rules.go` (`Upgrades.Elemont` comment block).
 
 ## Prerequisites
 
-- **Go 1.25+** with **gcc (or clang)** and standard C library headers —
-  check with `go version`. Upgrade from [go.dev/dl](https://go.dev/dl/)
-  if needed.
+### Go Version Upgrade (1.14 → 1.25+)
+
+{% hint style="danger" %}
+**Critical build requirement change.** This release requires **Go 1.25+** or
+later. The production `main` branch supported Go 1.14; the Elemont binary
+will not build on Go 1.14 or any 1.x version below 1.25.
+
+**Check your current Go version:**
+
+```bash
+go version
+# Expected output: go version go1.25.N linux/amd64 (or later)
+```
+
+**If you are running Go 1.14–1.24**, you **must upgrade** before building:
+
+```bash
+# Download Go 1.25 or later
+wget https://go.dev/dl/go1.25.8.linux-amd64.tar.gz
+
+# Extract to a temporary location
+tar -xvf go1.25.8.linux-amd64.tar.gz
+
+# Remove the old Go installation
+sudo rm -rf /usr/local/go
+
+# Move the new Go to the system location
+sudo mv go /usr/local
+
+# Verify the upgrade
+go version
+# Expected: go version go1.25.8 linux/amd64
+```
+
+For arm64 systems, use `go1.25.8.linux-arm64.tar.gz` instead.
+Verify you are using the correct architecture before downloading.
+{% endhint %}
+
+### Other Prerequisites
+
+- **gcc (or clang)** and standard C library headers — required for building
+  go-vinu's crypto and LevelDB C bindings.
 - **git**
 - At least **50 GB** free disk space
 - Current node must be **fully synced** before upgrading

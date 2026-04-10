@@ -8,6 +8,12 @@ supply.
 This page documents only the consumer-visible changes. For the validator
 upgrade procedure, see the [Chain Upgrade Guide](chain-upgrade-guide.md).
 
+{% hint style="warning" %}
+**Build requirement change:** Operators building the binary from source
+must upgrade to **Go 1.25+** (from Go 1.14 on the production branch).
+See "Go Version Upgrade" in the [Chain Upgrade Guide](chain-upgrade-guide.md#prerequisites).
+{% endhint %}
+
 {% hint style="info" %}
 **Activation timing.** All changes listed here activate at the **next
 epoch seal** after a node installs the new binary. On startup, the new
@@ -108,6 +114,33 @@ effect of the Podgorica upgrade and the `feeRefund` receipt field above.
   receipt.
 - A transaction's nominal fee still leaves the sender's balance during
   execution; the refund is a separate state transition in the same block.
+
+---
+
+## Build & Tooling Changes
+
+### Minimum Go Version: 1.14 → 1.25+
+
+The Elemont release requires **Go 1.25 or later** to build from source.
+The previous production branch (`main`) supported Go 1.14.
+
+#### Impact on Node Operators
+
+- **Pre-built binaries:** If you download the pre-built `opera` binary
+  from the release page, Go is already compiled in — no action needed.
+- **Building from source:** You must upgrade your Go toolchain before
+  running `make opera`.
+
+#### Upgrading Go
+
+Detailed upgrade instructions are in the [Chain Upgrade Guide](chain-upgrade-guide.md#prerequisites) under "Go Version Upgrade (1.14 → 1.25+)".
+
+Quick verification:
+
+```bash
+go version
+# Expected: go version go1.25.N linux/amd64 (or later, or different arch)
+```
 
 ---
 
