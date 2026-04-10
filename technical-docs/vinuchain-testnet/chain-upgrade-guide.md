@@ -244,26 +244,6 @@ pgrep -f opera || echo "Stopped"
 
 {% step %}
 
-### Back up your data
-
-{% hint style="warning" %}
-**Legacy datadir path.** If your node was installed before the rename
-from `opera` to `vinuchain`, your datadir is at `~/.opera`, not
-`~/.vinuchain`. The binary auto-detects the legacy location and uses it
-if `~/.vinuchain` does not yet exist (see
-`cmd/opera/launcher/defaults.go`). Substitute the correct path in the
-commands below — **do not move files between directories**.
-{% endhint %}
-
-```bash
-# Adjust the source path to match your datadir
-cp -r ~/.vinuchain ~/.vinuchain.backup-pre-elemont
-```
-
-{% endstep %}
-
-{% step %}
-
 ### Download and build the new binary
 
 Pick a persistent path with at least ~2GB free for the source tree, the
@@ -504,6 +484,31 @@ Compare the block number and hash against the public RPC or another
 validator's node. If they match, you are on the correct chain.
 {% endstep %}
 
+{% step %}
+
+### Clean up rollback artifacts
+
+If you kept a copy of your previous `opera` binary (or any other
+upgrade-related files) outside the scope of this guide, you can delete
+them once your validator has been running cleanly on the new binary
+through at least one epoch seal and you've confirmed the chain hash
+matches in the previous step.
+
+Post-seal rollback is not supported, so the old binary is no longer a
+useful recovery artifact — keeping it around just consumes disk and
+risks confusing future operators.
+
+```bash
+# Example — adapt to wherever you stashed the old binary
+rm -f /path/to/opera.pre-elemont
+```
+
+The build directory under `$HOME/vinuchain-upgrade` (or wherever you
+cloned the source) can also be removed if you don't plan to rebuild
+locally — the running node uses the binary that was already started, so
+deleting the source tree has no effect on it.
+{% endstep %}
+
 {% endstepper %}
 
 ---
@@ -548,15 +553,15 @@ No data is lost.
 {% hint style="danger" %}
 **Rollback after the epoch seal is not supported.** Once
 `Applying SFC V2 bytecode upgrade` has been logged, the SFC V2 bytecode
-is written into chain state and distributed across validators.
-Restoring your pre-upgrade datadir backup will only rewind *your local
-view* — the network has already moved on, and your node will diverge
-from consensus the moment it tries to sync.
+is written into chain state and distributed across validators. The
+network has already moved on, and there is no path back — running an
+older binary against the post-seal chain will diverge from consensus
+the moment the node tries to sync.
 {% endhint %}
 
-If you must recover a node whose datadir is stuck on an old state,
-follow the late-upgrade recovery steps below rather than restoring a
-backup.
+If a node ends up stuck on an old state, follow the late-upgrade
+recovery steps below: install the new binary and re-sync from a
+published snapshot or genesis.
 
 ---
 
@@ -568,8 +573,10 @@ backup.
    terminal output for your install method.
 2. Verify the binary version is correct: `opera version` must print
    `2.0.0-elemont`.
-3. If the database is reported as corrupted, stop the node and restore
-   from your pre-upgrade backup.
+3. If the database is reported as corrupted, stop the node, delete the
+   chaindata directory, and re-sync from a published snapshot (or from
+   genesis if no snapshot is available). See the late-upgrade recovery
+   section below for the exact commands.
 
 ### Node starts but doesn't produce events
 
@@ -582,9 +589,12 @@ backup.
 
 ### "Database is from a newer version" error
 
-You attempted to downgrade. Restore from your pre-upgrade backup if you
-need to revert — and only if you have not yet passed the epoch seal
-(see the Rollback section above).
+You attempted to downgrade. The new binary writes a higher schema
+version into the chaindata, and the old binary refuses to open it. If
+you have not yet passed the epoch seal you can simply start the new
+binary again — no data is lost. After the seal, downgrade is not
+possible (see the Rollback section above); your only path is to stay
+on the new binary or re-sync from a published snapshot.
 
 ### Consensus stall / no new blocks
 
@@ -723,8 +733,10 @@ reconcile. Resync from scratch:
 {% hint style="danger" %}
 **Last resort only.** The following command deletes your local
 chaindata. Only run it after Step 2 has clearly failed (repeated
-invalid-block errors in the logs for more than a few minutes), and
-make sure your pre-upgrade backup still exists.
+invalid-block errors in the logs for more than a few minutes). The
+node will then re-sync from genesis (or a published snapshot, if
+available — importing a snapshot is much faster than syncing from
+genesis on a long-running chain).
 {% endhint %}
 
 {% tabs %}
