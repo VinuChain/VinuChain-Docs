@@ -1,123 +1,177 @@
-# VinuChain v2.0.2-elemont — Validator Upgrade Guide
+# VinuChain v2.0.3-elemont — Validator Upgrade Guide
 
-{% hint style="danger" %}
-**This is a mandatory hard fork.** Validators still running the old
-binary after the next epoch seal on their node will be forked off the
-network and unable to produce blocks until they upgrade.
+{% hint style="info" %}
+**Recommended security patch release.** v2.0.3-elemont is a rollup of
+audit-driven hardening fixes on top of v2.0.2-elemont. It is **not** a
+new hard fork — no new upgrade flags activate, and non-upgraded nodes
+remain consensus-compatible with the network. However, non-upgraded
+nodes miss the P2P, RPC, and SFC audit fixes shipped in this release,
+so all validators are strongly encouraged to upgrade.
 {% endhint %}
 
 {% hint style="info" %}
 **TL;DR**
 
-- **Target tag:** `v2.0.2-elemont`
-- **Binary version string:** `2.0.2-elemont` (the tag name and the
-  `opera version` output are intentionally different — see note below)
-- **Mandatory:** yes, all validators
-- **Activation:** per-node at the **next epoch seal** after restart
-  (up to ~4h later; no coordinated block height)
+- **Target tag:** `v2.0.3-elemont` (preparing — not yet published)
+- **Binary version string:** `2.0.3-elemont`
+- **Mandatory:** no, but strongly recommended
+- **Activation:** binary swap only. No new hard fork, no coordinated
+  block height, no datadir reset
 - **Expected downtime:** 2–10 minutes per validator for a clean swap
 - **Build requirements:** Go 1.25+, C compiler, ~50 GB free disk
+  (unchanged from v2.0.2-elemont)
+- **Upgrade window:** TBD — operator to schedule
 {% endhint %}
 
 {% hint style="warning" %}
-**Second patch release for the elemont hard fork.** v2.0.2-elemont supersedes
-v1.0.2-elemont. The SFC V2 `restakeRewards` correctness fix introduced in
-v1.0.2-elemont is included. This release also ships EIP-1559 dynamic base
-fee support, payback congestion gating, and a reentrancy guard fix for the
-post-upgrade SFC counter state. On **testnet**, the `SfcV2Patch` flag
-re-flashes the SFC bytecode to the corrected version (41,773 bytes →
-43,743 bytes) if it has not already been applied. On **mainnet**,
-`SfcV2Patch` is a no-op because mainnet has not yet activated SfcV2 — the
-first SfcV2 activation will install the corrected bytecode directly.
+**Patch release semantics.** v2.0.3-elemont supersedes v2.0.2-elemont.
+The upgrade flags already active on your node from the v2.0.2-elemont
+rollout (`Podgorica`, `SfcV2`, `Elemont`) remain active — this release
+does not add or toggle any consensus flag. On **testnet**, if the
+`SfcV2Patch` flag from v2.0.2-elemont was not yet applied on your node
+(e.g. the node had been stopped since before its next epoch seal), it
+will still fire on the first epoch seal after restart. Once applied, it
+is a no-op on subsequent restarts.
 
-**If you are already on v1.0.2-elemont:** the upgrade is an incremental
+**If you are already on v2.0.2-elemont:** the upgrade is a straight
 binary swap. No datadir reset, no peer reconnection, no new validator
-registration. Follow the same steps below as you did for v1.0.2-elemont;
-on testnet you will see a `Staged SfcV2Patch upgrade` log line only if
-the patch has not already been applied on your node.
+registration. Follow the same steps below as you did for
+v2.0.2-elemont. You will not see any `Staged ... upgrade from binary
+rules` log lines, because no new flags need staging — the banner and a
+clean resume of block processing are your confirmation.
 {% endhint %}
 
 {% hint style="info" %}
 **Version string vs git tag.** The release is cut from git tag
-`v2.0.2-elemont`, but the binary reports `2.0.2-elemont`. The tag name
-and the version string come from `version/version.go`
-(`VersionMajor=2`, `VersionMinor=0`, `VersionPatch=2`,
-`VersionMeta=elemont`). Both refer to the same release.
+`v2.0.3-elemont`, but the binary reports `2.0.3-elemont`. Both refer to
+the same release; the leading `v` only appears on the git tag.
 {% endhint %}
+
+## What's New in v2.0.3-elemont
+
+v2.0.3-elemont rolls up hardening work from audit Cycles 152–157. The
+changes fall into three surfaces — VinuChain core, the forked go-vinu
+EVM/RPC dependency, and the pre-deployment SFC V2 contract.
+
+### VinuChain core (this repo)
+
+| Scope | Change |
+| --- | --- |
+| `evm/gas_power` | Saturate `GasRefund` addition in the gas power check to prevent uint64 overflow when a block accumulates a very large refund. |
+| `gossip/gasprice` | Saturate `DirtyGasRefund` additions in the gas price oracle backend (same overflow class as above). |
+| `evm/gas_power` | Clamp `prevGasPowerLeft` to `maxGasPower` in `CalcValidatorGasPower` as defense-in-depth against `MaxUint64` sentinel values leaking through the allocation path. |
+| `gossip/blockproc` | New unit tests for `evmmodule` and `sealmodule`. Test-only; no runtime behavior change. |
+
+### go-vinu fork (EVM + RPC)
+
+v2.0.3-elemont **requires** a new go-vinu tag `v1.20.14-quota`. The
+VinuChain `go.mod` replace directive is bumped from
+`v1.20.13-quota` → `v1.20.14-quota` and must be in place before the
+release is cut.
+
+| Scope | Change |
+| --- | --- |
+| `rpc/ethapi` | Reject `StateOverride.Code` blobs larger than `MaxCodeSize`. Prevents `eth_call` clients from forcing a node to allocate unbounded contract code. |
+| `rpc` | Enforce a 100-request ceiling on JSON-RPC batch calls. Caps per-batch fan-out work. |
+| `rpc` | Cap `StateOverride.StateDiff` entry count at 1000. Symmetric with the code-size cap above. |
+| `rpc` | `DefaultConfig.MaxConcurrentRPC` set to 50. Provides a sane default for operators who don't override the setting. |
+| `rpc` | Return a JSON-RPC error (instead of hanging) when `startCallProc` runs while the handler is stopping. |
+| `core/types/receipt` | Cap peer-decoded `FeeRefund` at 32 bytes, zero pre-Podgorica receipts, and restore test state. |
+| `core/types/receipt` | Use `BitLen` for the `FeeRefund` size check instead of a byte-slice comparison. |
+| `core/types` | New test coverage for `FeeRefundActive` transition paths. |
+
+### SFC V2 contract (pre-deployment bytecode)
+
+The SFC V2 Solidity source in `gitignore/sfc_fixed.sol` received a batch
+of correctness and precision fixes during Cycles 152–157. Because the
+V2 bytecode is **pre-deployment** — no network has yet locked it in via
+a binary that ships with V2 baked into the binary rules — networks that
+activate SfcV2 from v2.0.3-elemont onward will install the corrected
+bytecode directly.
+
+| Finding | Change |
+| --- | --- |
+| SFC-01 | `updateSlashingRefundRatio` now uses a 2-day `CORRECTION_TIMELOCK` with explicit queue / execute / cancel (was applied immediately). |
+| SFC-01-B | Converted the pending-slashing-refund slot into a per-validator `mapping(uint256 => PendingSlashingRefund)` (was a single global slot that could collide across validators). |
+| SFC-02 | `queueMigration` and `queueCopyCode` now revert if a pending op is already queued, preventing silent overwrite. |
+| SFC-03 | `_calcRawValidatorEpochTxReward` now multiplies before dividing — preserves precision on small per-epoch reward increments. |
+| SFC-04 | `nonReentrant` guard checks the counter `== 1` (was `!= 2`), which is the semantically correct assertion. |
+| C157-L01 | `_popDelegationUnlockPenalty` rescales stashed reward deductions at the penalty cap so a capped penalty no longer leaves stash inconsistent. |
+| C157-I01 / I02 | NatSpec documenting the cancel-requeue cooldown asymmetry and the genesis stashed-lockup seed. Documentation-only. |
+| C157-I03 | Cumulative correction delta cap to prevent compound drift across many corrections. |
+
+**Implication for existing testnet networks:** the `SfcV2Patch` re-flash
+path introduced in v2.0.2-elemont is **unchanged** by this release.
+Testnet nodes that already applied `SfcV2Patch` under v2.0.2-elemont do
+not re-flash again under v2.0.3-elemont. New testnets or mainnet
+activations that install SfcV2 from a v2.0.3-elemont (or later) binary
+will pick up the corrected bytecode on first activation.
+
+{% hint style="warning" %}
+**Go bindings regeneration required before tag.** The SFC bytecode in
+`opera/contracts/sfc/sfc_predeploy.go` is a compiled artifact of
+`gitignore/sfc_fixed.sol`. Because the Solidity source changed, the Go
+bindings must be regenerated with **`solc` 0.5.17** before the
+`v2.0.3-elemont` tag is cut. Post-regeneration the bytecode size will
+change — the exact new size is TBD until regeneration is complete.
+{% endhint %}
+
+### Changelog since v2.0.2-elemont
+
+VinuChain-repo commits since `v2.0.2-elemont` (oldest first):
+
+| Commit | Scope | Summary |
+| --- | --- | --- |
+| `a894112` | `evm/gas_power` | Saturate `GasRefund` addition to prevent uint64 overflow |
+| `293fe5f` | `gossip/gasprice` | Saturate `DirtyGasRefund` additions in gas price oracle |
+| `7487dd5` | `evm/gas_power` | Clamp `prevGasPowerLeft` to `maxGasPower` in `CalcValidatorGasPower` |
+| `20e1951` | `gossip/blockproc` | Add `evmmodule` and `sealmodule` unit tests |
+
+go-vinu commits that land in `v1.20.14-quota`:
+
+| Commit | Scope | Summary |
+| --- | --- | --- |
+| `b6557ea7f` | `rpc/ethapi` | Reject oversized `StateOverride.Code` blobs |
+| `565b48267` | `rpc` | Enforce 100-request JSON-RPC batch ceiling |
+| `827040f3a` | `core/types/receipt` | Cap peer `FeeRefund` at 32 bytes, zero pre-Podgorica |
+| `f8c5baea7` | `core/types/receipt` | Use `BitLen` for `FeeRefund` size check |
+| `f6eed37c9` | `rpc` | `MaxConcurrentRPC=50` default in `DefaultConfig` |
+| `38a713d64` | `rpc` | Cap `StateOverride.StateDiff` entry count at 1000 |
+| `787061f3e` | `rpc` | Return JSON-RPC error on `startCallProc` when stopping |
+| `b316aee38` | `core/types` | Test coverage for `FeeRefundActive` transition paths |
+
+lachesis-base remains pinned at `v0.1.5-elemont` — no changes since
+v2.0.2-elemont.
 
 ## What Is This Upgrade?
 
-This hard fork activates three upgrade flags on VinuChain. All validators
-must upgrade before their next epoch seal or risk being forked off the
-network.
+v2.0.3-elemont is a **security patch release**. It does not activate
+any new upgrade flags on VinuChain and does not change consensus
+behavior. Block hashes produced by an upgraded and a non-upgraded node
+on the same transactions remain identical.
 
 ### Features Activated
 
-| Feature | What It Does |
-| --------- | ------------- |
-| **Podgorica** | Activates the payback fee refund system — eligible stakers receive gas fee refunds |
-| **SfcV2** | Upgrades the SFC (Staking for Consensus) contract bytecode with V2 logic and implements 30% base fee burn |
-| **Elemont** | Consensus-level fixes for cheater detection, epoch advancement, median time, and validator handling |
+None. The three flags already active from the elemont hard fork
+(`Podgorica`, `SfcV2`, `Elemont`) continue to apply. On testnet,
+`SfcV2Patch` continues to re-flash the SFC V2 bytecode at the first
+post-restart epoch seal if it has not already been applied on the
+node — this behavior is unchanged from v2.0.2-elemont.
 
-#### SfcV2 — specific changes
+### Why Upgrade?
 
-SfcV2 gates the following staking and fee mechanism changes, all of which
-activate atomically when the flag is set:
+Upgrading picks up:
 
-- **SFC V2 contract bytecode** — the staking contract is replaced with the
-  V2 implementation, which includes updated logic for delegation, rewards,
-  and validator interactions. The V2 contract is backward-compatible with
-  existing delegation and staking state.
-- **30% base fee burn** — 30% of the **base fee portion** of each
-  transaction's fee is burned (sent to the zero address `0x0000…0000`)
-  instead of flowing entirely to the block validator. The remaining 70% of
-  base fees and all priority tips continue to reward validators as before.
-- **Effective supply reduction** — as base fees accumulate at the zero
-  address, the effective circulating supply gradually decreases over time.
-
-Source: `gossip/blockproc/drivermodule/driver_txs.go` (burn logic);
-`opera/contracts/sfc/contract.go` (V2 bytecode); `block_processor.go`
-(bytecode installation).
-
-#### Elemont — specific fixes
-
-Elemont gates the following consensus-critical behavioral fixes, all of
-which activate atomically when the flag is set:
-
-- **NoCheaters merged view** — cheater list is evaluated against the
-  merged block/epoch view rather than a single source.
-- **AdvanceEpochs full 32-byte ABI decode** — governance payloads use the
-  full 32-byte ABI word instead of a truncated read.
-- **Cheater fee zeroing** — validators flagged as cheaters receive no
-  fee share for the affected block.
-- **vecmt GatherFrom tie-breaking** — vector clock tie-breaking for
-  event selection becomes deterministic.
-- **MedianTime stable sort** — epoch median-time computation uses a
-  stable sort so ties no longer depend on input order.
-- **Empty-pubkey validator skip at epoch seal** — validators with an
-  empty public key are skipped during epoch seal instead of aborting.
-
-#### Why Elemont fixes matter
-
-These fixes address edge cases in consensus safety and determinism:
-
-- **NoCheaters merged view + cheater fee zeroing** — prevents validators
-  flagged as cheaters from earning fees on disputed blocks, reducing
-  incentive for consensus attacks.
-- **AdvanceEpochs 32-byte decode** — ensures governance proposals are
-  decoded correctly across all validators (prevents divergence from
-  truncation bugs).
-- **vecmt tie-breaking + MedianTime stable sort** — make event selection
-  and time computation deterministic, preventing non-deterministic block
-  hashes when multiple events have equal priority.
-- **Empty-pubkey skip** — prevents epoch seal panics from malformed
-  validator registrations, improving uptime.
-
-**Impact on block hashes:** All Elemont fixes are consensus-critical, meaning
-post-activation block hashes will differ from a pre-Elemont binary running on
-the same transactions. This is expected and correct.
-
-Source: `opera/rules.go` (`Upgrades.Elemont` comment block).
+- **P2P and RPC hardening** — batch caps, state-override caps, concurrent
+  RPC default, and receipt decoding limits that reduce the blast radius
+  of hostile or misbehaving peers and clients.
+- **Overflow defense in the gas-power accounting path** — saturating
+  addition and clamping in `CalcValidatorGasPower` and the gas price
+  oracle backend prevent edge-case uint64 overflows that could have
+  disrupted gas power allocation for a validator.
+- **Corrected SFC V2 bytecode for new network activations** — the eight
+  pre-deployment fixes above are baked into any new SfcV2 activation
+  after this release.
 
 ### Network Details
 
@@ -132,63 +186,34 @@ Source: `opera/rules.go` (`Upgrades.Elemont` comment block).
 
 1. **Testnet upgrade** — genesis validators upgrade testnet nodes first.
 2. **Testnet validation** — manual testing for stability (blocks,
-   transactions, staking, fee refunds).
+   transactions, RPC endpoints, staking operations).
 3. **Mainnet upgrade announcement** — date and time window communicated
-   to all validators.
+   to all validators. Date: TBD — operator to schedule.
 4. **Mainnet pre-staging** — validators build the binary ahead of time.
-5. **Mainnet upgrade window** — coordinated binary swap within the
-   announced window.
-6. **Monitoring** — watch for activation logs and chain health.
+5. **Mainnet upgrade window** — binary swap within the announced window.
+6. **Monitoring** — watch for clean resume of block production.
 
 ---
 
 ## Prerequisites
 
-### Go Version Upgrade (1.14 → 1.25+)
+### Build requirements
 
-{% hint style="danger" %}
-**Critical build requirement change.** This release requires **Go 1.25+** or
-later. The production `main` branch supported Go 1.14; the Elemont binary
-will not build on Go 1.14 or any 1.x version below 1.25.
+Unchanged from v2.0.2-elemont:
 
-**Check your current Go version:**
-
-```bash
-go version
-# Expected output: go version go1.25.N linux/amd64 (or later)
-```
-
-**If you are running Go 1.14–1.24**, you **must upgrade** before building:
-
-```bash
-# Download Go 1.25 or later
-wget https://go.dev/dl/go1.25.8.linux-amd64.tar.gz
-
-# Extract to a temporary location
-tar -xvf go1.25.8.linux-amd64.tar.gz
-
-# Remove the old Go installation
-sudo rm -rf /usr/local/go
-
-# Move the new Go to the system location
-sudo mv go /usr/local
-
-# Verify the upgrade
-go version
-# Expected: go version go1.25.8 linux/amd64
-```
-
-For arm64 systems, use `go1.25.8.linux-arm64.tar.gz` instead.
-Verify you are using the correct architecture before downloading.
-{% endhint %}
-
-### Other Prerequisites
-
-- **gcc (or clang)** and standard C library headers — required for building
-  go-vinu's crypto and LevelDB C bindings.
+- **Go 1.25+** (check with `go version`)
+- **gcc (or clang)** and standard C library headers — required for
+  building go-vinu's crypto and LevelDB C bindings.
 - **git**
 - At least **50 GB** free disk space
 - Current node must be **fully synced** before upgrading
+
+{% hint style="info" %}
+If you already built v2.0.2-elemont on this host and have not changed
+the Go toolchain since, no build-environment changes are needed for
+v2.0.3-elemont. The `go.mod` bump to `go-vinu v1.20.14-quota` is
+fetched transparently by `make opera`.
+{% endhint %}
 
 ### Required Ports
 
@@ -281,7 +306,7 @@ out of space fails cleanly without affecting the running node.
 ```bash
 git clone https://github.com/VinuChain/VinuChain.git $HOME/vinuchain-upgrade
 cd $HOME/vinuchain-upgrade
-git checkout v2.0.2-elemont
+git checkout v2.0.3-elemont
 make opera
 # Binary is at $HOME/vinuchain-upgrade/build/opera
 ```
@@ -292,6 +317,15 @@ Substitute `/opt/vinuchain-upgrade` (or any other path) if `$HOME` is
 not the right partition for your setup — every later command in this
 guide that references `$HOME/vinuchain-upgrade` should be adjusted to
 match.
+
+{% hint style="info" %}
+**`go.mod` bump included in the tag.** The `v2.0.3-elemont` tag bumps
+the go-vinu replace directive to `v1.20.14-quota`. You do not need to
+edit `go.mod` manually — `git checkout v2.0.3-elemont` pulls in the
+correct pin, and `make opera` fetches the new dependency on first
+build. lachesis-base remains at `v0.1.5-elemont`.
+{% endhint %}
+
 {% endstep %}
 
 {% step %}
@@ -305,12 +339,12 @@ path:
 ```bash
 cd $HOME/vinuchain-upgrade/build
 ./opera version
-# Expected: Version: 2.0.2-elemont
+# Expected: Version: 2.0.3-elemont
 ```
 
 {% hint style="info" %}
-`opera version` prints `2.0.2-elemont` — this matches the git tag
-`v2.0.2-elemont`. See the note at the top of this page.
+`opera version` prints `2.0.3-elemont` — this matches the git tag
+`v2.0.3-elemont`. See the note at the top of this page.
 {% endhint %}
 
 {% endstep %}
@@ -445,19 +479,14 @@ For testing or development, you can run in the foreground:
 
 {% step %}
 
-### Verify activation
+### Verify the upgrade
 
-{% hint style="info" %}
-Activation is **per-validator**. There is no coordinated block height.
-Each node stages the new upgrade flags into its pending rules at
-startup, and the flags activate atomically at the **next epoch seal**
-on that node — at which point the SFC V2 contract bytecode is installed
-in chain state and the Podgorica/Elemont effects become live.
-{% endhint %}
+Because v2.0.3-elemont is **not a hard fork**, most nodes will see no
+`Staged ... upgrade from binary rules` lines at startup. What to expect:
 
-On startup, the node prints an ASCII banner identifying the release.
-This is the first visual confirmation that you are running the Elemont
-binary:
+**Startup banner.** Every v2.x build prints the VinuChain banner. This
+is the first visual confirmation that you are running v2.0.3-elemont
+and not the previous binary:
 
 ```text
  ██╗   ██╗██╗███╗   ██╗██╗   ██╗ ██████╗██╗  ██╗ █████╗ ██╗███╗   ██╗
@@ -469,87 +498,45 @@ binary:
 
                         v2.0  -  ELEMONT
 
-  Version: 2.0.2-elemont
+  Version: 2.0.3-elemont
 ```
 
-Immediately after the banner, you should see **staging log lines** —
-one for each upgrade flag that is set in the binary's hardcoded rules
-but not yet in the stored pending rules. What you see depends on which
-release you are upgrading from and which network you are on:
-
-**Fresh upgrade to v2.0.2-elemont from pre-elemont (e.g., v1.0.0-rc.1):**
-all three hard-fork flags need to be staged, so you will see three lines
-(plus a fourth on testnet — see below):
-
-```text
-INFO Staged SfcV2 upgrade from binary rules; will activate at next epoch seal
-INFO Staged Podgorica upgrade from binary rules; will activate at next epoch seal
-INFO Staged Elemont upgrade from binary rules; will activate at next epoch seal
-```
-
-**Incremental upgrade from v1.0.2-elemont to v2.0.2-elemont (testnet
-only):** SfcV2/Podgorica/Elemont are already active on your node's
-stored rules, so the only new flag to stage is `SfcV2Patch` (if the
-patch has not already been applied on your node):
+**Staging logs — conditional.** For most operators upgrading from
+v2.0.2-elemont there are **no new flags to stage**, and you will not
+see any `Staged ...` lines. The exception is the testnet-only
+`SfcV2Patch` flag: if your node never completed an epoch seal under
+v2.0.2-elemont (for example the node was stopped before its first
+post-upgrade seal), the patch is still pending and will log:
 
 ```text
 INFO Staged SfcV2Patch upgrade from binary rules; will activate at next epoch seal
 ```
 
-{% hint style="info" %}
-**Testnet-only: SfcV2Patch.** The `SfcV2Patch` staging line appears
-**only on testnet**. It fires a re-install of the SFC V2 bytecode at
-the next epoch seal, correcting a `restakeRewards` arithmetic bug in
-the v1.0.1-elemont SFC V2 bytecode. Mainnet does not see this line
-because mainnet's first SfcV2 activation already picks up the corrected
-bytecode directly from `GetContractBin()` — no re-flash mechanism is
-needed there.
-{% endhint %}
+If the patch already applied on your node under v2.0.2-elemont, this
+line does **not** appear.
 
-Then, at the **next epoch seal** on your node (up to ~4 hours after
-startup — this is the `MaxEpochDuration` cap; epochs can seal earlier
-if triggered by gas, event count, or cheaters), you should see the
-activation log lines corresponding to whichever flags transitioned
-`false→true`:
+**Seal-time activation — conditional.** Only relevant to testnet nodes
+that still have `SfcV2Patch` pending. At the next epoch seal on such a
+node you will see:
 
 ```text
-INFO Applying SFC V2 bytecode upgrade              block=<N>
-INFO Activating Podgorica fee refund encoding      block=<N>
-INFO Re-applying SFC V2 bytecode upgrade (patch)   block=<N>   # testnet only, v2.0.2-elemont
+INFO Re-applying SFC V2 bytecode upgrade (patch)   block=<N>
 ```
 
-The Elemont consensus fixes activate **silently** at the same epoch seal —
-there is no separate log line for Elemont, but it is active and consensus
-rules have changed (visible in different block hashes vs peers running
-older versions).
-
-Once you have seen the banner, the staging lines, **and** the
-corresponding seal-time activation lines at the next seal, the upgrade
-is complete on your node. You can verify Elemont is active by confirming
-your block hashes match peers running the Elemont binary, and you can
-verify the SfcV2Patch re-flash by checking the SFC bytecode
-size at `0xfc00face00000000000000000000000000000000`:
-
-```bash
-curl -s -X POST http://localhost:18545/ \
-  -H "Content-Type: application/json" \
-  -d '{"jsonrpc":"2.0","method":"eth_getCode","params":["0xfc00face00000000000000000000000000000000","latest"],"id":1}' \
-  | python3 -c "import sys,json;c=json.load(sys.stdin)['result'];print(f'{(len(c)-2)//2} bytes')"
-# Expected post-patch: 43743 bytes
-# v1.0.1-elemont (pre-patch) returned: 41773 bytes
-```
+For all other nodes (including all mainnet nodes) the upgrade is
+complete as soon as the node resumes producing/processing events under
+the new binary.
 
 #### Verification checklist
 
 | Check | Expected |
 | --- | --- |
 | Startup banner | `VINUCHAIN  v2.0 - ELEMONT` ASCII art printed to stderr |
-| `opera version` | `Version: 2.0.2-elemont` |
-| Startup log (fresh upgrade) | 3× `Staged ... upgrade from binary rules; will activate at next epoch seal` |
-| Startup log (incremental from v1.0.2, testnet) | 1× `Staged SfcV2Patch upgrade from binary rules; will activate at next epoch seal` (only if patch not yet applied) |
-| Next epoch seal log | `Applying SFC V2 bytecode upgrade` + `Activating Podgorica fee refund encoding` (fresh) **or** `Re-applying SFC V2 bytecode upgrade (patch)` (testnet incremental) |
-| First post-seal block | `feeRefund` appears on eligible receipts; base fee burn credited to `0x0000…0000` |
-| SFC bytecode at `0xfc00face…` | `43743` bytes (post-patch) |
+| `opera version` | `Version: 2.0.3-elemont` |
+| Block production | Resumes within seconds of startup; block numbers advance |
+| Peer count | Returns to prior steady-state within minutes |
+| Staging log (testnet, SfcV2Patch still pending) | 1× `Staged SfcV2Patch upgrade from binary rules; will activate at next epoch seal` |
+| Staging log (v2.0.2-elemont already fully sealed, or mainnet) | None |
 | Block hash vs peer | Identical |
 
 {% endstep %}
@@ -558,8 +545,7 @@ curl -s -X POST http://localhost:18545/ \
 
 ### Verify you're on the correct chain
 
-After the epoch seal (when you see `Applying SFC V2 bytecode upgrade`
-in the logs), confirm your node is on the same chain as the network.
+Confirm your node is on the same chain as the network:
 
 ```bash
 curl -s -X POST http://localhost:18545/ \
@@ -578,17 +564,18 @@ validator's node. If they match, you are on the correct chain.
 
 If you kept a copy of your previous `opera` binary (or any other
 upgrade-related files) outside the scope of this guide, you can delete
-them once your validator has been running cleanly on the new binary
-through at least one epoch seal and you've confirmed the chain hash
-matches in the previous step.
+them once your validator has been running cleanly on the new binary for
+at least one full epoch and you've confirmed the chain hash matches in
+the previous step.
 
-Post-seal rollback is not supported, so the old binary is no longer a
-useful recovery artifact — keeping it around just consumes disk and
-risks confusing future operators.
+Because v2.0.3-elemont is not a hard fork, rollback to v2.0.2-elemont
+is technically possible at any time — but it is also pointless once the
+new binary is running healthy, and keeping stale binaries around just
+consumes disk and risks confusing future operators.
 
 ```bash
 # Example — adapt to wherever you stashed the old binary
-rm -f /path/to/opera.pre-elemont
+rm -f /path/to/opera.v2.0.2-elemont
 ```
 
 The build directory under `$HOME/vinuchain-upgrade` (or wherever you
@@ -618,38 +605,25 @@ regular externally-owned account, not a validator key.
 
 ## Rollback
 
-Rollback behavior depends on whether your node has already sealed an
-epoch under the new binary.
-
-### Before the epoch seal
-
-If you have not yet seen `Applying SFC V2 bytecode upgrade` in the
-logs, rollback is straightforward — no datadir changes are needed.
+Because v2.0.3-elemont is a patch release and not a hard fork, rollback
+is straightforward:
 
 1. Stop the node (clean shutdown).
-2. Replace `/usr/local/bin/opera` (or your image) with the previous
-   release binary.
+2. Replace `/usr/local/bin/opera` (or your image) with the
+   v2.0.2-elemont release binary.
 3. Start the node.
 
-The upgrade flags staged at startup live in the pending `DirtyRules`
-on the stored block state. Starting the old binary leaves them
-unapplied; starting the new binary again re-stages them idempotently.
-No data is lost.
+No datadir changes are needed. The node resumes from the same state
+under the older binary. You will miss the audit fixes shipped in this
+release, so rollback should only be used if v2.0.3-elemont exhibits an
+unexpected regression on your node.
 
-### After the epoch seal
-
-{% hint style="danger" %}
-**Rollback after the epoch seal is not supported.** Once
-`Applying SFC V2 bytecode upgrade` has been logged, the SFC V2 bytecode
-is written into chain state and distributed across validators. The
-network has already moved on, and there is no path back — running an
-older binary against the post-seal chain will diverge from consensus
-the moment the node tries to sync.
+{% hint style="info" %}
+On testnet nodes where `SfcV2Patch` has already applied: the patch
+install is a one-time state change that persists in chain state
+regardless of which binary is running. Rolling back the binary does
+not un-patch the SFC V2 bytecode.
 {% endhint %}
-
-If a node ends up stuck on an old state, follow the late-upgrade
-recovery steps below: install the new binary and re-sync from a
-published snapshot or genesis.
 
 ---
 
@@ -660,7 +634,7 @@ published snapshot or genesis.
 1. Check logs: `journalctl -u opera -f` (systemd) or the Docker /
    terminal output for your install method.
 2. Verify the binary version is correct: `opera version` must print
-   `2.0.2-elemont`.
+   `2.0.3-elemont`.
 3. If the database is reported as corrupted, stop the node, delete the
    chaindata directory, and re-sync from a published snapshot (or from
    genesis if no snapshot is available). See the late-upgrade recovery
@@ -677,86 +651,48 @@ published snapshot or genesis.
 
 ### "Database is from a newer version" error
 
-You attempted to downgrade. The new binary writes a higher schema
-version into the chaindata, and the old binary refuses to open it. If
-you have not yet passed the epoch seal you can simply start the new
-binary again — no data is lost. After the seal, downgrade is not
-possible (see the Rollback section above); your only path is to stay
-on the new binary or re-sync from a published snapshot.
+This should not occur on a v2.0.2-elemont → v2.0.3-elemont upgrade
+because the chain schema has not changed between these releases. If
+you see it, you are likely attempting to downgrade past v2.0.2-elemont
+(a hard-fork boundary) — see that release's upgrade guide for the
+correct downgrade procedure below that boundary.
 
 ### Consensus stall / no new blocks
 
-If the network stops producing blocks, it usually means not enough
-validators have upgraded. Contact the VinuChain team immediately via
-the official coordination channel.
+v2.0.3-elemont does not change consensus rules, so a stall after
+upgrading a single node is almost certainly local (peering, disk, or
+key-loading) rather than network-wide. If the full network stops
+producing blocks independently of your upgrade, contact the VinuChain
+team via the official coordination channel.
 
 ---
 
 ## Coordinated Upgrade Procedure
 
-This hard fork requires **all validators** to upgrade within a short
-window.
+Because v2.0.3-elemont is a security patch release and not a hard
+fork, upgrades do **not** need to be coordinated across validators.
+Each operator can restart their node on the new binary independently at
+any time.
 
-### How the upgrade activates
+The recommended procedure is still to upgrade within a bounded window
+so that the validator set converges quickly on the hardened binary:
 
-The upgrade does **not** activate at a specific block height. Instead,
-on each node:
-
-1. The operator installs the new binary and restarts.
-2. On startup, the binary stages any new flags (`Podgorica`, `SfcV2`,
-   `Elemont`, and on testnet `SfcV2Patch`) into the pending
-   `DirtyRules` on the stored block state, logging one
-   `Staged … upgrade from binary rules` line per staged flag. For a
-   fresh upgrade to v2.0.2-elemont from a pre-elemont binary, that is
-   three lines on mainnet or four lines on testnet. For an incremental
-   upgrade from v1.0.2-elemont to v2.0.2-elemont, that is one line on
-   testnet (`SfcV2Patch`, if the patch has not already been applied)
-   or zero lines on mainnet (which does not set `SfcV2Patch` — see
-   patch release note in the TL;DR).
-3. At the next epoch seal on that node (up to ~4 hours — the
-   `MaxEpochDuration` cap; can be shorter if triggered by gas, event
-   count, or cheaters), the staged rules take effect: the SFC V2
-   bytecode is installed in chain state, the Podgorica fee refund
-   encoding turns on, the Elemont consensus fixes apply, and (testnet
-   only) the SFC V2 bytecode is re-installed with the corrected
-   `restakeRewards` arithmetic.
-4. From that point, all nodes must be on the new binary to process
-   subsequent blocks correctly.
-
-Validators can upgrade at any time before the epoch seal — there is no
-need to restart simultaneously. All validators should be upgraded
-**within the same epoch** to avoid divergence.
-
-### Recommended procedure
-
-1. **VinuChain team announces an upgrade window** — e.g. "Tuesday
-   14:00–16:00 UTC".
+1. **VinuChain team announces the patch window.** Date: TBD — operator
+   to schedule.
 2. **Pre-stage the binary** on every validator server before the
-   window, but do not install it yet. See step 3 of the Upgrade Steps
-   above.
+   window. See step 2 of the Upgrade Steps above.
 3. **During the window**, each operator performs the binary swap
-   (Upgrade Steps 1 → 5).
-4. **Confirm in the coordination channel** — each operator confirms
-   they see the expected `Staged … upgrade from binary rules` log
-   lines for their upgrade path (see "How the upgrade activates" above
-   for the per-path line counts).
-5. **Wait for epoch seal** — the next epoch seal triggers the atomic
-   activation. All operators verify the seal-time log lines
-   (`Applying SFC V2 bytecode upgrade` and
-   `Activating Podgorica fee refund encoding` on a fresh upgrade, or
-   `Re-applying SFC V2 bytecode upgrade (patch)` on a testnet
-   incremental from v1.0.2), then spot-check that a post-seal
-   eligible-staker transaction carries `feeRefund`, that the
-   zero-address balance is growing block over block, and that the SFC
-   bytecode size at `0xfc00face…` is 43,743 bytes.
+   (Upgrade Steps 1 → 5) at their own pace.
+4. **Confirm in the coordination channel** that your node resumed block
+   production cleanly after restart and that `opera version` reports
+   `2.0.3-elemont`.
 
-### Recovering a validator that missed the upgrade
+### Recovering a node that missed the window
 
-If your validator missed the fork and is stuck, always start with a
-simple restart on the new binary. A full resync is a **last resort** —
-it takes hours to days.
-
-**Step 1 — Install and restart on the new binary.**
+Because non-upgraded nodes remain consensus-compatible with the network
+under v2.0.3-elemont, a node that missed the window is **not** forked
+off. It is simply running the older binary with the older set of audit
+fixes. Upgrading at any later point is a plain binary swap:
 
 {% tabs %}
 {% tab title="nohup (standard)" %}
@@ -790,125 +726,42 @@ sudo systemctl start opera
 
 ```bash
 docker stop opera
-# Rebuild and retag as shown in the Replace the Binary step
+# Rebuild and retag as shown in the build step
 docker start opera
 ```
 
 {% endtab %}
 {% endtabs %}
 
-**Step 2 — Watch the logs for sync progress.**
-
-{% tabs %}
-{% tab title="nohup (standard)" %}
-
-```bash
-tail -f validator.log
-```
-
-{% endtab %}
-
-{% tab title="Systemd" %}
-
-```bash
-sudo journalctl -u opera -f
-```
-
-{% endtab %}
-
-{% tab title="Docker" %}
-
-```bash
-docker logs -f opera
-```
-
-{% endtab %}
-{% endtabs %}
-
-If you see block numbers advancing and normal sync messages, the node
-is recovering on its own. Let it catch up to the chain head before
-doing anything else.
-
-**Step 3 — Only if logs show repeated invalid-block errors.** This
-means your local chain has diverged beyond what the new binary can
-reconcile. Resync from scratch:
-
-{% hint style="danger" %}
-**Last resort only.** The following command deletes your local
-chaindata. Only run it after Step 2 has clearly failed (repeated
-invalid-block errors in the logs for more than a few minutes). The
-node will then re-sync from genesis (or a published snapshot, if
-available — importing a snapshot is much faster than syncing from
-genesis on a long-running chain).
-{% endhint %}
-
-{% tabs %}
-{% tab title="nohup (standard)" %}
-
-```bash
-pkill -TERM opera
-sleep 2
-rm -rf ~/.opera/chaindata           # or ~/.vinuchain/chaindata if using that path
-
-# Restart the node from upgraded binary
-cd $HOME/vinuchain-upgrade/build
-nohup ./opera \
-  --validator.id YOUR_VALIDATOR_ID \
-  --validator.pubkey 0xYOUR_PUBKEY \
-  --validator.password /absolute/path/to/password.txt \
-  > validator.log &
-
-# Node will resync from genesis — this can take hours to days
-```
-
-{% endtab %}
-
-{% tab title="Systemd" %}
-
-```bash
-sudo systemctl stop opera
-rm -rf ~/.vinuchain/chaindata       # or ~/.opera/chaindata on legacy path
-sudo systemctl start opera
-# Node will resync from genesis — this can take hours to days
-```
-
-{% endtab %}
-
-{% tab title="Docker" %}
-
-```bash
-docker stop opera
-docker run --rm -v opera_chaindata:/chaindata \
-  busybox rm -rf /chaindata/chaindata
-docker start opera
-# Node will resync from genesis — this can take hours to days
-```
-
-{% endtab %}
-{% endtabs %}
-
-If the VinuChain team publishes a database snapshot, importing it is
-much faster than a genesis resync.
-
-### What if not enough validators upgrade?
-
-{% hint style="warning" %}
-The network requires **2/3+ of stake-weighted validators** to produce
-blocks. If too few validators upgrade before the epoch seal, the chain
-stalls until enough validators catch up. There is no automatic
-rollback — the only path forward is upgrading.
-{% endhint %}
-
-- The epoch seal still triggers on upgraded validators.
-- If upgraded validators hold 2/3+ stake, the chain continues normally.
-- If they do not, the chain stalls until enough validators upgrade.
+There is no separate "resync from scratch" path for this patch
+release — the chain state is unchanged between v2.0.2-elemont and
+v2.0.3-elemont, so a clean restart on the new binary is always
+sufficient.
 
 ---
 
 ## Breaking Changes for RPC Consumers
 
-Infrastructure that queries the node's RPC (indexers, explorers, dApps)
-should review the changes introduced by this release:
+v2.0.3-elemont introduces **defensive RPC caps** that a small number of
+high-volume clients may notice:
+
+- **`eth_call` with `stateOverride.code` larger than `MaxCodeSize`** now
+  rejects instead of silently accepting. Callers who synthesize arbitrarily
+  large contract code in `stateOverride` must shrink it or split calls.
+- **JSON-RPC batches larger than 100 requests** now reject at the handler
+  boundary. Callers that submit large batches must split them into
+  chunks of ≤100.
+- **`stateOverride.stateDiff` with more than 1000 entries** now rejects.
+  Callers must split large state-diff overrides across multiple calls.
+- **Default `MaxConcurrentRPC`** is now 50 if not overridden in config.
+  Operators who rely on the previous (unset) default may need to set an
+  explicit higher value in their config.
+- **RPC receipt output** continues to include the `feeRefund` field
+  activated under Podgorica — unchanged from v2.0.2-elemont.
+
+For the prior elemont hard-fork RPC changes (introduction of the
+`feeRefund` field, 30% base fee burn accounting, payback refund
+mechanics), see
 [Elemont Hard Fork — RPC Breaking Changes](chain-upgrade-rpc-breaking-changes.md).
 
 ---
@@ -920,4 +773,5 @@ team through the official coordination channels.
 
 ---
 
-*Last updated: 2026-04-17 · VinuChain commit `72292bd` · Tag `v2.0.2-elemont`*
+*Last updated: 2026-04-17 · VinuChain tag `v2.0.3-elemont` (preparing) ·
+go-vinu `v1.20.14-quota` · lachesis-base `v0.1.5-elemont`*

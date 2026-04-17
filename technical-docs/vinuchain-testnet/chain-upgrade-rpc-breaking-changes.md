@@ -1,33 +1,116 @@
-# Elemont Hard Fork — RPC Breaking Changes
+# Elemont — RPC Breaking Changes
 
-The `v2.0.2-elemont` release introduces several behaviors that affect
-infrastructure consuming the node's JSON-RPC interface — indexers, block
-explorers, dApps, and anything that parses transaction receipts or tracks
-supply.
+This page documents JSON-RPC behavior that affects infrastructure
+consuming the node's interface — indexers, block explorers, dApps, and
+anything that parses transaction receipts, tracks supply, or uses the
+`eth_*` / `debug_*` / `trace_*` namespaces.
 
-This page documents only the consumer-visible changes. For the validator
-upgrade procedure, see the [Chain Upgrade Guide](chain-upgrade-guide.md).
+For the validator upgrade procedure, see the
+[Chain Upgrade Guide](chain-upgrade-guide.md).
+
+{% hint style="info" %}
+**Latest release: `v2.0.3-elemont`** — a hardening rollup of the
+`v2.0.2-elemont` hard fork. No new upgrade flags activate. The
+v2.0.3-elemont additions are **defensive RPC caps** from the upstream
+`go-vinu v1.20.14-quota` fork and take effect **immediately on binary
+restart** (no epoch-seal wait).
+
+Most v2.0.3 caps sit far above typical usage envelopes — consumer impact
+is limited to high-volume clients that batched heavily or submitted
+large `stateOverride` blobs. See
+[§ v2.0.3-elemont Additions](#v2-0-3-elemont-additions) below.
+
+All v2.0.2-elemont sections below remain in force; they describe the
+one-time consensus-changing activations.
+{% endhint %}
 
 {% hint style="warning" %}
-**Build requirement change:** Operators building the binary from source
-must upgrade to **Go 1.25+** (from Go 1.14 on the production branch).
-See "Go Version Upgrade" in the [Chain Upgrade Guide](chain-upgrade-guide.md#prerequisites).
+**Build requirement (v2.0.2+):** Operators building from source need
+**Go 1.25+** (up from Go 1.14 on the pre-v2.0.2 branch). See
+[Chain Upgrade Guide — Prerequisites](chain-upgrade-guide.md#prerequisites).
 {% endhint %}
 
 {% hint style="info" %}
-**Activation timing.** All changes listed here activate at the **next
-epoch seal** after a node installs the new binary. On startup, the new
-binary stages the three upgrade flags (`Podgorica`, `SfcV2`, `Elemont`)
-into the node's pending rules — you will see three
-`Staged … upgrade from binary rules; will activate at next epoch seal`
-log lines before block processing resumes. Until the next epoch seal
-fires (up to ~4h after restart — the `MaxEpochDuration` cap; epochs can
-seal earlier if triggered by gas, event count, or cheaters), receipts
-and fee accounting continue to use pre-upgrade behavior. At the seal,
-the new rules activate atomically: `feeRefund` begins appearing on
-eligible receipts, the 30% base fee burn starts, and the Elemont
-consensus fixes take effect — all on the same block.
+**Activation timing.**
+
+- **v2.0.3-elemont caps** (batch size, concurrency, state override):
+  active immediately on restart. Purely a local-node policy, no epoch
+  seal required.
+- **v2.0.2-elemont consensus changes** (`feeRefund`, base fee burn,
+  Elemont consensus fixes): activate at the **next epoch seal** after a
+  node first installs a v2.0.2+ binary. On startup you see three
+  `Staged … upgrade from binary rules; will activate at next epoch seal`
+  log lines before block processing resumes. Until the seal fires
+  (up to ~4h after restart — the `MaxEpochDuration` cap; epochs may seal
+  earlier from gas, event count, or cheaters), receipts and fee
+  accounting continue to use pre-upgrade behavior. At the seal the new
+  rules activate atomically on the same block.
+- **v2.0.2+ → v2.0.3 upgrades**: if your node already sealed an epoch
+  under v2.0.2-elemont, no second activation occurs on v2.0.3. The
+  consensus flags are latched; v2.0.3 is a pure binary swap.
 {% endhint %}
+
+---
+
+## v2.0.3-elemont Additions
+
+The following caps and behaviors ship with **`v2.0.3-elemont`** via the
+upstream `go-vinu v1.20.14-quota` fork. They are **defensive hardening**
+— DoS mitigations, not protocol changes — but high-volume clients may
+see new error responses where previously the node accepted unbounded
+input.
+
+| Cap / change | RPC method(s) | New limit | Error on exceed |
+|:-----|:-----|:-----|:-----|
+| JSON-RPC batch size ceiling | Any batched call (`POST` with a JSON array) | **100 messages per batch** | `invalid request: batch too large` |
+| In-flight RPC concurrency | All HTTP & WS RPC methods | **50 concurrent requests** (new default; configurable via `--rpc.maxconcurrent`) | HTTP 503 Service Unavailable |
+| `StateOverride.code` byte cap | `eth_call`, `eth_estimateGas`, `debug_traceCall` | **`MaxCodeSize` (24,576 bytes)** per account | `code size exceeds MaxCodeSize` |
+| `StateOverride.stateDiff` entry count | `eth_call`, `eth_estimateGas`, `debug_traceCall` | **1,000 entries per account** | `stateDiff size exceeds 1000 entries` |
+| Receipt `feeRefund` byte cap (P2P ingress) | Internal — peer-to-peer receipt RLP decoding | **32 bytes / 256-bit integer** | Peer connection drops offending receipt |
+| Graceful shutdown error response | Any RPC method during node shutdown | (new) handler returns proper JSON-RPC error on shutdown instead of silent connection drop | `handler is stopping` |
+
+### Who is affected
+
+- **Batch size (100 msgs):** indexers and explorers sometimes batch
+  block-range queries. 100 covers >99% of observed batch sizes on the
+  existing testnet; clients hitting this should paginate.
+- **Concurrency (50):** the default prevents goroutine flooding on a
+  single node. Operators with heavy analytics workloads can raise it via
+  `--rpc.maxconcurrent=N` in the node flags; set to 0 for unlimited.
+- **`stateOverride` caps:** tools that simulate large contracts
+  (`eth_call` with injected contract code) must stay under 24,576 bytes.
+  `stateDiff` entry cap of 1,000 is larger than most account storage
+  layouts; affects only stress-test or fuzzer workloads.
+- **`feeRefund` byte cap:** internal P2P validation only. No consumer
+  impact — the cap matches the on-chain 256-bit integer type and
+  prevents malformed peer data from entering the node.
+- **Graceful shutdown error:** clients that reconnect after an
+  interrupted request now receive a descriptive JSON-RPC error instead
+  of a bare TCP close. Improves debuggability; no contract break.
+
+### Operator configuration
+
+The concurrency cap accepts a CLI flag:
+
+```
+opera --rpc.maxconcurrent 100    # allow 100 in-flight RPC requests
+opera --rpc.maxconcurrent 0      # disable the cap entirely
+```
+
+The batch size cap (100) and `stateOverride` caps are hard-coded.
+Clients that batch aggressively should reduce batch size rather than
+request a higher cap.
+
+### Migration checklist for v2.0.3-elemont
+
+- [ ] Indexers: split any batch >100 messages into chunks of ≤100
+- [ ] Analytics: if you run 50+ concurrent `eth_call` against a single
+      node, either set `--rpc.maxconcurrent` to your peak or distribute
+      the load across multiple RPC endpoints
+- [ ] Tooling: ensure `stateOverride.code` blobs stay under 24,576 bytes
+      per account
+- [ ] Error handling: accept the new `invalid request: batch too large`
+      and `handler is stopping` error strings in retry logic
 
 ---
 
