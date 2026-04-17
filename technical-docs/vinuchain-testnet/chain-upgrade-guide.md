@@ -1,7 +1,7 @@
 # Chain Upgrade Guide (v2-elemont)
 
 {% hint style="info" %}
-**Recommended security patch release.** v2.0.4-elemont is a rollup of audit-driven hardening fixes on top of v2.0.2-elemont. It is **not** a new hard fork — no new upgrade flags activate, and non-upgraded nodes remain consensus-compatible with the network. However, non-upgraded nodes miss the P2P, RPC, and SFC audit fixes shipped in this release, so all validators are strongly encouraged to upgrade.
+L**atest release:** v2.0.4-elemont
 {% endhint %}
 
 {% hint style="info" %}
@@ -9,15 +9,13 @@
 
 * **Target tag:** `v2.0.4-elemont` (published)
 * **Binary version string:** `2.0.4-elemont`
-* **Mandatory:** no, but strongly recommended
-* **Activation:** binary swap only. No new hard fork, no coordinated block height, no datadir reset
-* **Expected downtime:** 2–10 minutes per validator for a clean swap
-* **Build requirements:** Go 1.25+, C compiler, \~50 GB free disk (unchanged from v2.0.2-elemont)
-* **Upgrade window:** TBD — operator to schedule
+* **Build requirements:** Go 1.25+, C compiler, \~50 GB free disk
 {% endhint %}
 
 {% hint style="warning" %}
-**Patch release semantics.** v2.0.4-elemont supersedes v2.0.2-elemont. The upgrade flags already active on your node from the v2.0.2-elemont rollout (`Podgorica`, `SfcV2`, `Elemont`) remain active — this release does not add or toggle any consensus flag. On **testnet**, if the `SfcV2Patch` flag from v2.0.2-elemont was not yet applied on your node (e.g. the node had been stopped since before its next epoch seal), it will still fire on the first epoch seal after restart. Once applied, it is a no-op on subsequent restarts.
+**Patch release semantics.** v2.0.4-elemont supersedes v2.0.2-elemont. The upgrade flags already active on your node from the v2.0.2-elemont rollout (`Podgorica`, `SfcV2`, `Elemont`) remain active — this release does not add or toggle any consensus flag.&#x20;
+
+On **testnet**, if the `SfcV2Patch` flag from v2.0.2-elemont was not yet applied on your node (e.g. the node had been stopped since before its next epoch seal), it will still fire on the first epoch seal after restart. Once applied, it is a no-op on subsequent restarts.
 
 **If you are already on v2.0.2-elemont:** the upgrade is a straight binary swap. No datadir reset, no peer reconnection, no new validator registration. Follow the same steps below as you did for v2.0.2-elemont. You will not see any `Staged ... upgrade from binary rules` log lines, because no new flags need staging — the banner and a clean resume of block processing are your confirmation.
 {% endhint %}
@@ -25,107 +23,6 @@
 {% hint style="info" %}
 **Version string vs git tag.** The release is cut from git tag `v2.0.4-elemont`, but the binary reports `2.0.4-elemont`. Both refer to the same release; the leading `v` only appears on the git tag.
 {% endhint %}
-
-## What's New in v2.0.4-elemont
-
-v2.0.4-elemont rolls up hardening work from audit Cycles 152–158 plus post-v2.0.3 lachesis-base reliability fixes. The changes fall into four surfaces — VinuChain core, the forked go-vinu EVM/RPC dependency, the forked lachesis-base consensus engine, and the pre-deployment SFC V2 contract. v2.0.4-elemont **supersedes** v2.0.3-elemont, which was tagged but never deployed to production; all v2.0.3 content is cumulative in v2.0.4.
-
-### VinuChain core (this repo)
-
-| Scope              | Change                                                                                                                                                            |
-| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `evm/gas_power`    | Saturate `GasRefund` addition in the gas power check to prevent uint64 overflow when a block accumulates a very large refund.                                     |
-| `gossip/gasprice`  | Saturate `DirtyGasRefund` additions in the gas price oracle backend (same overflow class as above).                                                               |
-| `evm/gas_power`    | Clamp `prevGasPowerLeft` to `maxGasPower` in `CalcValidatorGasPower` as defense-in-depth against `MaxUint64` sentinel values leaking through the allocation path. |
-| `gossip/blockproc` | New unit tests for `evmmodule` and `sealmodule`. Test-only; no runtime behavior change.                                                                           |
-
-### go-vinu fork (EVM + RPC)
-
-v2.0.4-elemont carries the same go-vinu tag `v1.20.14-quota` introduced in v2.0.3-elemont. The VinuChain `go.mod` replace directive (`v1.20.13-quota` → `v1.20.14-quota`) first landed in the v2.0.3 release commit and is unchanged in v2.0.4.
-
-| Scope                | Change                                                                                                                                            |
-| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `rpc/ethapi`         | Reject `StateOverride.Code` blobs larger than `MaxCodeSize`. Prevents `eth_call` clients from forcing a node to allocate unbounded contract code. |
-| `rpc`                | Enforce a 100-request ceiling on JSON-RPC batch calls. Caps per-batch fan-out work.                                                               |
-| `rpc`                | Cap `StateOverride.StateDiff` entry count at 1000. Symmetric with the code-size cap above.                                                        |
-| `rpc`                | `DefaultConfig.MaxConcurrentRPC` set to 50. Provides a sane default for operators who don't override the setting.                                 |
-| `rpc`                | Return a JSON-RPC error (instead of hanging) when `startCallProc` runs while the handler is stopping.                                             |
-| `core/types/receipt` | Cap peer-decoded `FeeRefund` at 32 bytes, zero pre-Podgorica receipts, and restore test state.                                                    |
-| `core/types/receipt` | Use `BitLen` for the `FeeRefund` size check instead of a byte-slice comparison.                                                                   |
-| `core/types`         | New test coverage for `FeeRefundActive` transition paths.                                                                                         |
-
-### SFC V2 contract (pre-deployment bytecode)
-
-The SFC V2 Solidity source in `gitignore/sfc_fixed.sol` received a batch of correctness and precision fixes during Cycles 152–158. Because the V2 bytecode is **pre-deployment** — no network has yet locked it in via a binary that ships with V2 baked into the binary rules — networks that activate SfcV2 from v2.0.4-elemont onward will install the corrected bytecode directly.
-
-| Finding        | Change                                                                                                                                                                       |
-| -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| SFC-01         | `updateSlashingRefundRatio` now uses a 2-day `CORRECTION_TIMELOCK` with explicit queue / execute / cancel (was applied immediately).                                         |
-| SFC-01-B       | Converted the pending-slashing-refund slot into a per-validator `mapping(uint256 => PendingSlashingRefund)` (was a single global slot that could collide across validators). |
-| SFC-02         | `queueMigration` and `queueCopyCode` now revert if a pending op is already queued, preventing silent overwrite.                                                              |
-| SFC-03         | `_calcRawValidatorEpochTxReward` now multiplies before dividing — preserves precision on small per-epoch reward increments.                                                  |
-| SFC-04         | `nonReentrant` guard checks the counter `== 1` (was `!= 2`), which is the semantically correct assertion.                                                                    |
-| C157-L01       | `_popDelegationUnlockPenalty` rescales stashed reward deductions at the penalty cap so a capped penalty no longer leaves stash inconsistent.                                 |
-| C157-I01 / I02 | NatSpec documenting the cancel-requeue cooldown asymmetry and the genesis stashed-lockup seed. Documentation-only.                                                           |
-| C157-I03       | Cumulative correction delta cap to prevent compound drift across many corrections.                                                                                           |
-
-**Implication for existing testnet networks:** the `SfcV2Patch` re-flash path introduced in v2.0.2-elemont is **unchanged** by this release. Testnet nodes that already applied `SfcV2Patch` under v2.0.2-elemont do not re-flash again under v2.0.4-elemont. New testnets or mainnet activations that install SfcV2 from a v2.0.4-elemont (or later) binary will pick up the corrected bytecode on first activation.
-
-{% hint style="info" %}
-**Go bindings regenerated.** The SFC bytecode in `opera/contracts/sfc/sfc_predeploy.go` was recompiled with **`solc` 0.5.17** as part of the `v2.0.4-elemont` release commit (`3610d0b`). The deployed V2 bytecode is **45,240 bytes** — operators do not need to regenerate anything; `git checkout v2.0.4-elemont` pulls the correct binding.
-{% endhint %}
-
-### Changelog since v2.0.2-elemont
-
-VinuChain-repo commits since `v2.0.2-elemont` (oldest first):
-
-| Commit    | Scope              | Summary                                                              |
-| --------- | ------------------ | -------------------------------------------------------------------- |
-| `a894112` | `evm/gas_power`    | Saturate `GasRefund` addition to prevent uint64 overflow             |
-| `293fe5f` | `gossip/gasprice`  | Saturate `DirtyGasRefund` additions in gas price oracle              |
-| `7487dd5` | `evm/gas_power`    | Clamp `prevGasPowerLeft` to `maxGasPower` in `CalcValidatorGasPower` |
-| `20e1951` | `gossip/blockproc` | Add `evmmodule` and `sealmodule` unit tests                          |
-
-go-vinu commits that land in `v1.20.14-quota`:
-
-| Commit      | Scope                | Summary                                                |
-| ----------- | -------------------- | ------------------------------------------------------ |
-| `b6557ea7f` | `rpc/ethapi`         | Reject oversized `StateOverride.Code` blobs            |
-| `565b48267` | `rpc`                | Enforce 100-request JSON-RPC batch ceiling             |
-| `827040f3a` | `core/types/receipt` | Cap peer `FeeRefund` at 32 bytes, zero pre-Podgorica   |
-| `f8c5baea7` | `core/types/receipt` | Use `BitLen` for `FeeRefund` size check                |
-| `f6eed37c9` | `rpc`                | `MaxConcurrentRPC=50` default in `DefaultConfig`       |
-| `38a713d64` | `rpc`                | Cap `StateOverride.StateDiff` entry count at 1000      |
-| `787061f3e` | `rpc`                | Return JSON-RPC error on `startCallProc` when stopping |
-| `b316aee38` | `core/types`         | Test coverage for `FeeRefundActive` transition paths   |
-
-lachesis-base commits that land in `v0.1.6-elemont`:
-
-| Commit     | Scope          | Summary                                                                   |
-| ---------- | -------------- | ------------------------------------------------------------------------- |
-| `f00eacc9` | `vecengine`    | Cap per-validator branch allocation to prevent Byzantine vector inflation |
-| `a215b80a` | `vecengine`    | Pin BranchIDLastSeq no-regression invariant under cap (test)              |
-| `e32f1c1c` | `gossip`       | Prevent drain deadlock when checker exits before processing queued task   |
-| `9a345b2b` | `dagprocessor` | Drain checkedC unconditionally on quit to prevent peerEventQuota leak     |
-| `d0b74f92` | `kvdb`         | Clear flushable write buffer only after successful batch write            |
-| `f36c751d` | `semaphore`    | Return zero metric from Available after termination, clamp underflow      |
-
-## What Is This Upgrade?
-
-v2.0.4-elemont is a **security patch release**. It does not activate any new upgrade flags on VinuChain and does not change consensus behavior. Block hashes produced by an upgraded and a non-upgraded node on the same transactions remain identical.
-
-### Features Activated
-
-None. The three flags already active from the elemont hard fork (`Podgorica`, `SfcV2`, `Elemont`) continue to apply. On testnet, `SfcV2Patch` continues to re-flash the SFC V2 bytecode at the first post-restart epoch seal if it has not already been applied on the node — this behavior is unchanged from v2.0.2-elemont.
-
-### Why Upgrade?
-
-Upgrading picks up:
-
-* **P2P and RPC hardening** — batch caps, state-override caps, concurrent RPC default, and receipt decoding limits that reduce the blast radius of hostile or misbehaving peers and clients.
-* **Overflow defense in the gas-power accounting path** — saturating addition and clamping in `CalcValidatorGasPower` and the gas price oracle backend prevent edge-case uint64 overflows that could have disrupted gas power allocation for a validator.
-* **Corrected SFC V2 bytecode for new network activations** — the eight pre-deployment fixes above are baked into any new SfcV2 activation after this release.
-* **Consensus and reliability hardening in lachesis-base** — the vecengine branch-allocation cap prevents a Byzantine validator from inflating per-validator branch counts; dagprocessor / gossip / semaphore / kvdb fixes remove shutdown deadlocks and a flushable write-buffer leak window.
 
 ### Network Details
 
@@ -151,21 +48,14 @@ Upgrading picks up:
 
 ### Build requirements
 
-Unchanged from v2.0.2-elemont:
-
 * **Go 1.25+** (check with `go version`)
 * **gcc (or clang)** and standard C library headers — required for building go-vinu's crypto and LevelDB C bindings.
 * **git**
 * At least **50 GB** free disk space
-* Current node must be **fully synced** before upgrading
-
-{% hint style="info" %}
-If you already built v2.0.2-elemont on this host and have not changed the Go toolchain since, no build-environment changes are needed for v2.0.4-elemont. The `go.mod` bump to `go-vinu v1.20.14-quota` is fetched transparently by `make opera`.
-{% endhint %}
 
 ### Required Ports
 
-No port changes in this upgrade. Ensure these remain open in your firewall:
+Ensure these remain open in your firewall:
 
 | Port  | Protocol | Purpose                             |
 | ----- | -------- | ----------------------------------- |
@@ -357,7 +247,7 @@ For testing or development, you can run in the foreground:
 {% step %}
 #### Verify the upgrade
 
-Because v2.0.4-elemont is **not a hard fork**, most nodes will see no `Staged ... upgrade from binary rules` lines at startup. What to expect:
+What to expect:
 
 **Startup banner.** Every v2.x build prints the VinuChain banner. This is the first visual confirmation that you are running v2.0.4-elemont and not the previous binary:
 
@@ -488,9 +378,7 @@ v2.0.4-elemont does not change consensus rules, so a stall after upgrading a sin
 
 ## Coordinated Upgrade Procedure
 
-Because v2.0.4-elemont is a security patch release and not a hard fork, upgrades do **not** need to be coordinated across validators. Each operator can restart their node on the new binary independently at any time.
-
-The recommended procedure is still to upgrade within a bounded window so that the validator set converges quickly on the hardened binary:
+The recommended procedure is to upgrade within a bounded window so that the validator set converges quickly on the hardened binary:
 
 1. **VinuChain team announces the patch window.** Date: TBD — operator to schedule.
 2. **Pre-stage the binary** on every validator server before the window. See step 2 of the Upgrade Steps above.
@@ -538,23 +426,13 @@ There is no separate "resync from scratch" path for this patch release — the c
 
 ***
 
-## Breaking Changes for RPC Consumers
-
-v2.0.4-elemont introduces **defensive RPC caps** that a small number of high-volume clients may notice:
-
-* **`eth_call` with `stateOverride.code` larger than `MaxCodeSize`** now rejects instead of silently accepting. Callers who synthesize arbitrarily large contract code in `stateOverride` must shrink it or split calls.
-* **JSON-RPC batches larger than 100 requests** now reject at the handler boundary. Callers that submit large batches must split them into chunks of ≤100.
-* **`stateOverride.stateDiff` with more than 1000 entries** now rejects. Callers must split large state-diff overrides across multiple calls.
-* **Default `MaxConcurrentRPC`** is now 50 if not overridden in config. Operators who rely on the previous (unset) default may need to set an explicit higher value in their config.
-* **RPC receipt output** continues to include the `feeRefund` field activated under Podgorica — unchanged from v2.0.2-elemont.
-
 For the prior elemont hard-fork RPC changes (introduction of the `feeRefund` field, 30% base fee burn accounting, payback refund mechanics), see [Elemont Hard Fork — RPC Breaking Changes](chain-upgrade-rpc-breaking-changes.md).
 
 ***
 
 ## Contact
 
-If you encounter issues during the upgrade, reach out to the VinuChain team through the official coordination channels.
+If you encounter issues during the upgrade, reach out to the VinuChain team through the official channels.
 
 ***
 
