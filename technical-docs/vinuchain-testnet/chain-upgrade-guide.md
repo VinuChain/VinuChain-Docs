@@ -1,7 +1,7 @@
 # Chain Upgrade Guide (v2-elemont)
 
 {% hint style="info" %}
-L**atest release:** v2.0.4-elemont
+**Latest release:** v2.0.4-elemont
 {% endhint %}
 
 {% hint style="info" %}
@@ -24,7 +24,7 @@ On **testnet**, if the `SfcV2Patch` flag from v2.0.2-elemont was not yet applied
 **Version string vs git tag.** The release is cut from git tag `v2.0.4-elemont`, but the binary reports `2.0.4-elemont`. Both refer to the same release; the leading `v` only appears on the git tag.
 {% endhint %}
 
-### Network Details
+## Network Details
 
 | Network | Chain ID   | RPC                              | Status          |
 | ------- | ---------- | -------------------------------- | --------------- |
@@ -69,7 +69,8 @@ Ensure these remain open in your firewall:
 
 {% stepper %}
 {% step %}
-#### Stop your node
+
+### Stop your node
 
 {% hint style="warning" %}
 **Clean shutdown required.** Do **not** force-kill the process. A hard kill during block processing can corrupt the LevelDB chaindata and force a full resync.
@@ -77,6 +78,7 @@ Ensure these remain open in your firewall:
 
 {% tabs %}
 {% tab title="nohup (standard)" %}
+
 ```bash
 pkill -TERM opera
 ```
@@ -85,15 +87,19 @@ If the process doesn't exit cleanly within \~10 seconds, check the logs. `pkill`
 {% endtab %}
 
 {% tab title="Systemd" %}
+
 ```bash
 sudo systemctl stop opera
 ```
+
 {% endtab %}
 
 {% tab title="Docker" %}
+
 ```bash
 docker stop opera
 ```
+
 {% endtab %}
 
 {% tab title="Manual (foreground)" %}
@@ -106,9 +112,11 @@ Verify the process has exited:
 ```bash
 pgrep -f opera || echo "Stopped"
 ```
+
 {% endstep %}
 
 {% step %}
+
 #### Download and build the new binary
 
 Pick a persistent path with at least \~2GB free for the source tree, the Go module cache, and the resulting `~38MB` binary. Either `$HOME` or a system path like `/opt` works — choose whichever lives on a partition with headroom (mainnet operators with large chaindata may prefer `/opt` or another volume so the build doesn't compete with `$HOME` for space). Avoid `/tmp`: some Linux distributions clear it on reboot, which would wipe a pre-staged build.
@@ -116,6 +124,7 @@ Pick a persistent path with at least \~2GB free for the source tree, the Go modu
 The build directory is independent of your node's `--datadir`. The build process never reads or writes chain data, so a build that runs out of space fails cleanly without affecting the running node.
 
 {% code title="Build the release tag" overflow="wrap" %}
+
 ```bash
 git clone https://github.com/VinuChain/VinuChain.git $HOME/vinuchain-upgrade
 cd $HOME/vinuchain-upgrade
@@ -123,6 +132,7 @@ git checkout v2.0.4-elemont
 make opera
 # Binary is at $HOME/vinuchain-upgrade/build/opera
 ```
+
 {% endcode %}
 
 Substitute `/opt/vinuchain-upgrade` (or any other path) if `$HOME` is not the right partition for your setup — every later command in this guide that references `$HOME/vinuchain-upgrade` should be adjusted to match.
@@ -133,6 +143,7 @@ Substitute `/opt/vinuchain-upgrade` (or any other path) if `$HOME` is not the ri
 {% endstep %}
 
 {% step %}
+
 #### Verify the new binary
 
 The newly-built binary is at `vinuchain-upgrade/build/opera`. Move into that directory so the rest of the steps can use a relative `./opera` path:
@@ -149,6 +160,7 @@ cd $HOME/vinuchain-upgrade/build
 {% endstep %}
 
 {% step %}
+
 #### Start your node
 
 {% tabs %}
@@ -212,13 +224,16 @@ Adjust the path if you use a non-default `--datadir`.
 {% endtab %}
 
 {% tab title="Systemd" %}
+
 ```bash
 sudo systemctl start opera
 sudo journalctl -u opera -f
 ```
+
 {% endtab %}
 
 {% tab title="Docker" %}
+
 ```bash
 docker start opera
 docker logs -f opera
@@ -245,13 +260,14 @@ For testing or development, you can run in the foreground:
 {% endstep %}
 
 {% step %}
+
 #### Verify the upgrade
 
 What to expect:
 
 **Startup banner.** Every v2.x build prints the VinuChain banner. This is the first visual confirmation that you are running v2.0.4-elemont and not the previous binary:
 
-```
+```text
  ██╗   ██╗██╗███╗   ██╗██╗   ██╗ ██████╗██╗  ██╗ █████╗ ██╗███╗   ██╗
  ██║   ██║██║████╗  ██║██║   ██║██╔════╝██║  ██║██╔══██╗██║████╗  ██║
  ██║   ██║██║██╔██╗ ██║██║   ██║██║     ███████║███████║██║██╔██╗ ██║
@@ -266,7 +282,7 @@ What to expect:
 
 **Staging logs — conditional.** For most operators upgrading from v2.0.2-elemont there are **no new flags to stage**, and you will not see any `Staged ...` lines. The exception is the testnet-only `SfcV2Patch` flag: if your node never completed an epoch seal under v2.0.2-elemont (for example the node was stopped before its first post-upgrade seal), the patch is still pending and will log:
 
-```
+```text
 INFO Staged SfcV2Patch upgrade from binary rules; will activate at next epoch seal
 ```
 
@@ -274,13 +290,13 @@ If the patch already applied on your node under v2.0.2-elemont, this line does *
 
 **Seal-time activation — conditional.** Only relevant to testnet nodes that still have `SfcV2Patch` pending. At the next epoch seal on such a node you will see:
 
-```
+```text
 INFO Re-applying SFC V2 bytecode upgrade (patch)   block=<N>
 ```
 
 For all other nodes (including all mainnet nodes) the upgrade is complete as soon as the node resumes producing/processing events under the new binary.
 
-**Verification checklist**
+#### Verification checklist
 
 | Check                                                         | Expected                                                                           |
 | ------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
@@ -291,9 +307,11 @@ For all other nodes (including all mainnet nodes) the upgrade is complete as soo
 | Staging log (testnet, SfcV2Patch still pending)               | 1× `Staged SfcV2Patch upgrade from binary rules; will activate at next epoch seal` |
 | Staging log (v2.0.2-elemont already fully sealed, or mainnet) | None                                                                               |
 | Block hash vs peer                                            | Identical                                                                          |
+
 {% endstep %}
 
 {% step %}
+
 #### Verify you're on the correct chain
 
 Confirm your node is on the same chain as the network:
@@ -309,6 +327,7 @@ Compare the block number and hash against the public RPC or another validator's 
 {% endstep %}
 
 {% step %}
+
 #### Clean up rollback artifacts
 
 If you kept a copy of your previous `opera` binary (or any other upgrade-related files) outside the scope of this guide, you can delete them once your validator has been running cleanly on the new binary for at least one full epoch and you've confirmed the chain hash matches in the previous step.
@@ -391,6 +410,7 @@ Because non-upgraded nodes remain consensus-compatible with the network under v2
 
 {% tabs %}
 {% tab title="nohup (standard)" %}
+
 ```bash
 pkill -TERM opera
 sleep 2  # Give the process time to exit
@@ -403,22 +423,27 @@ nohup ./opera \
   --validator.password /path/to/password.txt \
   > validator.log &
 ```
+
 {% endtab %}
 
 {% tab title="Systemd" %}
+
 ```bash
 sudo systemctl stop opera
 sudo cp $HOME/vinuchain-upgrade/build/opera /usr/local/bin/opera
 sudo systemctl start opera
 ```
+
 {% endtab %}
 
 {% tab title="Docker" %}
+
 ```bash
 docker stop opera
 # Rebuild and retag as shown in the build step
 docker start opera
 ```
+
 {% endtab %}
 {% endtabs %}
 
