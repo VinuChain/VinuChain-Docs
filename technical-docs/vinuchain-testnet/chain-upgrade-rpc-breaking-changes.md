@@ -14,14 +14,14 @@ rolled v2.0.3-elemont. All v2.0.3 additions (defensive RPC caps from
 `go-vinu v1.20.14-quota`) apply in v2.0.4 as well. v2.0.4 additionally
 bumps lachesis-base to `v0.1.6-elemont`, which carries consensus and
 reliability fixes that have **no direct RPC consumer impact** — see
-[§ v2.0.4-elemont Additions](#v2-0-4-elemont-additions) below. Both
+[§ v2.0.4-elemont Additions](#v204-elemont-additions) below. Both
 releases take effect **immediately on binary restart** (no epoch-seal
 wait).
 
 Most v2.0.3/v2.0.4 caps sit far above typical usage envelopes —
 consumer impact is limited to high-volume clients that batched heavily
 or submitted large `stateOverride` blobs. See
-[§ v2.0.3-elemont Additions](#v2-0-3-elemont-additions) below.
+[§ v2.0.3-elemont Additions](#v203-elemont-additions) below.
 
 All v2.0.2-elemont sections below remain in force; they describe the
 one-time consensus-changing activations.
@@ -68,7 +68,7 @@ additions are consensus-engine internals in lachesis-base
 `v0.1.6-elemont`:
 
 | Scope | Change | Consumer impact |
-|:-----|:-----|:-----|
+| --- | --- | --- |
 | `vecengine` | Cap per-validator branch allocation | None — prevents Byzantine vector memory inflation; no observable behavior on healthy networks |
 | `dagprocessor` / `gossip` | Drain queued events on quit, prevent checker-exit deadlock | None — only affects clean shutdown paths |
 | `kvdb` | Clear flushable write buffer only after successful batch write | None — removes a race that could lose writes on crash mid-batch |
@@ -89,7 +89,7 @@ see new error responses where previously the node accepted unbounded
 input.
 
 | Cap / change | RPC method(s) | New limit | Error on exceed |
-|:-----|:-----|:-----|:-----|
+| --- | --- | --- | --- |
 | JSON-RPC batch size ceiling | Any batched call (`POST` with a JSON array) | **100 messages per batch** | `invalid request: batch too large` |
 | In-flight RPC concurrency | All HTTP & WS RPC methods | **50 concurrent requests** (new default; configurable via `--rpc.maxconcurrent`) | HTTP 503 Service Unavailable |
 | `StateOverride.code` byte cap | `eth_call`, `eth_estimateGas`, `debug_traceCall` | **`MaxCodeSize` (24,576 bytes)** per account | `code size exceeds MaxCodeSize` |
@@ -120,7 +120,7 @@ input.
 
 The concurrency cap accepts a CLI flag:
 
-```
+```bash
 opera --rpc.maxconcurrent 100    # allow 100 in-flight RPC requests
 opera --rpc.maxconcurrent 0      # disable the cap entirely
 ```
