@@ -1,6 +1,6 @@
 # Elemont Hard Fork — RPC Breaking Changes
 
-The `v1.0.1-elemont` upgrade introduces several behaviors that affect
+The `v2.0.2-elemont` release introduces several behaviors that affect
 infrastructure consuming the node's JSON-RPC interface — indexers, block
 explorers, dApps, and anything that parses transaction receipts or tracks
 supply.
