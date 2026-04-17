@@ -9,6 +9,18 @@ For the validator upgrade procedure, see the
 [Chain Upgrade Guide](chain-upgrade-guide.md).
 
 {% hint style="info" %}
+**Latest release: `v2.0.5-elemont`** — supersedes v2.0.4-elemont. This
+release adds the `SfcV2Patch2` upgrade flag for testnet, which re-flashes
+the SFC contract bytecode at `0xFC00FACE00000000000000000000000000000000`
+with the current Cycle-158 source. There are **no RPC surface changes**;
+the receipt format, method signatures, and response shapes are identical
+to v2.0.4. See [§ v2.0.5-elemont Additions](#v205-elemont-additions) below.
+
+All v2.0.2/v2.0.3/v2.0.4 sections below remain in force; they describe
+earlier activations still relevant to infrastructure operators.
+{% endhint %}
+
+{% hint style="info" %}
 **Latest release: `v2.0.4-elemont`** — supersedes the tagged-but-never-
 rolled v2.0.3-elemont. All v2.0.3 additions (defensive RPC caps from
 `go-vinu v1.20.14-quota`) apply in v2.0.4 as well. v2.0.4 additionally
@@ -58,6 +70,38 @@ one-time consensus-changing activations.
   only — no RPC surface change, no receipt change, no new error
   responses for consumers.
 {% endhint %}
+
+---
+
+## v2.0.5-elemont Additions
+
+v2.0.5-elemont ships the same RPC surface as v2.0.4-elemont. The only
+addition is the `SfcV2Patch2` upgrade flag (testnet only):
+
+| Scope | Change | Consumer impact |
+| --- | --- | --- |
+| `SfcV2Patch2` (testnet) | Re-flashes SFC contract bytecode at `0xFC00FACE00000000000000000000000000000000` with current Cycle-158 45,240-byte source at next epoch seal | None for RPC consumers — no new methods, fields, or response shape changes. dApps calling `staticCall` on the SFC will now interact with the corrected bytecode |
+| SFC contract verification | After the epoch seal that fires `SfcV2Patch2`, the contract at `0xFC00FACE00000000000000000000000000000000` can be verified on testnet explorer using current `sfc_fixed.sol` and solc 0.5.17 | Infrastructure operators running their own Blockscout instance against testnet can now complete contract verification |
+
+**Who is affected:**
+
+- **Most consumers:** No action needed. The receipt format, method selectors, and ABI for SFC external functions are unchanged.
+- **dApps relying on SFC internal state:** The corrected bytecode includes Cycle-158 hardening (reentrancyguard fix, slashing refund timelock, precision fixes). Behavior is compatible with all existing delegations and staking state; no migration is needed.
+- **Explorer operators:** Blockscout verification against testnet will succeed after the epoch seal fires the patch.
+
+**Activation timing:** `SfcV2Patch2` fires at the **next epoch seal** after a node running v2.0.5-elemont starts. The node logs:
+
+```text
+INFO Staged SfcV2Patch2 upgrade from binary rules; will activate at next epoch seal
+```
+
+...at startup, and then at the seal:
+
+```text
+INFO Re-applying SFC V2 bytecode upgrade (patch 2)   block=<N>
+```
+
+Mainnet is unaffected — `SfcV2Patch2` is not set in mainnet rules.
 
 ---
 

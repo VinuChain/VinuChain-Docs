@@ -1,27 +1,27 @@
 # Chain Upgrade Guide (v2-elemont)
 
 {% hint style="info" %}
-**Latest release:** v2.0.4-elemont
+**Latest release:** v2.0.5-elemont
 {% endhint %}
 
 {% hint style="info" %}
 **TL;DR**
 
-* **Target tag:** `v2.0.4-elemont` (published)
-* **Binary version string:** `2.0.4-elemont`
+* **Target tag:** `v2.0.5-elemont` (published)
+* **Binary version string:** `2.0.5-elemont`
 * **Build requirements:** Go 1.25+, C compiler, \~50 GB free disk
 {% endhint %}
 
 {% hint style="warning" %}
-**Patch release semantics.** v2.0.4-elemont supersedes v2.0.2-elemont. The upgrade flags already active on your node from the v2.0.2-elemont rollout (`Podgorica`, `SfcV2`, `Elemont`) remain active — this release does not add or toggle any consensus flag.&#x20;
+**Patch release semantics.** v2.0.5-elemont supersedes v2.0.4-elemont. The upgrade flags already active on your node (`Podgorica`, `SfcV2`, `Elemont`, `SfcV2Patch`) remain active — this release adds one new consensus flag for **testnet only**: `SfcV2Patch2`.
 
-On **testnet**, if the `SfcV2Patch` flag from v2.0.2-elemont was not yet applied on your node (e.g. the node had been stopped since before its next epoch seal), it will still fire on the first epoch seal after restart. Once applied, it is a no-op on subsequent restarts.
+**`SfcV2Patch2` (testnet only):** This flag installs the current Cycle-158 SFC bytecode at `0xFC00FACE00000000000000000000000000000000`, replacing the older b7ab5b5-era bytecode that was stuck on testnet. It fires once at the next epoch seal after this binary is installed. Mainnet is unaffected — this flag is not set in mainnet rules.
 
-**If you are already on v2.0.2-elemont:** the upgrade is a straight binary swap. No datadir reset, no peer reconnection, no new validator registration. Follow the same steps below as you did for v2.0.2-elemont. You will not see any `Staged ... upgrade from binary rules` log lines, because no new flags need staging — the banner and a clean resume of block processing are your confirmation.
+**If you are already on v2.0.4-elemont:** the upgrade is a straight binary swap. No datadir reset, no peer reconnection, no new validator registration.
 {% endhint %}
 
 {% hint style="info" %}
-**Version string vs git tag.** The release is cut from git tag `v2.0.4-elemont`, but the binary reports `2.0.4-elemont`. Both refer to the same release; the leading `v` only appears on the git tag.
+**Version string vs git tag.** The release is cut from git tag `v2.0.5-elemont`, but the binary reports `2.0.5-elemont`. Both refer to the same release; the leading `v` only appears on the git tag.
 {% endhint %}
 
 ## Network Details
@@ -36,7 +36,7 @@ On **testnet**, if the `SfcV2Patch` flag from v2.0.2-elemont was not yet applied
 ## Timeline
 
 1. **Testnet upgrade** — genesis validators upgrade testnet nodes first.
-2. **Testnet validation** — manual testing for stability (blocks, transactions, RPC endpoints, staking operations).
+2. **Testnet validation** — manual testing for stability (blocks, transactions, RPC endpoints, staking operations). Verify SFC contract at `0xFC00FACE00000000000000000000000000000000` is now verifiable on the explorer after the first post-upgrade epoch seal.
 3. **Mainnet upgrade announcement** — date and time window communicated to all validators. Date: TBD — operator to schedule.
 4. **Mainnet pre-staging** — validators build the binary ahead of time.
 5. **Mainnet upgrade window** — binary swap within the announced window.
@@ -128,7 +128,7 @@ The build directory is independent of your node's `--datadir`. The build process
 ```bash
 git clone https://github.com/VinuChain/VinuChain.git $HOME/vinuchain-upgrade
 cd $HOME/vinuchain-upgrade
-git checkout v2.0.4-elemont
+git checkout v2.0.5-elemont
 make opera
 # Binary is at $HOME/vinuchain-upgrade/build/opera
 ```
@@ -138,7 +138,7 @@ make opera
 Substitute `/opt/vinuchain-upgrade` (or any other path) if `$HOME` is not the right partition for your setup — every later command in this guide that references `$HOME/vinuchain-upgrade` should be adjusted to match.
 
 {% hint style="info" %}
-**`go.mod` bump included in the tag.** The `v2.0.4-elemont` tag bumps the go-vinu replace directive to `v1.20.14-quota`. You do not need to edit `go.mod` manually — `git checkout v2.0.4-elemont` pulls in the correct pin, and `make opera` fetches the new dependency on first build. lachesis-base is also bumped to `v0.1.6-elemont` and is fetched the same way.
+**`go.mod` pins unchanged.** The `v2.0.5-elemont` tag uses the same go-vinu `v1.20.14-quota` and lachesis-base `v0.1.6-elemont` pins as v2.0.4. `git checkout v2.0.5-elemont` pulls in the correct pins, and `make opera` fetches dependencies on first build.
 {% endhint %}
 {% endstep %}
 
@@ -151,11 +151,11 @@ The newly-built binary is at `vinuchain-upgrade/build/opera`. Move into that dir
 ```bash
 cd $HOME/vinuchain-upgrade/build
 ./opera version
-# Expected: Version: 2.0.4-elemont
+# Expected: Version: 2.0.5-elemont
 ```
 
 {% hint style="info" %}
-`opera version` prints `2.0.4-elemont` — this matches the git tag `v2.0.4-elemont`. See the note at the top of this page.
+`opera version` prints `2.0.5-elemont` — this matches the git tag `v2.0.5-elemont`. See the note at the top of this page.
 {% endhint %}
 {% endstep %}
 
@@ -265,7 +265,7 @@ For testing or development, you can run in the foreground:
 
 What to expect:
 
-**Startup banner.** Every v2.x build prints the VinuChain banner. This is the first visual confirmation that you are running v2.0.4-elemont and not the previous binary:
+**Startup banner.** Every v2.x build prints the VinuChain banner. This is the first visual confirmation that you are running v2.0.5-elemont and not the previous binary:
 
 ```text
  ██╗   ██╗██╗███╗   ██╗██╗   ██╗ ██████╗██╗  ██╗ █████╗ ██╗███╗   ██╗
@@ -277,36 +277,40 @@ What to expect:
 
                         v2.0  -  ELEMONT
 
-  Version: 2.0.4-elemont
+  Version: 2.0.5-elemont
 ```
 
-**Staging logs — conditional.** For most operators upgrading from v2.0.2-elemont there are **no new flags to stage**, and you will not see any `Staged ...` lines. The exception is the testnet-only `SfcV2Patch` flag: if your node never completed an epoch seal under v2.0.2-elemont (for example the node was stopped before its first post-upgrade seal), the patch is still pending and will log:
+**Staging log (testnet only).** On the first startup of v2.0.5-elemont on testnet, you will see:
 
 ```text
-INFO Staged SfcV2Patch upgrade from binary rules; will activate at next epoch seal
+INFO Staged SfcV2Patch2 upgrade from binary rules; will activate at next epoch seal
 ```
 
-If the patch already applied on your node under v2.0.2-elemont, this line does **not** appear.
+This confirms the flag is pending. If you do not see this line, verify you are running 2.0.5-elemont (`opera version`).
 
-**Seal-time activation — conditional.** Only relevant to testnet nodes that still have `SfcV2Patch` pending. At the next epoch seal on such a node you will see:
+Mainnet nodes and any testnet node that already applied SfcV2Patch2 will not show this line.
+
+**Seal-time activation (testnet only).** At the next epoch seal after the staging log appears, you will see:
 
 ```text
-INFO Re-applying SFC V2 bytecode upgrade (patch)   block=<N>
+INFO Re-applying SFC V2 bytecode upgrade (patch 2)   block=<N>
 ```
 
-For all other nodes (including all mainnet nodes) the upgrade is complete as soon as the node resumes producing/processing events under the new binary.
+This is the one-time bytecode installation. After this fires, the SFC contract at `0xFC00FACE00000000000000000000000000000000` contains the current Cycle-158 bytecode and can be verified on the testnet explorer using the current `sfc_fixed.sol` source.
 
 #### Verification checklist
 
-| Check                                                         | Expected                                                                           |
-| ------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
-| Startup banner                                                | `VINUCHAIN v2.0 - ELEMONT` ASCII art printed to stderr                             |
-| `opera version`                                               | `Version: 2.0.4-elemont`                                                           |
-| Block production                                              | Resumes within seconds of startup; block numbers advance                           |
-| Peer count                                                    | Returns to prior steady-state within minutes                                       |
-| Staging log (testnet, SfcV2Patch still pending)               | 1× `Staged SfcV2Patch upgrade from binary rules; will activate at next epoch seal` |
-| Staging log (v2.0.2-elemont already fully sealed, or mainnet) | None                                                                               |
-| Block hash vs peer                                            | Identical                                                                          |
+| Check                                                         | Expected                                                                            |
+| ------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| Startup banner                                                | `VINUCHAIN v2.0 - ELEMONT` ASCII art printed to stderr                              |
+| `opera version`                                               | `Version: 2.0.5-elemont`                                                            |
+| Block production                                              | Resumes within seconds of startup; block numbers advance                            |
+| Peer count                                                    | Returns to prior steady-state within minutes                                        |
+| Staging log (testnet, first v2.0.5 boot)                      | 1× `Staged SfcV2Patch2 upgrade from binary rules; will activate at next epoch seal` |
+| Staging log (mainnet, or testnet already sealed patch2)       | None                                                                                |
+| Seal-time log (testnet, first epoch seal after staging)       | 1× `Re-applying SFC V2 bytecode upgrade (patch 2)   block=<N>`                     |
+| SFC verification on testnet explorer (after seal)             | `sfc_fixed.sol` with solc 0.5.17 verifies successfully                             |
+| Block hash vs peer                                            | Identical                                                                           |
 
 {% endstep %}
 
@@ -332,14 +336,12 @@ Compare the block number and hash against the public RPC or another validator's 
 
 If you kept a copy of your previous `opera` binary (or any other upgrade-related files) outside the scope of this guide, you can delete them once your validator has been running cleanly on the new binary for at least one full epoch and you've confirmed the chain hash matches in the previous step.
 
-Because v2.0.4-elemont is not a hard fork, rollback to v2.0.2-elemont is technically possible at any time — but it is also pointless once the new binary is running healthy, and keeping stale binaries around just consumes disk and risks confusing future operators.
-
 ```bash
 # Example — adapt to wherever you stashed the old binary
-rm -f /path/to/opera.v2.0.2-elemont
+rm -f /path/to/opera.v2.0.4-elemont
 ```
 
-The build directory under `$HOME/vinuchain-upgrade` (or wherever you cloned the source) can also be removed if you don't plan to rebuild locally — the running node uses the binary that was already started, so deleting the source tree has no effect on it.
+The build directory under `$HOME/vinuchain-upgrade` can also be removed if you don't plan to rebuild locally.
 {% endstep %}
 {% endstepper %}
 
@@ -357,16 +359,16 @@ That guide uses the correct `opera validator new` command for generating a valid
 
 ## Rollback
 
-Because v2.0.4-elemont is a patch release and not a hard fork, rollback is straightforward:
+Because v2.0.5-elemont is a patch release and not a hard fork, rollback is straightforward:
 
 1. Stop the node (clean shutdown).
-2. Replace `/usr/local/bin/opera` (or your image) with the v2.0.2-elemont release binary.
+2. Replace `opera` with the v2.0.4-elemont release binary.
 3. Start the node.
 
-No datadir changes are needed. The node resumes from the same state under the older binary. You will miss the audit fixes shipped in this release, so rollback should only be used if v2.0.4-elemont exhibits an unexpected regression on your node.
+No datadir changes are needed.
 
 {% hint style="info" %}
-On testnet nodes where `SfcV2Patch` has already applied: the patch install is a one-time state change that persists in chain state regardless of which binary is running. Rolling back the binary does not un-patch the SFC V2 bytecode.
+**Testnet note:** Once `SfcV2Patch2` has sealed on testnet, the SFC bytecode change is permanent in chain state — rolling back the binary does not revert the contract bytecode. This is expected behavior; the bytecode update is the intended outcome of the upgrade.
 {% endhint %}
 
 ***
@@ -376,8 +378,8 @@ On testnet nodes where `SfcV2Patch` has already applied: the patch install is a 
 ### Node won't start after upgrade
 
 1. Check logs: `journalctl -u opera -f` (systemd) or the Docker / terminal output for your install method.
-2. Verify the binary version is correct: `opera version` must print `2.0.4-elemont`.
-3. If the database is reported as corrupted, stop the node, delete the chaindata directory, and re-sync from a published snapshot (or from genesis if no snapshot is available). See the late-upgrade recovery section below for the exact commands.
+2. Verify the binary version is correct: `opera version` must print `2.0.5-elemont`.
+3. If the database is reported as corrupted, stop the node, delete the chaindata directory, and re-sync from a published snapshot (or from genesis if no snapshot is available).
 
 ### Node starts but doesn't produce events
 
@@ -387,11 +389,11 @@ On testnet nodes where `SfcV2Patch` has already applied: the patch install is a 
 
 ### "Database is from a newer version" error
 
-This should not occur on a v2.0.2-elemont → v2.0.4-elemont upgrade because the chain schema has not changed between these releases. If you see it, you are likely attempting to downgrade past v2.0.2-elemont (a hard-fork boundary) — see that release's upgrade guide for the correct downgrade procedure below that boundary.
+This should not occur on a v2.0.4-elemont → v2.0.5-elemont upgrade because the chain schema has not changed between these releases.
 
 ### Consensus stall / no new blocks
 
-v2.0.4-elemont does not change consensus rules, so a stall after upgrading a single node is almost certainly local (peering, disk, or key-loading) rather than network-wide. If the full network stops producing blocks independently of your upgrade, contact the VinuChain team via the official coordination channel.
+v2.0.5-elemont does not change consensus rules (SfcV2Patch2 only modifies contract bytecode state, not block validation). A stall after upgrading a single node is almost certainly local (peering, disk, or key-loading) rather than network-wide.
 
 ***
 
@@ -402,20 +404,19 @@ The recommended procedure is to upgrade within a bounded window so that the vali
 1. **VinuChain team announces the patch window.** Date: TBD — operator to schedule.
 2. **Pre-stage the binary** on every validator server before the window. See step 2 of the Upgrade Steps above.
 3. **During the window**, each operator performs the binary swap (Upgrade Steps 1 → 5) at their own pace.
-4. **Confirm in the coordination channel** that your node resumed block production cleanly after restart and that `opera version` reports `2.0.4-elemont`.
+4. **Confirm in the coordination channel** that your node resumed block production cleanly after restart and that `opera version` reports `2.0.5-elemont`.
 
 ### Recovering a node that missed the window
 
-Because non-upgraded nodes remain consensus-compatible with the network under v2.0.4-elemont, a node that missed the window is **not** forked off. It is simply running the older binary with the older set of audit fixes. Upgrading at any later point is a plain binary swap:
+Because non-upgraded nodes remain consensus-compatible with the network under v2.0.5-elemont, a node that missed the window is **not** forked off. Upgrading at any later point is a plain binary swap.
 
 {% tabs %}
 {% tab title="nohup (standard)" %}
 
 ```bash
 pkill -TERM opera
-sleep 2  # Give the process time to exit
+sleep 2
 
-# Restart using the upgraded binary
 cd $HOME/vinuchain-upgrade/build
 nohup ./opera \
   --validator.id YOUR_VALIDATOR_ID \
@@ -447,8 +448,6 @@ docker start opera
 {% endtab %}
 {% endtabs %}
 
-There is no separate "resync from scratch" path for this patch release — the chain state is unchanged between v2.0.2-elemont and v2.0.4-elemont, so a clean restart on the new binary is always sufficient.
-
 ***
 
 For the prior elemont hard-fork RPC changes (introduction of the `feeRefund` field, 30% base fee burn accounting, payback refund mechanics), see [Elemont Hard Fork — RPC Breaking Changes](chain-upgrade-rpc-breaking-changes.md).
@@ -461,4 +460,4 @@ If you encounter issues during the upgrade, reach out to the VinuChain team thro
 
 ***
 
-_Last updated: 2026-04-17 · VinuChain tag `v2.0.4-elemont` (published) · go-vinu `v1.20.14-quota` · lachesis-base `v0.1.6-elemont`_
+_Last updated: 2026-04-18 · VinuChain tag `v2.0.5-elemont` (published) · go-vinu `v1.20.14-quota` · lachesis-base `v0.1.6-elemont`_
