@@ -9,15 +9,18 @@ For the validator upgrade procedure, see the
 [Chain Upgrade Guide](chain-upgrade-guide.md).
 
 {% hint style="info" %}
-**Latest release: `v2.0.3-elemont`** — a hardening rollup of the
-`v2.0.2-elemont` hard fork. No new upgrade flags activate. The
-v2.0.3-elemont additions are **defensive RPC caps** from the upstream
-`go-vinu v1.20.14-quota` fork and take effect **immediately on binary
-restart** (no epoch-seal wait).
+**Latest release: `v2.0.4-elemont`** — supersedes the tagged-but-never-
+rolled v2.0.3-elemont. All v2.0.3 additions (defensive RPC caps from
+`go-vinu v1.20.14-quota`) apply in v2.0.4 as well. v2.0.4 additionally
+bumps lachesis-base to `v0.1.6-elemont`, which carries consensus and
+reliability fixes that have **no direct RPC consumer impact** — see
+[§ v2.0.4-elemont Additions](#v2-0-4-elemont-additions) below. Both
+releases take effect **immediately on binary restart** (no epoch-seal
+wait).
 
-Most v2.0.3 caps sit far above typical usage envelopes — consumer impact
-is limited to high-volume clients that batched heavily or submitted
-large `stateOverride` blobs. See
+Most v2.0.3/v2.0.4 caps sit far above typical usage envelopes —
+consumer impact is limited to high-volume clients that batched heavily
+or submitted large `stateOverride` blobs. See
 [§ v2.0.3-elemont Additions](#v2-0-3-elemont-additions) below.
 
 All v2.0.2-elemont sections below remain in force; they describe the
@@ -45,10 +48,35 @@ one-time consensus-changing activations.
   earlier from gas, event count, or cheaters), receipts and fee
   accounting continue to use pre-upgrade behavior. At the seal the new
   rules activate atomically on the same block.
-- **v2.0.2+ → v2.0.3 upgrades**: if your node already sealed an epoch
-  under v2.0.2-elemont, no second activation occurs on v2.0.3. The
-  consensus flags are latched; v2.0.3 is a pure binary swap.
+- **v2.0.2+ → v2.0.3 / v2.0.4 upgrades**: if your node already sealed
+  an epoch under v2.0.2-elemont, no second activation occurs on v2.0.3
+  or v2.0.4. The consensus flags are latched; both are pure binary
+  swaps.
+- **v2.0.4-elemont lachesis-base bump** (vecengine cap, dagprocessor
+  drain fix, kvdb flushable, semaphore metric, gossip deadlock fix):
+  active immediately on restart. Internal consensus-engine plumbing
+  only — no RPC surface change, no receipt change, no new error
+  responses for consumers.
 {% endhint %}
+
+---
+
+## v2.0.4-elemont Additions
+
+v2.0.4-elemont ships the same RPC surface as v2.0.3-elemont. The only
+additions are consensus-engine internals in lachesis-base
+`v0.1.6-elemont`:
+
+| Scope | Change | Consumer impact |
+|:-----|:-----|:-----|
+| `vecengine` | Cap per-validator branch allocation | None — prevents Byzantine vector memory inflation; no observable behavior on healthy networks |
+| `dagprocessor` / `gossip` | Drain queued events on quit, prevent checker-exit deadlock | None — only affects clean shutdown paths |
+| `kvdb` | Clear flushable write buffer only after successful batch write | None — removes a race that could lose writes on crash mid-batch |
+| `semaphore` | Zero metric after termination, clamp underflow | None — metric/debug plumbing |
+
+RPC consumers (indexers, dApps, wallets) **do not need to change
+anything** for the v2.0.3 → v2.0.4 bump. All v2.0.3 migration
+checklist items below still apply.
 
 ---
 

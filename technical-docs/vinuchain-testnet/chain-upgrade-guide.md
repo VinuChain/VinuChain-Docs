@@ -1,7 +1,7 @@
-# VinuChain v2.0.3-elemont — Validator Upgrade Guide
+# VinuChain v2.0.4-elemont — Validator Upgrade Guide
 
 {% hint style="info" %}
-**Recommended security patch release.** v2.0.3-elemont is a rollup of
+**Recommended security patch release.** v2.0.4-elemont is a rollup of
 audit-driven hardening fixes on top of v2.0.2-elemont. It is **not** a
 new hard fork — no new upgrade flags activate, and non-upgraded nodes
 remain consensus-compatible with the network. However, non-upgraded
@@ -12,8 +12,8 @@ so all validators are strongly encouraged to upgrade.
 {% hint style="info" %}
 **TL;DR**
 
-- **Target tag:** `v2.0.3-elemont` (preparing — not yet published)
-- **Binary version string:** `2.0.3-elemont`
+- **Target tag:** `v2.0.4-elemont` (published)
+- **Binary version string:** `2.0.4-elemont`
 - **Mandatory:** no, but strongly recommended
 - **Activation:** binary swap only. No new hard fork, no coordinated
   block height, no datadir reset
@@ -24,7 +24,7 @@ so all validators are strongly encouraged to upgrade.
 {% endhint %}
 
 {% hint style="warning" %}
-**Patch release semantics.** v2.0.3-elemont supersedes v2.0.2-elemont.
+**Patch release semantics.** v2.0.4-elemont supersedes v2.0.2-elemont.
 The upgrade flags already active on your node from the v2.0.2-elemont
 rollout (`Podgorica`, `SfcV2`, `Elemont`) remain active — this release
 does not add or toggle any consensus flag. On **testnet**, if the
@@ -43,15 +43,19 @@ clean resume of block processing are your confirmation.
 
 {% hint style="info" %}
 **Version string vs git tag.** The release is cut from git tag
-`v2.0.3-elemont`, but the binary reports `2.0.3-elemont`. Both refer to
+`v2.0.4-elemont`, but the binary reports `2.0.4-elemont`. Both refer to
 the same release; the leading `v` only appears on the git tag.
 {% endhint %}
 
-## What's New in v2.0.3-elemont
+## What's New in v2.0.4-elemont
 
-v2.0.3-elemont rolls up hardening work from audit Cycles 152–157. The
-changes fall into three surfaces — VinuChain core, the forked go-vinu
-EVM/RPC dependency, and the pre-deployment SFC V2 contract.
+v2.0.4-elemont rolls up hardening work from audit Cycles 152–158 plus
+post-v2.0.3 lachesis-base reliability fixes. The changes fall into four
+surfaces — VinuChain core, the forked go-vinu EVM/RPC dependency, the
+forked lachesis-base consensus engine, and the pre-deployment SFC V2
+contract. v2.0.4-elemont **supersedes** v2.0.3-elemont, which was tagged
+but never deployed to production; all v2.0.3 content is cumulative in
+v2.0.4.
 
 ### VinuChain core (this repo)
 
@@ -64,10 +68,10 @@ EVM/RPC dependency, and the pre-deployment SFC V2 contract.
 
 ### go-vinu fork (EVM + RPC)
 
-v2.0.3-elemont **requires** a new go-vinu tag `v1.20.14-quota`. The
-VinuChain `go.mod` replace directive is bumped from
-`v1.20.13-quota` → `v1.20.14-quota` and must be in place before the
-release is cut.
+v2.0.4-elemont carries the same go-vinu tag `v1.20.14-quota` introduced
+in v2.0.3-elemont. The VinuChain `go.mod` replace directive
+(`v1.20.13-quota` → `v1.20.14-quota`) first landed in the v2.0.3 release
+commit and is unchanged in v2.0.4.
 
 | Scope | Change |
 | --- | --- |
@@ -83,10 +87,10 @@ release is cut.
 ### SFC V2 contract (pre-deployment bytecode)
 
 The SFC V2 Solidity source in `gitignore/sfc_fixed.sol` received a batch
-of correctness and precision fixes during Cycles 152–157. Because the
+of correctness and precision fixes during Cycles 152–158. Because the
 V2 bytecode is **pre-deployment** — no network has yet locked it in via
 a binary that ships with V2 baked into the binary rules — networks that
-activate SfcV2 from v2.0.3-elemont onward will install the corrected
+activate SfcV2 from v2.0.4-elemont onward will install the corrected
 bytecode directly.
 
 | Finding | Change |
@@ -103,17 +107,17 @@ bytecode directly.
 **Implication for existing testnet networks:** the `SfcV2Patch` re-flash
 path introduced in v2.0.2-elemont is **unchanged** by this release.
 Testnet nodes that already applied `SfcV2Patch` under v2.0.2-elemont do
-not re-flash again under v2.0.3-elemont. New testnets or mainnet
-activations that install SfcV2 from a v2.0.3-elemont (or later) binary
+not re-flash again under v2.0.4-elemont. New testnets or mainnet
+activations that install SfcV2 from a v2.0.4-elemont (or later) binary
 will pick up the corrected bytecode on first activation.
 
-{% hint style="warning" %}
-**Go bindings regeneration required before tag.** The SFC bytecode in
-`opera/contracts/sfc/sfc_predeploy.go` is a compiled artifact of
-`gitignore/sfc_fixed.sol`. Because the Solidity source changed, the Go
-bindings must be regenerated with **`solc` 0.5.17** before the
-`v2.0.3-elemont` tag is cut. Post-regeneration the bytecode size will
-change — the exact new size is TBD until regeneration is complete.
+{% hint style="info" %}
+**Go bindings regenerated.** The SFC bytecode in
+`opera/contracts/sfc/sfc_predeploy.go` was recompiled with **`solc`
+0.5.17** as part of the `v2.0.4-elemont` release commit (`3610d0b`).
+The deployed V2 bytecode is **45,240 bytes** — operators do not need to
+regenerate anything; `git checkout v2.0.4-elemont` pulls the correct
+binding.
 {% endhint %}
 
 ### Changelog since v2.0.2-elemont
@@ -140,12 +144,20 @@ go-vinu commits that land in `v1.20.14-quota`:
 | `787061f3e` | `rpc` | Return JSON-RPC error on `startCallProc` when stopping |
 | `b316aee38` | `core/types` | Test coverage for `FeeRefundActive` transition paths |
 
-lachesis-base remains pinned at `v0.1.5-elemont` — no changes since
-v2.0.2-elemont.
+lachesis-base commits that land in `v0.1.6-elemont`:
+
+| Commit | Scope | Summary |
+| --- | --- | --- |
+| `f00eacc9` | `vecengine` | Cap per-validator branch allocation to prevent Byzantine vector inflation |
+| `a215b80a` | `vecengine` | Pin BranchIDLastSeq no-regression invariant under cap (test) |
+| `e32f1c1c` | `gossip` | Prevent drain deadlock when checker exits before processing queued task |
+| `9a345b2b` | `dagprocessor` | Drain checkedC unconditionally on quit to prevent peerEventQuota leak |
+| `d0b74f92` | `kvdb` | Clear flushable write buffer only after successful batch write |
+| `f36c751d` | `semaphore` | Return zero metric from Available after termination, clamp underflow |
 
 ## What Is This Upgrade?
 
-v2.0.3-elemont is a **security patch release**. It does not activate
+v2.0.4-elemont is a **security patch release**. It does not activate
 any new upgrade flags on VinuChain and does not change consensus
 behavior. Block hashes produced by an upgraded and a non-upgraded node
 on the same transactions remain identical.
@@ -172,6 +184,11 @@ Upgrading picks up:
 - **Corrected SFC V2 bytecode for new network activations** — the eight
   pre-deployment fixes above are baked into any new SfcV2 activation
   after this release.
+- **Consensus and reliability hardening in lachesis-base** — the
+  vecengine branch-allocation cap prevents a Byzantine validator from
+  inflating per-validator branch counts; dagprocessor / gossip /
+  semaphore / kvdb fixes remove shutdown deadlocks and a flushable
+  write-buffer leak window.
 
 ### Network Details
 
@@ -211,7 +228,7 @@ Unchanged from v2.0.2-elemont:
 {% hint style="info" %}
 If you already built v2.0.2-elemont on this host and have not changed
 the Go toolchain since, no build-environment changes are needed for
-v2.0.3-elemont. The `go.mod` bump to `go-vinu v1.20.14-quota` is
+v2.0.4-elemont. The `go.mod` bump to `go-vinu v1.20.14-quota` is
 fetched transparently by `make opera`.
 {% endhint %}
 
@@ -306,7 +323,7 @@ out of space fails cleanly without affecting the running node.
 ```bash
 git clone https://github.com/VinuChain/VinuChain.git $HOME/vinuchain-upgrade
 cd $HOME/vinuchain-upgrade
-git checkout v2.0.3-elemont
+git checkout v2.0.4-elemont
 make opera
 # Binary is at $HOME/vinuchain-upgrade/build/opera
 ```
@@ -319,11 +336,12 @@ guide that references `$HOME/vinuchain-upgrade` should be adjusted to
 match.
 
 {% hint style="info" %}
-**`go.mod` bump included in the tag.** The `v2.0.3-elemont` tag bumps
+**`go.mod` bump included in the tag.** The `v2.0.4-elemont` tag bumps
 the go-vinu replace directive to `v1.20.14-quota`. You do not need to
-edit `go.mod` manually — `git checkout v2.0.3-elemont` pulls in the
+edit `go.mod` manually — `git checkout v2.0.4-elemont` pulls in the
 correct pin, and `make opera` fetches the new dependency on first
-build. lachesis-base remains at `v0.1.5-elemont`.
+build. lachesis-base is also bumped to `v0.1.6-elemont` and is fetched
+the same way.
 {% endhint %}
 
 {% endstep %}
@@ -339,12 +357,12 @@ path:
 ```bash
 cd $HOME/vinuchain-upgrade/build
 ./opera version
-# Expected: Version: 2.0.3-elemont
+# Expected: Version: 2.0.4-elemont
 ```
 
 {% hint style="info" %}
-`opera version` prints `2.0.3-elemont` — this matches the git tag
-`v2.0.3-elemont`. See the note at the top of this page.
+`opera version` prints `2.0.4-elemont` — this matches the git tag
+`v2.0.4-elemont`. See the note at the top of this page.
 {% endhint %}
 
 {% endstep %}
@@ -481,11 +499,11 @@ For testing or development, you can run in the foreground:
 
 ### Verify the upgrade
 
-Because v2.0.3-elemont is **not a hard fork**, most nodes will see no
+Because v2.0.4-elemont is **not a hard fork**, most nodes will see no
 `Staged ... upgrade from binary rules` lines at startup. What to expect:
 
 **Startup banner.** Every v2.x build prints the VinuChain banner. This
-is the first visual confirmation that you are running v2.0.3-elemont
+is the first visual confirmation that you are running v2.0.4-elemont
 and not the previous binary:
 
 ```text
@@ -498,7 +516,7 @@ and not the previous binary:
 
                         v2.0  -  ELEMONT
 
-  Version: 2.0.3-elemont
+  Version: 2.0.4-elemont
 ```
 
 **Staging logs — conditional.** For most operators upgrading from
@@ -532,7 +550,7 @@ the new binary.
 | Check | Expected |
 | --- | --- |
 | Startup banner | `VINUCHAIN  v2.0 - ELEMONT` ASCII art printed to stderr |
-| `opera version` | `Version: 2.0.3-elemont` |
+| `opera version` | `Version: 2.0.4-elemont` |
 | Block production | Resumes within seconds of startup; block numbers advance |
 | Peer count | Returns to prior steady-state within minutes |
 | Staging log (testnet, SfcV2Patch still pending) | 1× `Staged SfcV2Patch upgrade from binary rules; will activate at next epoch seal` |
@@ -568,7 +586,7 @@ them once your validator has been running cleanly on the new binary for
 at least one full epoch and you've confirmed the chain hash matches in
 the previous step.
 
-Because v2.0.3-elemont is not a hard fork, rollback to v2.0.2-elemont
+Because v2.0.4-elemont is not a hard fork, rollback to v2.0.2-elemont
 is technically possible at any time — but it is also pointless once the
 new binary is running healthy, and keeping stale binaries around just
 consumes disk and risks confusing future operators.
@@ -605,7 +623,7 @@ regular externally-owned account, not a validator key.
 
 ## Rollback
 
-Because v2.0.3-elemont is a patch release and not a hard fork, rollback
+Because v2.0.4-elemont is a patch release and not a hard fork, rollback
 is straightforward:
 
 1. Stop the node (clean shutdown).
@@ -615,7 +633,7 @@ is straightforward:
 
 No datadir changes are needed. The node resumes from the same state
 under the older binary. You will miss the audit fixes shipped in this
-release, so rollback should only be used if v2.0.3-elemont exhibits an
+release, so rollback should only be used if v2.0.4-elemont exhibits an
 unexpected regression on your node.
 
 {% hint style="info" %}
@@ -634,7 +652,7 @@ not un-patch the SFC V2 bytecode.
 1. Check logs: `journalctl -u opera -f` (systemd) or the Docker /
    terminal output for your install method.
 2. Verify the binary version is correct: `opera version` must print
-   `2.0.3-elemont`.
+   `2.0.4-elemont`.
 3. If the database is reported as corrupted, stop the node, delete the
    chaindata directory, and re-sync from a published snapshot (or from
    genesis if no snapshot is available). See the late-upgrade recovery
@@ -651,7 +669,7 @@ not un-patch the SFC V2 bytecode.
 
 ### "Database is from a newer version" error
 
-This should not occur on a v2.0.2-elemont → v2.0.3-elemont upgrade
+This should not occur on a v2.0.2-elemont → v2.0.4-elemont upgrade
 because the chain schema has not changed between these releases. If
 you see it, you are likely attempting to downgrade past v2.0.2-elemont
 (a hard-fork boundary) — see that release's upgrade guide for the
@@ -659,7 +677,7 @@ correct downgrade procedure below that boundary.
 
 ### Consensus stall / no new blocks
 
-v2.0.3-elemont does not change consensus rules, so a stall after
+v2.0.4-elemont does not change consensus rules, so a stall after
 upgrading a single node is almost certainly local (peering, disk, or
 key-loading) rather than network-wide. If the full network stops
 producing blocks independently of your upgrade, contact the VinuChain
@@ -669,7 +687,7 @@ team via the official coordination channel.
 
 ## Coordinated Upgrade Procedure
 
-Because v2.0.3-elemont is a security patch release and not a hard
+Because v2.0.4-elemont is a security patch release and not a hard
 fork, upgrades do **not** need to be coordinated across validators.
 Each operator can restart their node on the new binary independently at
 any time.
@@ -685,12 +703,12 @@ so that the validator set converges quickly on the hardened binary:
    (Upgrade Steps 1 → 5) at their own pace.
 4. **Confirm in the coordination channel** that your node resumed block
    production cleanly after restart and that `opera version` reports
-   `2.0.3-elemont`.
+   `2.0.4-elemont`.
 
 ### Recovering a node that missed the window
 
 Because non-upgraded nodes remain consensus-compatible with the network
-under v2.0.3-elemont, a node that missed the window is **not** forked
+under v2.0.4-elemont, a node that missed the window is **not** forked
 off. It is simply running the older binary with the older set of audit
 fixes. Upgrading at any later point is a plain binary swap:
 
@@ -735,14 +753,14 @@ docker start opera
 
 There is no separate "resync from scratch" path for this patch
 release — the chain state is unchanged between v2.0.2-elemont and
-v2.0.3-elemont, so a clean restart on the new binary is always
+v2.0.4-elemont, so a clean restart on the new binary is always
 sufficient.
 
 ---
 
 ## Breaking Changes for RPC Consumers
 
-v2.0.3-elemont introduces **defensive RPC caps** that a small number of
+v2.0.4-elemont introduces **defensive RPC caps** that a small number of
 high-volume clients may notice:
 
 - **`eth_call` with `stateOverride.code` larger than `MaxCodeSize`** now
@@ -773,5 +791,5 @@ team through the official coordination channels.
 
 ---
 
-*Last updated: 2026-04-17 · VinuChain tag `v2.0.3-elemont` (preparing) ·
-go-vinu `v1.20.14-quota` · lachesis-base `v0.1.5-elemont`*
+*Last updated: 2026-04-17 · VinuChain tag `v2.0.4-elemont` (published) ·
+go-vinu `v1.20.14-quota` · lachesis-base `v0.1.6-elemont`*
