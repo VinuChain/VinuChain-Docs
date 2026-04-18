@@ -9,7 +9,19 @@ For the validator upgrade procedure, see the
 [Chain Upgrade Guide](chain-upgrade-guide.md).
 
 {% hint style="info" %}
-**Latest release: `v2.0.5-elemont`** — supersedes v2.0.4-elemont. This
+**Latest release: `v2.0.6-elemont`** — supersedes v2.0.5-elemont. This
+release adds a new JSON-RPC method `vc_getPaybackBalance` and an RPC-safe
+payback accessor with a process-wide concurrency cap. There are **no
+consensus changes, no new upgrade flags, and no receipt or event format
+changes**; existing receipts, method selectors, and response shapes are
+identical to v2.0.5. See [§ v2.0.6-elemont Additions](#v206-elemont-additions)
+below.
+
+All v2.0.2/v2.0.3/v2.0.4/v2.0.5 sections below remain in force.
+{% endhint %}
+
+{% hint style="info" %}
+**Prior release: `v2.0.5-elemont`** — supersedes v2.0.4-elemont. This
 release adds the `SfcV2Patch2` upgrade flag for testnet, which re-flashes
 the SFC contract bytecode at `0xFC00FACE00000000000000000000000000000000`
 with the current Cycle-158 source. There are **no RPC surface changes**;
@@ -70,6 +82,80 @@ one-time consensus-changing activations.
   only — no RPC surface change, no receipt change, no new error
   responses for consumers.
 {% endhint %}
+
+---
+
+## v2.0.6-elemont Additions
+
+v2.0.6-elemont is a **pure RPC addition** on top of v2.0.5-elemont. No
+consensus rules change, no upgrade flags, no receipt format changes, no
+new error responses on existing endpoints. Nodes on mixed v2.0.5 /
+v2.0.6 remain fully compatible and produce identical state roots.
+
+### New method: `vc_getPaybackBalance`
+
+| Field            | Value                                                                              |
+| ---------------- | ---------------------------------------------------------------------------------- |
+| Namespace        | `vc` (not `eth`)                                                                   |
+| Method           | `vc_getPaybackBalance`                                                             |
+| Params           | `[address]` — 20-byte hex string. Optional second param: block number or `"latest"` (default) |
+| Returns          | Hex-encoded wei value (`*hexutil.Big`). Returns `0x0` for the zero address, when Podgorica is inactive, or when the caller stakes below minimum |
+| Error `-32005`   | Rate-limit rejection when the process-wide in-flight cap is saturated              |
+
+**Example:**
+
+```bash
+curl -s -X POST http://localhost:18545/ \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","method":"vc_getPaybackBalance","params":["0xABCDEF0123456789ABCDEF0123456789ABCDEF01"],"id":1}'
+```
+
+Returns the currently available payback balance for the address at the
+latest sealed block.
+
+### Concurrency cap and rejection code
+
+Each call executes up to five EVM `StaticCall`s against the payback
+proxy and SFC contracts (≈500k gas total), so the handler is gated by a
+process-wide semaphore:
+
+| Knob                        | Value      |
+| --------------------------- | ---------- |
+| Max in-flight calls         | 8          |
+| Acquire timeout             | 2 seconds  |
+| Rejection error code        | `-32005`   |
+| Rejection error message     | `payback query rate-limited` |
+
+Clients should treat `-32005` as a transient rate-limit signal and retry
+with backoff. High-volume callers (indexers, scanners) should stagger
+requests or open multiple RPC endpoints rather than request a higher
+cap.
+
+### Why a new namespace instead of `eth_`?
+
+The accessor is intentionally RPC-safe: it never reads or writes
+`PaybackCache.blkCtx` and never mutates `StakesMap`, so concurrent RPC
+traffic cannot corrupt in-flight block-processing state. Placing it in
+the `vc` namespace keeps it distinct from Ethereum-standard methods and
+signals to consumers that it exposes VinuChain-specific accounting
+(fee-refund quota under the Podgorica upgrade) rather than EVM state.
+
+### Who is affected
+
+- **dApps, wallets, block explorers**: no action needed. Existing
+  `eth_*` / `debug_*` / `trace_*` behavior is unchanged.
+- **Scanners/indexers that want payback balance data**: replace any
+  prior workaround (reading SFC state directly via `eth_call`) with
+  `vc_getPaybackBalance`. The new method returns the final refund
+  amount after the five internal StaticCalls that compute it.
+- **Clients calling `eth_getPaybackBalance`**: that method never shipped
+  in any public release. If you have custom client code referencing it
+  from an internal branch, switch to `vc_getPaybackBalance`.
+
+### Activation
+
+Immediate on restart. No epoch-seal wait, no staging log, no flag
+transition — the method is registered when the RPC server starts.
 
 ---
 
