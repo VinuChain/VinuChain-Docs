@@ -9,7 +9,23 @@ For the validator upgrade procedure, see the
 [Chain Upgrade Guide](chain-upgrade-guide.md).
 
 {% hint style="info" %}
-**Latest release: `v2.0.7-elemont`** — supersedes v2.0.6-elemont. This
+**Latest release: `v2.0.8-elemont`** — supersedes v2.0.7-elemont. This
+release is a **node-internal hotfix only**: it removes a peer-progress
+drift cap in the gossip sync handler that was locking out any validator
+that fell more than 1,000 epochs behind chain tip. There are **no
+JSON-RPC surface changes, no new methods, no new error responses, no
+consensus changes, no new upgrade flags, and no receipt or event format
+changes**. Existing receipts, method selectors, response shapes, batch
+caps, concurrency caps, and rate-limit codes are all identical to
+v2.0.7. See [§ v2.0.8-elemont Additions](#v208-elemont-additions)
+below.
+
+All v2.0.2/v2.0.3/v2.0.4/v2.0.5/v2.0.6/v2.0.7 sections below remain in
+force.
+{% endhint %}
+
+{% hint style="info" %}
+**Prior release: `v2.0.7-elemont`** — supersedes v2.0.6-elemont. This
 release is a **node-internal hotfix only**: it raises the per-peer
 in-flight event-processing quota in the gossip handler so that legitimate
 sync chunks (up to 500 events per chunk, 6 in-flight per session peer)
@@ -20,8 +36,6 @@ receipt or event format changes**. Existing receipts, method selectors,
 response shapes, batch caps, concurrency caps, and rate-limit codes are
 all identical to v2.0.6. See [§ v2.0.7-elemont Additions](#v207-elemont-additions)
 below.
-
-All v2.0.2/v2.0.3/v2.0.4/v2.0.5/v2.0.6 sections below remain in force.
 {% endhint %}
 
 {% hint style="info" %}
@@ -96,6 +110,67 @@ one-time consensus-changing activations.
   only — no RPC surface change, no receipt change, no new error
   responses for consumers.
 {% endhint %}
+
+---
+
+## v2.0.8-elemont Additions
+
+v2.0.8-elemont is a **pure node-internal hotfix** on top of v2.0.7-elemont.
+No consensus rules change, no upgrade flags, no receipt format changes,
+no JSON-RPC surface changes, no new methods, and no new error responses
+on existing endpoints. Nodes on mixed v2.0.7 / v2.0.8 remain fully
+compatible and produce identical state roots.
+
+### What changed
+
+`gossip/handler_sync.go::validatePeerProgress` — added in v2.0.7
+(commit `9278d71`, "resolve remaining Round 2 audit findings") — rejected
+any peer whose `ProgressMsg` claimed an epoch more than 1,000 ahead of
+local, or a block more than 5,000 ahead. v2.0.8 removes both upper
+bounds and the unused constants, keeping only the structural
+`progress.Epoch == 0` check.
+
+| Check                       | v2.0.7 behavior  | v2.0.8 behavior |
+| --------------------------- | ---------------- | --------------- |
+| `progress.Epoch == 0`       | reject (invalid) | reject (invalid) |
+| `progress.Epoch > local+1000` | reject ("peer epoch N too far ahead") | **accepted** (catch-up is expected) |
+| `progress.LastBlockIdx > local+5000` | reject ("peer block N too far ahead") | **accepted** |
+
+### Who is affected
+
+- **Validator operators returning from extended downtime**: on v2.0.7,
+  any node whose chain state was more than 1,000 epochs behind live
+  tip would successfully RLPx-handshake with current peers, then its
+  own `validatePeerProgress` would reject every incoming `ProgressMsg`
+  and it would close the subprotocol within ~175 ms. Visible symptom
+  on the stale node: `Looking for peers peercount=1 tried=N` with
+  `tried` climbing and `last_id` never advancing. Visible symptom on
+  the tip-side peer: `Removing p2p peer req=true err="subprotocol error"
+  duration=~175ms`, repeating every ~30 s against the same remote.
+  v2.0.8 restores the ability for these nodes to catch up via normal
+  DAG sync.
+- **Fresh-install validators on testnet**: this release alone does
+  **not** unblock fresh installs from the distributed 2024-06-21 genesis
+  — that hits a separate "wrong event epoch hash" divergence at the
+  first post-startup epoch seal, because the genesis pre-dates several
+  SFC upgrade flags. See the chaindata snapshot instructions in the
+  [Chain Upgrade Guide → wrong event epoch hash](chain-upgrade-guide.md#warn-incoming-event-rejected-err-wrong-event-epoch-hash)
+  section.
+- **dApps, wallets, indexers, explorers**: no action — the JSON-RPC
+  surface is byte-for-byte identical to v2.0.7.
+
+### DoS guarantee
+
+The removed check never closed a real DoS vector. The deeper per-event
+acceptance path (`lightCheck` in `gossip/handler_sync.go:89` and the
+`epochcheck.ErrNotRelevant` gate) already refuses events whose epoch
+does not match local, so a peer lying about progress consumes no state.
+`progress.Epoch == 0` remains the structural sanity guard.
+
+### Activation
+
+Immediate on restart. No epoch-seal wait, no staging log, no flag
+transition.
 
 ---
 

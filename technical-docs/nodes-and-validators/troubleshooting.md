@@ -2,9 +2,18 @@
 
 ## Troubleshooting
 
+{% hint style="warning" %}
+**Testnet operators running or installing v2.x-elemont**: see the [Chain Upgrade Guide](../vinuchain-testnet/chain-upgrade-guide.md) first. Two failure modes need dedicated recovery steps that the legacy procedures on this page do not cover:
+
+- **Validator offline >1,000 epochs cannot rejoin** → upgrade to v2.0.8-elemont (removes the `validatePeerProgress` drift cap). See [Chain Upgrade Guide → stuck peercount](../vinuchain-testnet/chain-upgrade-guide.md#stuck-at-net-peercount-1-with-one-stale-peer).
+- **`WARN Incoming event rejected ... err="wrong event epoch hash"`** → fresh resync from the 2024-06-21 genesis **does not work** on current binary rules. Use the chaindata snapshot at `s3://vinu-blockchain-genesis/chaindata-snapshots/` — see [Chain Upgrade Guide → wrong event epoch hash](../vinuchain-testnet/chain-upgrade-guide.md#warn-incoming-event-rejected-err-wrong-event-epoch-hash) for the recovery procedure.
+
+Latest testnet snapshot: `https://vinu-blockchain-genesis.s3.amazonaws.com/chaindata-snapshots/testnet-chaindata-v2.0.8-20260419-053442.tar.gz` (~1.1 GiB compressed, published 2026-04-19, tip ≈ epoch 5637 / block 1.42M). SHA256 `7d1ec36699c450a820f0b42e3b113bd2d09345e44abb0c39d38d262464f91823`. Excludes `nodekey` / `keystore/` / `static-nodes.json` so your validator identity is preserved during extraction.
+{% endhint %}
+
 ## 1. Supported go-opera version <a href="#id-1.-current-version-of-go-opera" id="id-1.-current-version-of-go-opera"></a>
 
-The current supported version is go-opera 1.1.2-rc.3 for both mainnet and testnet.
+The current supported version is **go-opera 2.0.8-elemont** for testnet. Mainnet is still on `v2.0.0-rc.1` pending the next coordinated upgrade window. The legacy "1.1.2-rc.3" line that previously appeared here referred to the pre-elemont fork and is no longer current.
 
 ### 1.1 Reinstalling Opera
 
