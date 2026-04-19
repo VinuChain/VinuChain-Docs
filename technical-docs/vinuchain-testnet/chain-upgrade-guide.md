@@ -1,29 +1,31 @@
 # Chain Upgrade Guide (v2-elemont)
 
 {% hint style="info" %}
-**Latest release:** v2.0.6-elemont
+**Latest release:** v2.0.7-elemont
 {% endhint %}
 
 {% hint style="info" %}
 **TL;DR**
 
-* **Target tag:** `v2.0.6-elemont` (published)
-* **Binary version string:** `2.0.6-elemont`
+* **Target tag:** `v2.0.7-elemont` (published)
+* **Binary version string:** `2.0.7-elemont`
 * **Build requirements:** Go 1.25+, C compiler, \~50 GB free disk
 {% endhint %}
 
 {% hint style="warning" %}
-**Patch release semantics.** v2.0.6-elemont supersedes v2.0.5-elemont. The upgrade flags already active on your node (`Podgorica`, `SfcV2`, `Elemont`, `SfcV2Patch`, and `SfcV2Patch2` on testnet) remain active — this release adds **no new consensus flags**.
+**Patch release semantics.** v2.0.7-elemont supersedes v2.0.6-elemont. The upgrade flags already active on your node (`Podgorica`, `SfcV2`, `Elemont`, `SfcV2Patch`, and `SfcV2Patch2` on testnet) remain active — this release adds **no new consensus flags**.
 
-**What's new in v2.0.6-elemont:** A new JSON-RPC method `vc_getPaybackBalance` (in the `vc` namespace) that returns the currently available payback balance for an address. The method is rate-limited by a process-wide semaphore (8 in-flight, 2 s acquire timeout, rejection code `-32005`). There are no consensus changes, no receipt or event format changes, and no epoch-seal activation. See [Elemont — RPC Breaking Changes → v2.0.6-elemont Additions](chain-upgrade-rpc-breaking-changes.md#v206-elemont-additions) for the consumer-facing details.
+**What's new in v2.0.7-elemont:** A targeted hotfix to the per-peer event-processing quota in the gossip handler. v2.0.6 capped each peer at 200 in-flight DAG events / 100 in-flight stream items, but the dagstreamleecher delivers chunks of up to 500 items, so every catch-up chunk during sync was rejected with the warning `Peer exceeded event processing quota` and dropped. Validators upgrading to v2.0.6 saw this on every chunk. v2.0.7 raises both per-peer caps to 3,250 (matching `DagProcessor.EventsBufferLimit.Num`); the global `EventsSemaphoreLimit` is still validated at ≥2× this buffer, so a single peer remains bounded to ≤50% of total capacity and the original DoS guard is preserved. There are no consensus changes, no receipt or event format changes, no RPC additions, and no epoch-seal activation.
 
-**If you are already on v2.0.5-elemont:** the upgrade is a straight binary swap. No datadir reset, no peer reconnection, no new validator registration, no epoch-seal wait.
+**If you are already on v2.0.6-elemont:** the upgrade is a straight binary swap. No datadir reset, no peer reconnection, no new validator registration, no epoch-seal wait. After the restart, the warning storm stops on the next chunk.
 
-**If you are still on v2.0.4-elemont or earlier:** v2.0.6-elemont also carries the `SfcV2Patch2` flag introduced in v2.0.5 (testnet only). `SfcV2Patch2` installs the current Cycle-158 SFC bytecode at `0xFC00FACE00000000000000000000000000000000`, replacing the older b7ab5b5-era bytecode that was stuck on testnet. It fires once at the next epoch seal after a v2.0.5+ binary is first installed. Mainnet is unaffected — this flag is not set in mainnet rules.
+**If you are still on v2.0.5-elemont:** v2.0.7-elemont also carries the `vc_getPaybackBalance` JSON-RPC method introduced in v2.0.6 (rate-limited by a process-wide semaphore: 8 in-flight, 2 s acquire timeout, rejection code `-32005`). See [Elemont — RPC Breaking Changes → v2.0.6-elemont Additions](chain-upgrade-rpc-breaking-changes.md#v206-elemont-additions).
+
+**If you are still on v2.0.4-elemont or earlier:** v2.0.7-elemont also carries the `SfcV2Patch2` flag introduced in v2.0.5 (testnet only). `SfcV2Patch2` installs the current Cycle-158 SFC bytecode at `0xFC00FACE00000000000000000000000000000000`, replacing the older b7ab5b5-era bytecode that was stuck on testnet. It fires once at the next epoch seal after a v2.0.5+ binary is first installed. Mainnet is unaffected — this flag is not set in mainnet rules.
 {% endhint %}
 
 {% hint style="info" %}
-**Version string vs git tag.** The release is cut from git tag `v2.0.6-elemont`, but the binary reports `2.0.6-elemont`. Both refer to the same release; the leading `v` only appears on the git tag.
+**Version string vs git tag.** The release is cut from git tag `v2.0.7-elemont`, but the binary reports `2.0.7-elemont`. Both refer to the same release; the leading `v` only appears on the git tag.
 {% endhint %}
 
 ## Network Details
@@ -130,7 +132,7 @@ The build directory is independent of your node's `--datadir`. The build process
 ```bash
 git clone https://github.com/VinuChain/VinuChain.git $HOME/vinuchain-upgrade
 cd $HOME/vinuchain-upgrade
-git checkout v2.0.6-elemont
+git checkout v2.0.7-elemont
 make opera
 # Binary is at $HOME/vinuchain-upgrade/build/opera
 ```
@@ -140,7 +142,7 @@ make opera
 Substitute `/opt/vinuchain-upgrade` (or any other path) if `$HOME` is not the right partition for your setup — every later command in this guide that references `$HOME/vinuchain-upgrade` should be adjusted to match.
 
 {% hint style="info" %}
-**`go.mod` pins unchanged.** The `v2.0.6-elemont` tag uses the same go-vinu `v1.20.14-quota` and lachesis-base `v0.1.6-elemont` pins as v2.0.4 and v2.0.5. `git checkout v2.0.6-elemont` pulls in the correct pins, and `make opera` fetches dependencies on first build.
+**`go.mod` pins unchanged.** The `v2.0.7-elemont` tag uses the same go-vinu `v1.20.14-quota` and lachesis-base `v0.1.6-elemont` pins as v2.0.4 and v2.0.5. `git checkout v2.0.7-elemont` pulls in the correct pins, and `make opera` fetches dependencies on first build.
 {% endhint %}
 {% endstep %}
 
@@ -153,11 +155,11 @@ The newly-built binary is at `vinuchain-upgrade/build/opera`. Move into that dir
 ```bash
 cd $HOME/vinuchain-upgrade/build
 ./opera version
-# Expected: Version: 2.0.6-elemont
+# Expected: Version: 2.0.7-elemont
 ```
 
 {% hint style="info" %}
-`opera version` prints `2.0.6-elemont` — this matches the git tag `v2.0.6-elemont`. See the note at the top of this page.
+`opera version` prints `2.0.7-elemont` — this matches the git tag `v2.0.7-elemont`. See the note at the top of this page.
 {% endhint %}
 {% endstep %}
 
@@ -267,7 +269,7 @@ For testing or development, you can run in the foreground:
 
 What to expect:
 
-**Startup banner.** Every v2.x build prints the VinuChain banner. This is the first visual confirmation that you are running v2.0.6-elemont and not the previous binary:
+**Startup banner.** Every v2.x build prints the VinuChain banner. This is the first visual confirmation that you are running v2.0.7-elemont and not the previous binary:
 
 ```text
  ██╗   ██╗██╗███╗   ██╗██╗   ██╗ ██████╗██╗  ██╗ █████╗ ██╗███╗   ██╗
@@ -279,7 +281,7 @@ What to expect:
 
                         v2.0  -  ELEMONT
 
-  Version: 2.0.6-elemont
+  Version: 2.0.7-elemont
 ```
 
 **Staging log (testnet only, first-time `SfcV2Patch2` install).** If you are upgrading from v2.0.4-elemont (never ran v2.0.5+), you will see on first boot:
@@ -292,7 +294,7 @@ This confirms the flag is pending. If you do not see this line, either you are r
 
 Mainnet nodes, and any testnet node that already sealed the patch on a prior v2.0.5/v2.0.6 boot, will not show this line.
 
-**No new activation logs on v2.0.5 → v2.0.6 upgrades.** v2.0.6-elemont adds no consensus flags. A node going from v2.0.5 → v2.0.6 will not print any `Staged ... upgrade` lines — this is expected.
+**No new activation logs on v2.0.5 → v2.0.6 → v2.0.7 upgrades.** v2.0.7-elemont adds no consensus flags. A node moving between any of v2.0.5 / v2.0.6 / v2.0.7 will not print any `Staged ... upgrade` lines — this is expected.
 
 **Seal-time activation (testnet only).** At the next epoch seal after the staging log appears, you will see:
 
@@ -307,7 +309,7 @@ This is the one-time bytecode installation. After this fires, the SFC contract a
 | Check                                                         | Expected                                                                            |
 | ------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
 | Startup banner                                                | `VINUCHAIN v2.0 - ELEMONT` ASCII art printed to stderr                              |
-| `opera version`                                               | `Version: 2.0.6-elemont`                                                            |
+| `opera version`                                               | `Version: 2.0.7-elemont`                                                            |
 | Block production                                              | Resumes within seconds of startup; block numbers advance                            |
 | Peer count                                                    | Returns to prior steady-state within minutes                                        |
 | Staging log (testnet, first v2.0.5+ boot from older binary)   | 1× `Staged SfcV2Patch2 upgrade from binary rules; will activate at next epoch seal` |
@@ -365,15 +367,17 @@ That guide uses the correct `opera validator new` command for generating a valid
 
 ## Rollback
 
-Because v2.0.6-elemont is a patch release and not a hard fork, rollback is straightforward:
+Because v2.0.7-elemont is a patch release and not a hard fork, rollback is straightforward:
 
 1. Stop the node (clean shutdown).
-2. Replace `opera` with the v2.0.5-elemont (or v2.0.4-elemont) release binary.
+2. Replace `opera` with the v2.0.6-elemont (or v2.0.5-elemont) release binary.
 3. Start the node.
 
 No datadir changes are needed.
 
 {% hint style="info" %}
+**v2.0.7 → v2.0.6 rollback:** The only functional difference is the per-peer event-processing quota reverts to its smaller value, so the `Peer exceeded event processing quota` warning storm returns during sync. Consensus state, receipts, and block hashes are identical between the two versions.
+
 **v2.0.6 → v2.0.5 rollback:** The only functional difference is the loss of the `vc_getPaybackBalance` RPC endpoint. Consensus state, receipts, and block hashes are identical between the two versions.
 {% endhint %}
 
@@ -388,7 +392,7 @@ No datadir changes are needed.
 ### Node won't start after upgrade
 
 1. Check logs: `journalctl -u opera -f` (systemd) or the Docker / terminal output for your install method.
-2. Verify the binary version is correct: `opera version` must print `2.0.6-elemont`.
+2. Verify the binary version is correct: `opera version` must print `2.0.7-elemont`.
 3. If the database is reported as corrupted, stop the node, delete the chaindata directory, and re-sync from a published snapshot (or from genesis if no snapshot is available).
 
 ### Node starts but doesn't produce events
@@ -399,11 +403,11 @@ No datadir changes are needed.
 
 ### "Database is from a newer version" error
 
-This should not occur on a v2.0.4-elemont → v2.0.6-elemont or v2.0.5-elemont → v2.0.6-elemont upgrade because the chain schema has not changed across these releases.
+This should not occur on a v2.0.4-elemont → v2.0.7-elemont or v2.0.5-elemont → v2.0.7-elemont upgrade because the chain schema has not changed across these releases.
 
 ### Consensus stall / no new blocks
 
-v2.0.6-elemont does not change consensus rules — the only additions since v2.0.5 are RPC-side (`vc_getPaybackBalance` and its concurrency cap). `SfcV2Patch2`, carried forward from v2.0.5, only modifies contract bytecode state, not block validation. A stall after upgrading a single node is almost certainly local (peering, disk, or key-loading) rather than network-wide.
+v2.0.7-elemont does not change consensus rules — the only additions since v2.0.5 are RPC-side (`vc_getPaybackBalance` and its concurrency cap, from v2.0.6) and a node-internal per-peer quota resize (v2.0.7). `SfcV2Patch2`, carried forward from v2.0.5, only modifies contract bytecode state, not block validation. A stall after upgrading a single node is almost certainly local (peering, disk, or key-loading) rather than network-wide.
 
 ### `vc_getPaybackBalance` returns `-32005`
 
@@ -422,7 +426,7 @@ The recommended procedure is to upgrade within a bounded window so that the vali
 
 ### Recovering a node that missed the window
 
-Because non-upgraded nodes remain consensus-compatible with the network under v2.0.6-elemont (no new consensus flags since v2.0.5), a node that missed the window is **not** forked off. Upgrading at any later point is a plain binary swap.
+Because non-upgraded nodes remain consensus-compatible with the network under v2.0.7-elemont (no new consensus flags since v2.0.5), a node that missed the window is **not** forked off. Upgrading at any later point is a plain binary swap.
 
 {% tabs %}
 {% tab title="nohup (standard)" %}
@@ -474,4 +478,4 @@ If you encounter issues during the upgrade, reach out to the VinuChain team thro
 
 ***
 
-_Last updated: 2026-04-19 · VinuChain tag `v2.0.6-elemont` (published) · go-vinu `v1.20.14-quota` · lachesis-base `v0.1.6-elemont`_
+_Last updated: 2026-04-19 · VinuChain tag `v2.0.7-elemont` (published) · go-vinu `v1.20.14-quota` · lachesis-base `v0.1.6-elemont`_

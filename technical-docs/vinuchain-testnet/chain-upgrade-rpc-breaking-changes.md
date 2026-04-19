@@ -9,15 +9,29 @@ For the validator upgrade procedure, see the
 [Chain Upgrade Guide](chain-upgrade-guide.md).
 
 {% hint style="info" %}
-**Latest release: `v2.0.6-elemont`** — supersedes v2.0.5-elemont. This
+**Latest release: `v2.0.7-elemont`** — supersedes v2.0.6-elemont. This
+release is a **node-internal hotfix only**: it raises the per-peer
+in-flight event-processing quota in the gossip handler so that legitimate
+sync chunks (up to 500 events per chunk, 6 in-flight per session peer)
+are no longer rejected with the warning `Peer exceeded event processing
+quota`. There are **no JSON-RPC surface changes, no new methods, no new
+error responses, no consensus changes, no new upgrade flags, and no
+receipt or event format changes**. Existing receipts, method selectors,
+response shapes, batch caps, concurrency caps, and rate-limit codes are
+all identical to v2.0.6. See [§ v2.0.7-elemont Additions](#v207-elemont-additions)
+below.
+
+All v2.0.2/v2.0.3/v2.0.4/v2.0.5/v2.0.6 sections below remain in force.
+{% endhint %}
+
+{% hint style="info" %}
+**Prior release: `v2.0.6-elemont`** — supersedes v2.0.5-elemont. This
 release adds a new JSON-RPC method `vc_getPaybackBalance` and an RPC-safe
 payback accessor with a process-wide concurrency cap. There are **no
 consensus changes, no new upgrade flags, and no receipt or event format
 changes**; existing receipts, method selectors, and response shapes are
 identical to v2.0.5. See [§ v2.0.6-elemont Additions](#v206-elemont-additions)
 below.
-
-All v2.0.2/v2.0.3/v2.0.4/v2.0.5 sections below remain in force.
 {% endhint %}
 
 {% hint style="info" %}
@@ -82,6 +96,61 @@ one-time consensus-changing activations.
   only — no RPC surface change, no receipt change, no new error
   responses for consumers.
 {% endhint %}
+
+---
+
+## v2.0.7-elemont Additions
+
+v2.0.7-elemont is a **pure node-internal hotfix** on top of v2.0.6-elemont.
+No consensus rules change, no upgrade flags, no receipt format changes,
+no JSON-RPC surface changes, no new methods, and no new error responses
+on existing endpoints. Nodes on mixed v2.0.6 / v2.0.7 remain fully
+compatible and produce identical state roots.
+
+### What changed
+
+The per-peer in-flight quota in the gossip handler
+(`gossip/peer_ratelimit.go`) was sized smaller than a single legitimate
+DAG sync chunk:
+
+| Quota                       | v2.0.6 cap | v2.0.7 cap | Sized to                                                |
+| --------------------------- | ---------- | ---------- | ------------------------------------------------------- |
+| `peerEventQuota` (DAG events) | 200        | 3,250      | `ParallelChunksDownload * DefaultChunkItemsNum + softLimitItems` (matches `DagProcessor.EventsBufferLimit.Num`) |
+| `peerStreamQuota` (BV/BR/EP)  | 100        | 3,250      | Same formula                                              |
+
+Because the dagstreamleecher delivers chunks of up to
+`DefaultChunkItemsNum = 500` events with `ParallelChunksDownload = 6`
+chunks in flight per active sync session (sessions are per-peer via
+`IsValidSession`), v2.0.6 dropped every legitimate chunk during catch-up
+and logged `Peer exceeded event processing quota` on every drop. v2.0.7
+raises both per-peer caps to match the dagprocessor's own buffer
+(`EventsBufferLimit.Num = 3,250`).
+
+### DoS guarantee preserved
+
+`gossip/config.go::Config.Validate()` still enforces
+`EventsSemaphoreLimit ≥ 2 × EventsBufferLimit`, so the global
+event-processing semaphore is at least 6,500 items. A single peer
+remains bounded to ≤50% of total capacity (3,250 of ≥6,500). v2.0.7 also
+adds a startup sanity assertion that fails fast if anyone ever shrinks
+the per-peer cap below the processor buffer in a future change, so this
+class of regression cannot recur silently.
+
+### Who is affected
+
+- **Validator and RPC operators**: no consumer-facing action needed.
+  After the binary swap, the warning storm stops on the next chunk.
+- **dApps, wallets, indexers, explorers**: no action — the JSON-RPC
+  surface is byte-for-byte identical to v2.0.6.
+- **Network analysts / observability**: any alerting on the
+  `Peer exceeded event processing quota` log line should be updated to
+  reflect that the warning is now an actual abuse signal rather than
+  background sync noise.
+
+### Activation
+
+Immediate on restart. No epoch-seal wait, no staging log, no flag
+transition.
 
 ---
 
