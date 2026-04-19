@@ -1,20 +1,33 @@
 # Chain Upgrade Guide (v2-elemont)
 
 {% hint style="info" %}
-**Latest release:** v2.0.9-elemont
+**Latest release:** v2.0.10-elemont
 {% endhint %}
 
 {% hint style="info" %}
 **TL;DR**
 
-* **Target tag:** `v2.0.9-elemont` (published)
-* **Binary version string:** `2.0.9-elemont`
+* **Target tag:** `v2.0.10-elemont` (published)
+* **Binary version string:** `2.0.10-elemont`
 * **Build requirements:** Go 1.25+, C compiler, \~50 GB free disk
-* **Fresh testnet genesis:** [vitainu-genesis-testnet-20260419.g](https://vinu-blockchain-genesis.s3.amazonaws.com/vitainu-genesis-testnet-20260419.g) (SHA256 `a541d761e5db846b84c5bf0eef9aa09f45246254a2876ab0f8caf0b47b32e0d9`, ~450 MB, history baked through epoch ~5637 / block ~1.42M — recognized as trusted preset under v2.0.9, no `--genesis.allowExperimental` required)
+* **Fresh testnet genesis:** [vitainu-genesis-testnet-20260419.g](https://vinu-blockchain-genesis.s3.amazonaws.com/vitainu-genesis-testnet-20260419.g) (SHA256 `a541d761e5db846b84c5bf0eef9aa09f45246254a2876ab0f8caf0b47b32e0d9`, ~450 MB, history baked through epoch ~5637 / block ~1.42M — recognized as trusted preset under v2.0.9+, no `--genesis.allowExperimental` required). **Fresh-install operators should restore from the v2.0.10 post-seal chaindata snapshot at `s3://vinu-blockchain-genesis/chaindata-snapshots/testnet-chaindata-v2.0.10-*.tar.gz`** — required because the fresh-from-genesis replay path diverges on the first `SfcV2Patch*` seal.
+* **New on testnet:** one-shot `SfcV2Patch3` upgrade flag that re-flashes the SFC bytecode at `0xFC00FACE...` with the Cycle-159 build. Fires once at the next epoch seal after a v2.0.10 binary boot.
 {% endhint %}
 
 {% hint style="warning" %}
-**Patch release semantics.** v2.0.9-elemont supersedes v2.0.8-elemont. The upgrade flags already active on your node (`Podgorica`, `SfcV2`, `Elemont`, `SfcV2Patch`, and `SfcV2Patch2` on testnet) remain active — this release adds **no new consensus flags** and **no binary behavior change**.
+**Patch release semantics.** v2.0.10-elemont supersedes v2.0.9-elemont. Adds **one new consensus flag** (`SfcV2Patch3`, testnet only) that re-flashes on-chain SFC bytecode at a single epoch seal. Mainnet rules are unchanged.
+
+**What's new in v2.0.10-elemont:** Fixes the SFC inline reentrancy guard. The Cycle-158 bytecode installed by `SfcV2Patch2` required `_reentrancyGuardCounter == 1` in the `nonReentrant` modifier, but that storage slot was appended to SFC after the contract was genesis-deployed at `0xFC00FACE...`, so the slot is `0` on-chain. `initialize()` is `initializer`-gated and cannot re-run after an evmwriter bytecode patch to populate the slot. The observable effect: **every `nonReentrant` entrypoint** — `delegate`, `undelegate`, `withdraw`, `claimRewards`, `restakeRewards`, `stashRewards`, `createValidator`, plus four admin paths — **reverted with `"ReentrancyGuard: reentrant call"` on the first external call**. The Cycle-159 bytecode installed by `SfcV2Patch3` relaxes the guard to `_reentrancyGuardCounter < 2` at all 11 inlined modifier sites: state `0` (never-written) and `1` (initialized) both count as "not entered", while `2` still means "actively entered" and any value `≥ 2` still reverts to fail closed on storage corruption. The post-body write normalises `0 → 1`, so after the first successful guarded call on each contract instance the standard OZ 1/2 pattern resumes.
+
+**Byte-diff vs Cycle-158:** exactly the 11 guard sites (one `EQ 1` pattern flipped to `LT 2` per inlined site) plus the 32-byte Solidity bzzr metadata hash. Same solc settings (`0.5.17+commit.d19bba13`, `--optimize --optimize-runs=10000 --evm-version=istanbul`).
+
+**Mainnet impact:** None at the consensus level. Mainnet has not yet activated `SfcV2` / `SfcV2Patch` / `SfcV2Patch2`, and the Cycle-159 bytecode will be installed directly when mainnet first activates `SfcV2` — no separate `SfcV2Patch3` activation is required on mainnet.
+
+**If you are already on v2.0.9-elemont:** straight binary swap. No datadir reset, no peer reconnection, no new validator registration. After restart, at the next epoch seal the validator logs will show `Re-applying SFC V2 bytecode upgrade (patch 3)` exactly once — that is the seal-time activation. No further action required.
+
+**Fresh install from genesis:** the distributed testnet genesis `vitainu-genesis-testnet-20260419.g` pre-dates `SfcV2Patch3`. A fresh-install node replaying from that genesis will seal `SfcV2`, `SfcV2Patch`, `SfcV2Patch2`, **and `SfcV2Patch3`** all at its first epoch seal — at a replay block different from the live chain's historical activation points — producing a `wrong event epoch hash` divergence against live peers. **Restore from the v2.0.10 post-seal chaindata snapshot** (`s3://vinu-blockchain-genesis/chaindata-snapshots/testnet-chaindata-v2.0.10-*.tar.gz`) to bypass the replay entirely and join at tip. The prior v2.0.8 chaindata snapshot is stale under v2.0.10 rules and must not be used.
+
+**What's new in v2.0.9-elemont:** Adds a trusted-preset `AllowedOperaGenesis` entry recognizing the fresh 2026-04-19 testnet genesis export (`vitainu-genesis-testnet-20260419.g`). Operators doing fresh installs from that genesis no longer need `--genesis.allowExperimental` and no longer see the `SECURITY WARNING: Genesis file doesn't refer to any trusted preset` line on startup. Existing-datadir operators (those who already have chaindata) do not need to upgrade to v2.0.9 — v2.0.8 is functionally equivalent for them. **The 2024-06-21 testnet genesis (`vitainu-genesis-testnet-20240621.g`) is archived and must not be used for fresh installs under v2.0.8+** — it pre-dates `SfcV2` / `SfcV2Patch` / `SfcV2Patch2` and produces a `wrong event epoch hash` divergence on replay.
 
 **What's new in v2.0.9-elemont:** Adds a trusted-preset `AllowedOperaGenesis` entry recognizing the fresh 2026-04-19 testnet genesis export (`vitainu-genesis-testnet-20260419.g`). Operators doing fresh installs from that genesis no longer need `--genesis.allowExperimental` and no longer see the `SECURITY WARNING: Genesis file doesn't refer to any trusted preset` line on startup. Existing-datadir operators (those who already have chaindata) do not need to upgrade to v2.0.9 — v2.0.8 is functionally equivalent for them. **The 2024-06-21 testnet genesis (`vitainu-genesis-testnet-20240621.g`) is archived and must not be used for fresh installs under v2.0.8+** — it pre-dates `SfcV2` / `SfcV2Patch` / `SfcV2Patch2` and produces a `wrong event epoch hash` divergence on replay.
 

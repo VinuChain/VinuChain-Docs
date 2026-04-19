@@ -71,7 +71,9 @@ You can turn on and off **http** and **ws** options, use your ports and addresse
 ```
 
 {% hint style="warning" %}
-**Use only the 2026-04-19 testnet genesis under v2.0.8+ binary.** The legacy 2024-06-21 file pre-dates `SfcV2` / `SfcV2Patch` / `SfcV2Patch2` and produces a `wrong event epoch hash` divergence on replay. v2.0.9-elemont recognizes the 2026-04-19 genesis as a trusted preset, so no `--genesis.allowExperimental` is required.
+**Use only the 2026-04-19 testnet genesis under v2.0.8+ binary.** The legacy 2024-06-21 file pre-dates `SfcV2` / `SfcV2Patch` / `SfcV2Patch2` and produces a `wrong event epoch hash` divergence on replay. v2.0.9+ recognizes the 2026-04-19 genesis as a trusted preset, so no `--genesis.allowExperimental` is required.
+
+**Under v2.0.10-elemont, fresh-install operators must also restore from the post-seal chaindata snapshot** at `s3://vinu-blockchain-genesis/chaindata-snapshots/testnet-chaindata-v2.0.10-*.tar.gz`. Replaying from genesis alone under v2.0.10 seals `SfcV2Patch3` at a different block than the live chain did, producing an identical `wrong event epoch hash` divergence. The snapshot bypasses the replay entirely and joins at tip. The older v2.0.8 snapshot is stale under v2.0.10 rules and must not be used.
 {% endhint %}
 
 ### **Run node**
