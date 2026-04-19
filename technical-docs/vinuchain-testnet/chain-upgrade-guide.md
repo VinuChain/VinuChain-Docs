@@ -206,7 +206,26 @@ tail -f validator.log
 **Optional flags** (add only if you were using them before):
 
 * `--datadir /custom/path` — if chain data is not in the default `~/.opera` location
-* `--nat extip:YOUR_PUBLIC_IP` — if needed for P2P networking configuration
+
+{% hint style="danger" %}
+**`--nat extip:YOUR_PUBLIC_IP` is effectively required, not optional.**
+
+Without `--nat`, opera advertises its enode at `ip=127.0.0.1` in the peer discovery table. The symptom is almost indistinguishable from a successful start:
+
+* Process runs fine, logs scroll normally
+* `New local node record` line shows `ip=127.0.0.1 udp=… tcp=…`
+* `admin.peers` returns one or zero entries
+* `net.peerCount == 1`, and that peer is usually an unrelated node stuck on an old epoch
+* `New DAG summary` reports `age=15h…` or older — your node has caught up to the single stale peer and halted, because no other peer can dial you back
+
+The fix is to pass `--nat extip:<your_public_ipv4>` on every launch. After restart, verify the startup log shows your real public IP:
+
+```
+INFO New local node record  seq=… id=… ip=<YOUR_PUBLIC_IP> udp=3000 tcp=3000
+```
+
+If you do not know your public IPv4, `curl -s ifconfig.me` from the node host is the simplest check. Hosting providers like Hetzner, OVH, and AWS all give each instance a routable IPv4 you can copy verbatim into `--nat extip:`.
+{% endhint %}
 
 {% hint style="info" %}
 **Slow peer discovery on small networks?** On a small or freshly restarted testnet, discv5 discovery via `--bootnodes` can take several minutes to populate the peer table — and may fail entirely if the bootnode itself is restarting at the same time. The most reliable fix is to drop a `static-nodes.json` file inside `<datadir>/go-opera/` that lists every peer enode you want a persistent connection to. Opera reads it on every startup and dials those peers immediately, bypassing discovery.
@@ -302,7 +321,7 @@ Mainnet nodes, and any testnet node that already sealed the patch on a prior v2.
 INFO Re-applying SFC V2 bytecode upgrade (patch 2)   block=<N>
 ```
 
-This is the one-time bytecode installation. After this fires, the SFC contract at `0xFC00FACE00000000000000000000000000000000` contains the current Cycle-158 bytecode and can be verified on the testnet explorer using the current `sfc_fixed.sol` source.
+This is the one-time bytecode installation. After this fires, the SFC contract at `0xFC00FACE00000000000000000000000000000000` contains the current Cycle-158 bytecode and can be verified on the testnet explorer using the current SFC source at [`vinuchain-lists/contracts/vinuchain/SFC.sol`](https://github.com/VinuChain/vinuchain-lists/blob/main/contracts/vinuchain/SFC.sol) (ABI alongside at `SFC_abi.json`).
 
 #### Verification checklist
 
@@ -315,7 +334,7 @@ This is the one-time bytecode installation. After this fires, the SFC contract a
 | Staging log (testnet, first v2.0.5+ boot from older binary)   | 1× `Staged SfcV2Patch2 upgrade from binary rules; will activate at next epoch seal` |
 | Staging log (v2.0.5 → v2.0.6 upgrade, or mainnet, or testnet already sealed patch2) | None                                                                     |
 | Seal-time log (testnet, first epoch seal after staging)       | 1× `Re-applying SFC V2 bytecode upgrade (patch 2)   block=<N>`                     |
-| SFC verification on testnet explorer (after seal)             | `sfc_fixed.sol` with solc 0.5.17 verifies successfully                             |
+| SFC verification on testnet explorer (after seal)             | `vinuchain-lists/contracts/vinuchain/SFC.sol` with solc 0.5.17 verifies successfully |
 | Block hash vs peer                                            | Identical                                                                           |
 | `rpc_modules` returns                                         | Includes `"vc":"1.0"` (new namespace with `vc_getPaybackBalance`)                   |
 | `vc_getPaybackBalance` call                                   | Returns hex-encoded wei (or `0x0` for ineligible addresses / Podgorica inactive)    |
@@ -408,6 +427,31 @@ This should not occur on a v2.0.4-elemont → v2.0.7-elemont or v2.0.5-elemont �
 ### Consensus stall / no new blocks
 
 v2.0.7-elemont does not change consensus rules — the only additions since v2.0.5 are RPC-side (`vc_getPaybackBalance` and its concurrency cap, from v2.0.6) and a node-internal per-peer quota resize (v2.0.7). `SfcV2Patch2`, carried forward from v2.0.5, only modifies contract bytecode state, not block validation. A stall after upgrading a single node is almost certainly local (peering, disk, or key-loading) rather than network-wide.
+
+### `WARN Incoming event rejected ... err="wrong event epoch hash"`
+
+Your node's local chain state diverged from canonical testnet at some epoch boundary. Every new event validators emit carries the hash of the previous epoch's state, and your node's locally-computed epoch state hash no longer matches the network's. This is not a v2.0.7 bug — it surfaces whenever a node was offline during a governance / SFC state transition, had corrupted chaindata, or synced initial state from a peer that was itself on a diverged fork. There is no protocol-level recovery; chaindata must be replaced.
+
+**Recovery procedure:**
+
+1. Stop opera cleanly (`pkill -TERM opera` or `systemctl stop opera`).
+2. **Back up your validator identity.** Copy `<datadir>/keystore/` and `<datadir>/go-opera/nodekey` somewhere safe before deleting anything. These are your validator key material — losing them means losing validator identity on-chain.
+3. Delete the chaindata directory in place: `rm -rf <datadir>/chaindata <datadir>/go-opera` (adjust names to match your layout). Keep the datadir parent.
+4. Restore `keystore/` and `go-opera/nodekey` back into the datadir.
+5. Ensure `--nat extip:<your_public_ip>` is set and `<datadir>/go-opera/static-nodes.json` contains the canonical bootnode list from the [Start your node](#start-your-node) section.
+6. Restart opera and let it resync from genesis.
+
+### Stuck at `net.peerCount == 1` with one stale peer
+
+Symptom: `admin.peers` shows exactly one peer on a prior opera version, frozen at an old epoch. Your node catches up to that single peer's last block and then stops advancing.
+
+This almost always means your enode record is advertising `127.0.0.1` (no peers outside that one random discovery hit can dial you back). Fix:
+
+1. Confirm the startup log line `New local node record  ... ip=…` — if `ip=127.0.0.1`, `--nat extip` is missing.
+2. Stop opera, add `--nat extip:<your_public_ipv4>` to the launch command, ensure `static-nodes.json` lists the canonical testnet bootnodes (see the [Start your node](#start-your-node) section), and restart.
+3. Within a few minutes `net.peerCount` should be 4+ and `age` on `New DAG summary` lines should drop into the second / millisecond range.
+
+If the peer count stays stuck at 1 after fixing `--nat`, check your host firewall / cloud security group: TCP and UDP on your `--port` (default 3000) must be open to `0.0.0.0/0`.
 
 ### `vc_getPaybackBalance` returns `-32005`
 

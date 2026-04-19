@@ -236,7 +236,7 @@ addition is the `SfcV2Patch2` upgrade flag (testnet only):
 | Scope | Change | Consumer impact |
 | --- | --- | --- |
 | `SfcV2Patch2` (testnet) | Re-flashes SFC contract bytecode at `0xFC00FACE00000000000000000000000000000000` with current Cycle-158 45,240-byte source at next epoch seal | None for RPC consumers — no new methods, fields, or response shape changes. dApps calling `staticCall` on the SFC will now interact with the corrected bytecode |
-| SFC contract verification | After the epoch seal that fires `SfcV2Patch2`, the contract at `0xFC00FACE00000000000000000000000000000000` can be verified on testnet explorer using current `sfc_fixed.sol` and solc 0.5.17 | Infrastructure operators running their own Blockscout instance against testnet can now complete contract verification |
+| SFC contract verification | After the epoch seal that fires `SfcV2Patch2`, the contract at `0xFC00FACE00000000000000000000000000000000` can be verified on testnet explorer using the current SFC source at [`vinuchain-lists/contracts/vinuchain/SFC.sol`](https://github.com/VinuChain/vinuchain-lists/blob/main/contracts/vinuchain/SFC.sol) and solc 0.5.17 | Infrastructure operators running their own Blockscout instance against testnet can now complete contract verification |
 
 **Who is affected:**
 
