@@ -176,10 +176,16 @@ You can download a genesis file from the Drive above, or from the following comm
 **Testnet:**
 
 ```
-# Download Testnet genesis file
-(validator)$ curl https://vinu-blockchain-genesis.s3.amazonaws.com/vitainu-genesis-testnet-20240621.g \
---output vinuchain-genesis-testnet.g
+# Download Testnet genesis file (2026-04-19, with history through epoch ~5637 / block ~1.42M)
+(validator)$ curl -LO https://vinu-blockchain-genesis.s3.amazonaws.com/vitainu-genesis-testnet-20260419.g
+(validator)$ curl -LO https://vinu-blockchain-genesis.s3.amazonaws.com/vitainu-genesis-testnet-20260419.g.sha256
+(validator)$ sha256sum -c vitainu-genesis-testnet-20260419.g.sha256
+(validator)$ mv vitainu-genesis-testnet-20260419.g vinuchain-genesis-testnet.g
 ```
+
+{% hint style="warning" %}
+**Do not use the 2024-06-21 testnet genesis (`vitainu-genesis-testnet-20240621.g`) under v2.0.8+ binary.** It pre-dates `SfcV2` / `SfcV2Patch` / `SfcV2Patch2`, and a fresh replay under current binary rules produces a state hash that does not match live testnet history — the first inbound event from any current-tip peer rejects with `err="wrong event epoch hash"`. The 2026-04-19 genesis above has history baked post-all-patches and is recognized as a trusted preset by v2.0.9-elemont (no `--genesis.allowExperimental` required). Older testnet genesis files (2023-08-31 and 2024-06-21) remain in the bucket for archival only; do not use them for new installs.
+{% endhint %}
 
 ### Start Opera Read-Only Node
 
@@ -199,12 +205,15 @@ First, start the **Opera read-only node** to interact with it and to create a va
 **Testnet:**
 
 ```
-# Start opera node (Testnet)
+# Start opera node (Testnet) — v2.0.9-elemont or later recognizes the 2026-04-19
+# genesis as a trusted preset, so --genesis.allowExperimental is no longer required.
+# On older binaries, add --genesis.allowExperimental; also replace --nat any with
+# --nat extip:<your_public_ipv4> in any production setup (see Chain Upgrade Guide).
 (validator)$ cd build/
-(validator)$ nohup ./opera --port 3000 --nat any 
---genesis ../vinuchain-genesis-testnet.g --genesis.allowExperimental 
---bootnodes enode://e2a95c1b8d85b018b8e88133bec342801b42e19b59a52e030462d04a5549f02fc57215b4ca97771ec6b3a0d30a78603fdccd2b5091c44f6ac439d6c8be8bc539@44.239.129.39:3000
-> opera.log &
+(validator)$ nohup ./opera --port 3000 --nat extip:<YOUR_PUBLIC_IPV4> \
+    --genesis ../vinuchain-genesis-testnet.g \
+    --bootnodes enode://e2a95c1b8d85b018b8e88133bec342801b42e19b59a52e030462d04a5549f02fc57215b4ca97771ec6b3a0d30a78603fdccd2b5091c44f6ac439d6c8be8bc539@44.239.129.39:3000 \
+    > opera.log &
 ```
 
 * Replace `GENESIS_FILENAME` with the actual Genesis file's filename you are using.

@@ -64,9 +64,15 @@ You can turn on and off **http** and **ws** options, use your ports and addresse
 ### **Download genesis file**
 
 ```
-# Download Testnet genesis file
-(validator)$ curl https://vinu-blockchain-genesis.s3.amazonaws.com/vitainu-genesis-testnet-20240621.g 
+# Download Testnet genesis file (2026-04-19, with history through epoch ~5637)
+(validator)$ curl -LO https://vinu-blockchain-genesis.s3.amazonaws.com/vitainu-genesis-testnet-20260419.g
+(validator)$ curl -LO https://vinu-blockchain-genesis.s3.amazonaws.com/vitainu-genesis-testnet-20260419.g.sha256
+(validator)$ sha256sum -c vitainu-genesis-testnet-20260419.g.sha256
 ```
+
+{% hint style="warning" %}
+**Use only the 2026-04-19 testnet genesis under v2.0.8+ binary.** The legacy 2024-06-21 file pre-dates `SfcV2` / `SfcV2Patch` / `SfcV2Patch2` and produces a `wrong event epoch hash` divergence on replay. v2.0.9-elemont recognizes the 2026-04-19 genesis as a trusted preset, so no `--genesis.allowExperimental` is required.
+{% endhint %}
 
 ### **Run node**
 
@@ -77,8 +83,7 @@ You can turn on and off **http** and **ws** options, use your ports and addresse
 (validator)$ cd build
 
 (validator)$ nohup ./opera \
-    --genesis ../vitainu-genesis-testnet-20240621.g \
-    --genesis.allowExperimental \
+    --genesis ../vitainu-genesis-testnet-20260419.g \
     --datadir ./datadir \
     --http \
     --http.addr=your_hostname \

@@ -1,19 +1,22 @@
 # Chain Upgrade Guide (v2-elemont)
 
 {% hint style="info" %}
-**Latest release:** v2.0.8-elemont
+**Latest release:** v2.0.9-elemont
 {% endhint %}
 
 {% hint style="info" %}
 **TL;DR**
 
-* **Target tag:** `v2.0.8-elemont` (published)
-* **Binary version string:** `2.0.8-elemont`
+* **Target tag:** `v2.0.9-elemont` (published)
+* **Binary version string:** `2.0.9-elemont`
 * **Build requirements:** Go 1.25+, C compiler, \~50 GB free disk
+* **Fresh testnet genesis:** [vitainu-genesis-testnet-20260419.g](https://vinu-blockchain-genesis.s3.amazonaws.com/vitainu-genesis-testnet-20260419.g) (SHA256 `a541d761e5db846b84c5bf0eef9aa09f45246254a2876ab0f8caf0b47b32e0d9`, ~450 MB, history baked through epoch ~5637 / block ~1.42M — recognized as trusted preset under v2.0.9, no `--genesis.allowExperimental` required)
 {% endhint %}
 
 {% hint style="warning" %}
-**Patch release semantics.** v2.0.8-elemont supersedes v2.0.7-elemont. The upgrade flags already active on your node (`Podgorica`, `SfcV2`, `Elemont`, `SfcV2Patch`, and `SfcV2Patch2` on testnet) remain active — this release adds **no new consensus flags**.
+**Patch release semantics.** v2.0.9-elemont supersedes v2.0.8-elemont. The upgrade flags already active on your node (`Podgorica`, `SfcV2`, `Elemont`, `SfcV2Patch`, and `SfcV2Patch2` on testnet) remain active — this release adds **no new consensus flags** and **no binary behavior change**.
+
+**What's new in v2.0.9-elemont:** Adds a trusted-preset `AllowedOperaGenesis` entry recognizing the fresh 2026-04-19 testnet genesis export (`vitainu-genesis-testnet-20260419.g`). Operators doing fresh installs from that genesis no longer need `--genesis.allowExperimental` and no longer see the `SECURITY WARNING: Genesis file doesn't refer to any trusted preset` line on startup. Existing-datadir operators (those who already have chaindata) do not need to upgrade to v2.0.9 — v2.0.8 is functionally equivalent for them. **The 2024-06-21 testnet genesis (`vitainu-genesis-testnet-20240621.g`) is archived and must not be used for fresh installs under v2.0.8+** — it pre-dates `SfcV2` / `SfcV2Patch` / `SfcV2Patch2` and produces a `wrong event epoch hash` divergence on replay.
 
 **What's new in v2.0.8-elemont:** A targeted hotfix to `validatePeerProgress` in the gossip sync handler. v2.0.7's `validatePeerProgress` rejected any peer whose `ProgressMsg` reported an epoch more than 1,000 ahead of local, or a block more than 5,000 ahead. The cap was added as a Round-2 audit-finding guard, but it had no downstream DoS benefit (opera's `lightCheck` and `epochcheck.ErrNotRelevant` already gate event acceptance on epoch equality, so a peer lying about progress advances no state). The side effect was that **any validator that went offline long enough to fall more than 1,000 epochs behind tip rejected every live peer on the handshake** and could never rejoin — the stale node's log would show `Looking for peers peercount=1 tried=N` with `tried` climbing and `last_id` never advancing; the live-peer's log would show the stale node being dropped with `Removing p2p peer req=true err="subprotocol error" duration=~175ms` every ~30 s. v2.0.8 removes both drift caps and the unused constants, keeps the structural `progress.Epoch == 0` check, and restores the ability for a long-offline validator to catch up without a chaindata wipe. There are no consensus changes, no receipt or event format changes, no RPC additions, and no epoch-seal activation.
 
