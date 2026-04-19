@@ -9,7 +9,31 @@ For the validator upgrade procedure, see the
 [Chain Upgrade Guide](chain-upgrade-guide.md).
 
 {% hint style="info" %}
-**Latest release: `v2.0.8-elemont`** — supersedes v2.0.7-elemont. This
+**Latest release: `v2.0.10-elemont`** — supersedes v2.0.9-elemont. This
+release adds a new testnet-only consensus flag (`SfcV2Patch3`) that
+re-flashes the on-chain SFC bytecode at `0xFC00FACE...` with the
+Cycle-159 build to fix the inline reentrancy guard. There are **no
+JSON-RPC surface changes, no new methods, no new error responses, no
+receipt or event format changes**. Existing receipts, method selectors,
+response shapes, batch caps, concurrency caps, and rate-limit codes are
+all identical to v2.0.9. However, **observable on-chain behavior
+changes**: every SFC `nonReentrant` entrypoint (`delegate`,
+`undelegate`, `withdraw`, `claimRewards`, `restakeRewards`,
+`stashRewards`, `createValidator`) that previously reverted with
+`"ReentrancyGuard: reentrant call"` on its first external call now
+proceeds as designed. See [§ v2.0.10-elemont Additions](#v2010-elemont-additions)
+below.
+
+**Prior release: `v2.0.9-elemont`** — added a trusted-preset genesis
+entry only. No RPC, consensus, or receipt changes vs v2.0.8; no new
+section needed here.
+
+All v2.0.2/v2.0.3/v2.0.4/v2.0.5/v2.0.6/v2.0.7/v2.0.8 sections below
+remain in force.
+{% endhint %}
+
+{% hint style="info" %}
+**Prior release: `v2.0.8-elemont`** — supersedes v2.0.7-elemont. This
 release is a **node-internal hotfix only**: it removes a peer-progress
 drift cap in the gossip sync handler that was locking out any validator
 that fell more than 1,000 epochs behind chain tip. There are **no
@@ -19,9 +43,6 @@ changes**. Existing receipts, method selectors, response shapes, batch
 caps, concurrency caps, and rate-limit codes are all identical to
 v2.0.7. See [§ v2.0.8-elemont Additions](#v208-elemont-additions)
 below.
-
-All v2.0.2/v2.0.3/v2.0.4/v2.0.5/v2.0.6/v2.0.7 sections below remain in
-force.
 {% endhint %}
 
 {% hint style="info" %}
@@ -112,6 +133,105 @@ one-time consensus-changing activations.
 {% endhint %}
 
 ---
+
+## v2.0.10-elemont Additions
+
+v2.0.10-elemont supersedes v2.0.9-elemont. It is a **testnet-only SFC
+bytecode re-flash** that fixes the inline reentrancy guard in the SFC
+contract at `0xFC00FACE...`. Mainnet rules are unchanged — mainnet has
+not yet activated any `SfcV2*` flag, and the Cycle-159 bytecode will be
+installed directly when mainnet first activates `SfcV2` (no separate
+`SfcV2Patch3` is required on mainnet).
+
+### What changed
+
+A new upgrade flag, `SfcV2Patch3`, is set to `true` in testnet rules
+(`opera/rules.go`). When a v2.0.10 binary boots on a node that has not
+yet sealed `SfcV2Patch3`, the flag is staged in `DirtyRules` at startup
+and activates on the next epoch seal. At activation, the block
+processor re-flashes `sfc.GetContractBin()` (Cycle-159, 45,240 bytes,
+solc `0.5.17+commit.d19bba13`, `--optimize --optimize-runs=10000
+--evm-version=istanbul`) over the existing SFC code at
+`0xFC00FACE...` via `StateDB.SetCode(...)` — one atomic code swap per
+node, idempotent across restarts.
+
+### Why (bug and fix)
+
+The Cycle-158 bytecode installed by `SfcV2Patch2` required
+`_reentrancyGuardCounter == 1` in the inline `nonReentrant` modifier.
+That storage slot was appended to SFC storage layout **after** the
+contract was genesis-deployed at `0xFC00FACE...`, so the slot is `0`
+on-chain. SFC's `initialize()` (which sets the slot to `1`) is gated
+by OpenZeppelin's `initializer` modifier and cannot re-run after an
+evmwriter bytecode patch. Net effect: **every SFC `nonReentrant`
+entrypoint reverted on its first external call** with
+`"ReentrancyGuard: reentrant call"` — `delegate`, `undelegate`,
+`withdraw`, `claimRewards`, `restakeRewards`, `stashRewards`,
+`createValidator`, plus four admin paths.
+
+The Cycle-159 bytecode relaxes the guard to `_reentrancyGuardCounter
+< 2` at all 11 inlined modifier sites. State `0` (never-written) and
+`1` (initialized) both count as "not entered"; `2` still means
+"actively entered" and reverts on reentry; any value `≥ 2` (only
+possible via a storage-layout collision, e.g. from a future upgrade
+inheriting OZ `ReentrancyGuard` over the same slot) still reverts to
+fail closed. The post-body write normalises `0 → 1`, so after the
+first successful guarded call on each contract instance the standard
+OZ 1/2 pattern resumes unchanged.
+
+### Byte-diff
+
+Against the Cycle-158 source: exactly the 11 guard sites (one `EQ 1`
+pattern flipped to `LT 2` per inlined site) plus the 32-byte Solidity
+bzzr metadata hash. Same solc version (`0.5.17+commit.d19bba13`), same
+settings (`--optimize --optimize-runs=10000 --evm-version=istanbul`),
+same contract length (45,240 bytes).
+
+### Consumer impact
+
+JSON-RPC surface, ABI, method selectors, event topics, receipt
+encoding, and batch/concurrency/rate limits are **unchanged from
+v2.0.9**. Wallets and dApps calling `SFC.delegate(uint256)` etc. will
+see one observable behavior change: the call now **succeeds** (subject
+to normal revert conditions like insufficient balance, validator
+doesn't exist, or amount-below-minimum), instead of reverting
+universally with `"ReentrancyGuard: reentrant call"` during `eth_call`
+/ `eth_estimateGas` / `eth_sendTransaction`.
+
+The SFC ABI at
+[vinuchain-lists/contracts/vinuchain/SFC_abi.json](https://github.com/VinuChain/vinuchain-lists/blob/main/contracts/vinuchain/SFC_abi.json)
+is **byte-identical** to the pre-fix ABI — the modifier change is
+implementation-only. Downstream consumers (`vinuscan-backend`'s bundled
+ABI, `vinuexplorer-backend`'s cached ABI, third-party integrators) do
+not need to re-input or regenerate anything.
+
+### Activation
+
+The flag stages at startup on any v2.0.10 binary boot and activates at
+the next epoch seal on the testnet consensus (up to `MaxEpochDuration
+= 4h` after restart; typically much sooner on an active network). The
+bytecode swap log line — `"Re-applying SFC V2 bytecode upgrade (patch 3)"`
+— fires exactly once per node, on the block where the seal commits.
+On 2026-04-19 testnet this happened at block **1424440** at
+**14:56:46 UTC** (epoch 5639 → 5640 transition).
+
+### Blockscout verification
+
+After the re-flash fires, `testnet.vinuexplorer.org` and future
+`mainnet.vinuexplorer.org` will temporarily show stale bytecode
+because Blockscout's Elixir indexer never re-fetches
+`addresses.contract_code` for system-contract addresses whose code is
+swapped via the evmwriter precompile rather than a `CREATE` tx. A
+plain re-verify POST accepts (`"verification started"`) but compares
+against the stale cached bytecode and cannot overwrite the existing
+`smart_contracts` row. Testnet was re-verified on 2026-04-19 using
+the standard post-evmwriter recipe: `DELETE` the stale
+`smart_contracts` row, `UPDATE addresses.contract_code` with fresh
+`eth_getCode`, then `POST
+/api/v2/smart-contracts/0xfc00face.../verification/via/flattened-code`
+with the solc settings above. Mainnet operators will need to repeat
+the recipe when the Cycle-159 bytecode lands on mainnet via the first
+`SfcV2` activation.
 
 ## v2.0.8-elemont Additions
 
