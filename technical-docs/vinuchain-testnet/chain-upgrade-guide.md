@@ -1,16 +1,16 @@
 # Chain Upgrade Guide (v2-elemont)
 
 {% hint style="info" %}
-**Latest release:** v2.0.11-elemont (scaffolding; awaiting Cycle-160 bytecode compile)
+**Latest release:** v2.0.11-elemont (tagged 2026-04-23; deployed to testnet RPC + 4 validators; `SfcV2Patch4` activates at the next epoch seal)
 {% endhint %}
 
 {% hint style="info" %}
 **TL;DR**
 
-* **Target tag:** `v2.0.11-elemont` (scaffolding pushed on branch `feat/sfc-v2-patch4-scaffolding`; not yet tagged — tag will be cut after the Cycle-160 bytecode lands)
+* **Target tag:** `v2.0.11-elemont` (cut 2026-04-23; contains the real 45,240-byte Cycle-160 SFC runtime bytecode compiled from `VinuChain/vinuchain-lists@eecd660` with solc `0.5.17+commit.d19bba13 --optimize --optimize-runs=10000 --evm-version=istanbul`)
 * **Binary version string:** `2.0.11-elemont`
 * **Build requirements:** Go 1.25+, C compiler, \~50 GB free disk
-* **Fresh testnet genesis:** [vitainu-genesis-testnet-20260419.g](https://vinu-blockchain-genesis.s3.amazonaws.com/vitainu-genesis-testnet-20260419.g) (SHA256 `a541d761e5db846b84c5bf0eef9aa09f45246254a2876ab0f8caf0b47b32e0d9`, ~450 MB, history baked through epoch ~5637 / block ~1.42M — recognized as trusted preset under v2.0.9+, no `--genesis.allowExperimental` required). **Fresh-install operators should restore from the v2.0.11 post-seal chaindata snapshot** (to be published once v2.0.11 seals on live testnet) — required because the fresh-from-genesis replay path diverges on the first `SfcV2Patch*` seal. Until v2.0.11 is tagged, the v2.0.10 snapshot at `testnet-chaindata-v2.0.10-*.tar.gz` remains the correct bootstrap for operators still on v2.0.10.
+* **Fresh testnet genesis:** [vitainu-genesis-testnet-20260419.g](https://vinu-blockchain-genesis.s3.amazonaws.com/vitainu-genesis-testnet-20260419.g) (SHA256 `a541d761e5db846b84c5bf0eef9aa09f45246254a2876ab0f8caf0b47b32e0d9`, ~450 MB, history baked through epoch ~5637 / block ~1.42M — recognized as trusted preset under v2.0.9+, no `--genesis.allowExperimental` required). **Fresh-install operators should restore from the v2.0.11 post-seal chaindata snapshot** (published at `s3://vinu-blockchain-genesis/chaindata-snapshots/testnet-chaindata-v2.0.11-<timestamp>.tar.gz` once `SfcV2Patch4` activates on the live testnet — URL and SHA256 will be filled in here when the snapshot lands). Fresh replay from genesis is not supported because all four `SfcV2Patch*` flags would fire at the first replay seal and produce a `wrong event epoch hash` divergence against the live chain.
 * **New on testnet:** one-shot `SfcV2Patch4` upgrade flag that re-flashes the SFC bytecode at `0xFC00FACE...` with the Cycle-160 build. Fires once at the next epoch seal after a v2.0.11 binary boot.
 {% endhint %}
 
@@ -19,9 +19,9 @@
 
 **What's new in v2.0.11-elemont:** Fixes the SFC lock-end-time bug in `_lockStake` / `relockStake`. The Cycle-159 bytecode installed by `SfcV2Patch3` checked `require(lockupDuration >= ld.duration)` when processing a relock, which compared the **new duration** against the **original lock duration**. That let a staker who had locked for 365 days and waited 340 days silently shorten their effective lock by relocking for 40 days (the new duration was less than the old duration, so the require failed and forced them to relock for at least the original 365 — but a staker who had already WAITED 340 days now had to commit an additional 365 to relock, even though their remaining lock was only 25 days). The Cycle-160 bytecode changes the check to `require(endTime >= ld.endTime)`, so the invariant becomes "you cannot shorten the absolute lock END TIME" — a 40-day relock that ends later than the currently-locked 25-day remaining period is now allowed.
 
-**Current scaffolding state:** The v2.0.11-elemont binary ships with a `deadbeef` placeholder bytecode in `opera/contracts/sfc/sfc_patch4_bytecode.go`. A startup/activation guard (`validatePatch4Bytecode`) `log.Crit`s if the placeholder has not been replaced with a real compiled Cycle-160 SFC. The sequence from here is (1) merge `VinuChain/vinuchain-lists` PR #2, (2) compile the resulting SFC.sol with solc `0.5.17+commit.d19bba13`, `--optimize`, `--optimize-runs=10000`, `--evm-version=istanbul`, (3) replace `patch4PlaceholderBytecode` with the real compile and drop the `deadbeef` sentinel guard, (4) tag `v2.0.11-elemont`, (5) publish the post-seal chaindata snapshot. Operators must not deploy `v2.0.11-elemont` binaries until the tag is cut.
+**Cycle-160 bytecode integrity.** The tagged release inlines the real 45,240-byte Cycle-160 runtime bytecode in `opera/contracts/sfc/sfc_patch4_bytecode.go`, compiled from `VinuChain/vinuchain-lists@eecd660 contracts/vinuchain/SFC.sol`. The ABI is byte-identical to Cycle-159 (123 functions + 39 events, zero selector additions or removals); the byte-diff is concentrated in ~335 optimizer-reshuffle regions plus the 32-byte bzzr metadata hash. A binary startup guard (`sfc.EnforcePatch4StartupCheck`, wired from `cmd/opera/launcher/patch4_startup_check.go:init()`) rejects and `log.Crit`s on any invalid Patch4 asset — sentinel-prefixed, under-size, all-zero, or byte-identical to Patch3 — so a build that accidentally shipped a placeholder refuses to start. A v2.0.11 binary that passes `./build/opera version` is guaranteed to carry a real compile.
 
-**Mainnet impact:** None at the consensus level. Mainnet has not yet activated `SfcV2` / `SfcV2Patch` / `SfcV2Patch2` / `SfcV2Patch3`, and the Cycle-160 bytecode (once compiled) will be installed directly when mainnet first activates `SfcV2` — no separate `SfcV2Patch4` activation is required on mainnet.
+**Mainnet impact:** None at the consensus level. Mainnet has not yet activated `SfcV2` / `SfcV2Patch` / `SfcV2Patch2` / `SfcV2Patch3`, and the Cycle-160 bytecode now shipped in v2.0.11 will be installed directly when mainnet first activates `SfcV2` — no separate `SfcV2Patch4` activation is required on mainnet.
 {% endhint %}
 
 {% hint style="warning" %}
