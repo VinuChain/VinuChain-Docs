@@ -15,6 +15,23 @@ Latest testnet snapshot: `https://vinu-blockchain-genesis.s3.amazonaws.com/chain
 
 The current supported version is **go-opera 2.0.8-elemont** for testnet. Mainnet is still on `v2.0.0-rc.1` pending the next coordinated upgrade window. The legacy "1.1.2-rc.3" line that previously appeared here referred to the pre-elemont fork and is no longer current.
 
+### **1.0 Pre-flight checklist** <a href="#id-1.0-pre-flight-checklist" id="id-1.0-pre-flight-checklist"></a>
+
+Before restarting opera — whether after a crash, after a binary swap, or during a planned maintenance window — verify the host has adequate headroom.
+
+* `df -h /home` → **≥ 20 GiB free**. Opera's built-in watchdog gracefully shuts the node down at `available=<8 GiB` to prevent LevelDB corruption. A restart triggers compactions that consume roughly 1.5-2 GiB in the first 2-3 minutes (allocating scratch equal to the compacted tier). If you start with <10 GiB free, you may see `ERROR Low disk space. Gracefully shutting down Vinu to prevent database corruption.` within minutes of startup and have to clean up before retry.
+* `free -h` → swap not saturated. Swap thrash makes LevelDB open extremely slow and can tip a borderline-healthy restart into OOM.
+* `systemctl is-active vinu-opera.service` → `inactive` or `failed`. Never start a second opera process on a box that already has one running — two opera processes opening the same `datadir/chaindata/leveldb-fsh/` produces `LOCK: permission denied` on the slower loser, and can corrupt the winner if the loser gets partial write through.
+
+Common cleanup targets if you need to free space urgently:
+
+* `truncate -s 0 /var/log/syslog` — can reclaim 10+ GiB on boxes with unbounded syslog growth.
+* `journalctl --vacuum-size=200M` — quick journal trim.
+* `rm build/logs/opera_public_node.log.{2..7}.gz` — keeps the most recent rotated log as a post-crash artefact, drops the older ones.
+* `apt-get clean` — typically 100-500 MiB.
+
+Context: the 2026-04-23 mainnet RPC recovery required exactly this sequence after opera's disk watchdog self-terminated a restarted node at 7.87 GiB free.
+
 ### 1.1 Reinstalling Opera
 
 * `pkill opera` _(stop the node)_
@@ -24,6 +41,19 @@ The current supported version is **go-opera 2.0.8-elemont** for testnet. Mainnet
 * `sudo rm -rf /home/{user}/.opera/chaindata` _(delete chaindata folder, replace {user})_
 * _Sync_ [_Read-Only Node_](read-only-node.md)
 * _Start_ [_Validator_](become-a-validator.md)
+
+### **1.3 Resuming an interrupted snapshot download** <a href="#id-1.3-resuming-an-interrupted-snapshot-download" id="id-1.3-resuming-an-interrupted-snapshot-download"></a>
+
+Chaindata snapshots from `s3://vinu-blockchain-genesis/chaindata-snapshots/` are typically ~1 GiB compressed. Long-running downloads over SSM can be cut short by an SSM session timeout (20 min default), CloudFlare connection drop, or a transient instance networking blip. To make the download resumable, always pass `curl -C - -o <file> <url>`:
+
+```
+curl -C - -o testnet-chaindata-v2.0.8-20260419-053442.tar.gz \
+  https://vinu-blockchain-genesis.s3.amazonaws.com/chaindata-snapshots/testnet-chaindata-v2.0.8-20260419-053442.tar.gz
+```
+
+The `-C -` flag auto-resumes from the byte offset already on disk if the file exists, or starts from zero if it doesn't. Without it, an interrupted `curl` forces a full redownload and wastes the partial bytes.
+
+Verify the checksum after a successful (or resumed) download — the published SHA256 is in the top-of-page hint block.
 
 ## 2. Pruning node state <a href="#id-2.-pruning-node-state" id="id-2.-pruning-node-state"></a>
 
@@ -49,6 +79,23 @@ Note that
 * `--gcmode full` option will prune much more EVM nodes than `--gcmode light` at expense of worse performance.
 
 ## 3. Validator node <a href="#id-3.-validator-node" id="id-3.-validator-node"></a>
+
+### **3.0 Multi-opera safety** <a href="#id-3.0-multi-opera-safety" id="id-3.0-multi-opera-safety"></a>
+
+The testnet validator box (`i-029476269e84beb4a`) runs four opera processes (V1–V4) simultaneously against a shared on-disk `build/opera` binary. Any operation that affects "opera" on this box must treat the four as **independent processes**, not as one unit.
+
+**Never use `pkill -f opera` or `pkill opera.*vinu-testnet`.** Both kill all four validators at once. With 4-of-4 BFT quorum required for block production, a simultaneous stop halts the testnet. `systemctl stop vinu-validators` internally calls `pkill opera.*vinu-testnet` — **do not use it** for routine restarts.
+
+Correct rolling-restart pattern:
+
+1. `ps -eo pid,cmd | grep 'opera.*vinu-testnet' | grep -v grep` → capture the four PIDs + full argv.
+2. For each PID, snapshot argv: `cp /proc/$PID/cmdline /tmp/v$N.cmdline.bin` before signalling. On restart, replay via `readarray -d '' argv < /tmp/v$N.cmdline.bin` so the relaunch is byte-for-byte identical (130-char pubkeys are copy-paste hazardous).
+3. `kill -SIGINT $PID` on ONE validator at a time. SIGINT gives opera time for a clean LevelDB close; SIGKILL on an active LevelDB writer corrupts chaindata.
+4. Wait ≥ 20 seconds for the process to exit cleanly AND for the other three validators to recover quorum.
+5. Relaunch the stopped one via `nohup opera … &` with the snapshotted argv.
+6. Verify peer count and tip alignment before touching the next validator.
+
+The same principle applies on the mainnet RPC box (`i-083fffeeb03583a18`): one opera process per host, signalled with SIGINT, never pkill.
 
 ### **3.1 How to rerun a node if it is stopped** <a href="#how-to-rerun-a-node-if-it-is-stopped" id="how-to-rerun-a-node-if-it-is-stopped"></a>
 
