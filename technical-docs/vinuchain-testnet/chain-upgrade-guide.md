@@ -453,7 +453,7 @@ v2.0.8-elemont does not change consensus rules — the only additions since v2.0
 Your node's locally-computed epoch state hash does not match what the rest of the network has for that epoch boundary. Every event validators emit carries the hash of the previous epoch's state (`PrevEpochHash`); the check lives in `gossip/c_event_callbacks.go` and rejects any event whose `PrevEpochHash` differs from the local store's `EpochState.Hash()`. There is no protocol-level recovery; chaindata must be replaced with a snapshot that matches canonical testnet state.
 
 {% hint style="danger" %}
-**Do not resync from genesis.** The canonical testnet genesis file (`vitainu-genesis-testnet-20240621.g`, dated 2024-06-21) pre-dates several SFC upgrade flags (`SfcV2`, `SfcV2Patch`, `SfcV2Patch2`) that a v2.0.8-elemont binary stages from binary rules and fires on first epoch seal. The net effect is that a fresh replay from the 2024 genesis under current binary rules produces an epoch-1642 state hash that does **not** match the one live validators recorded in 2024 — your first event from any live peer then rejects with "wrong event epoch hash". This is the same divergence surface that caused operator reports on 2026-04-19. Use the chaindata snapshot below instead.
+**Do not resync from genesis.** Under v2.0.10-elemont, a fresh replay from any testnet genesis file (`vitainu-genesis-testnet-20240621.g`, `vitainu-genesis-testnet-20260419.g`, or any older distribution) stages all four upgrade flags (`SfcV2`, `SfcV2Patch`, `SfcV2Patch2`, `SfcV2Patch3`) from binary rules and fires them all at the first epoch seal of the replay. That seal happens at a replay block different from the live chain's historical activation points, so your locally-computed epoch state hash will not match live — your first event from any live peer then rejects with "wrong event epoch hash". Use the v2.0.10 chaindata snapshot below instead; it was captured after `SfcV2Patch3` sealed on the live testnet and is the only supported bootstrap path for v2.0.10 operators. The prior v2.0.8 chaindata snapshot is stale under v2.0.10 rules and must not be used.
 {% endhint %}
 
 **Recovery procedure (testnet) — chaindata snapshot:**
@@ -473,14 +473,20 @@ Your node's locally-computed epoch state hash does not match what the rest of th
 
    ```bash
    cd <datadir>
-   curl -LO https://vinu-blockchain-genesis.s3.amazonaws.com/chaindata-snapshots/testnet-chaindata-v2.0.8-20260419-053442.tar.gz
+   curl -LO https://vinu-blockchain-genesis.s3.amazonaws.com/chaindata-snapshots/testnet-chaindata-v2.0.10-20260419T153040Z.tar.gz
    # verify integrity
-   echo "7d1ec36699c450a820f0b42e3b113bd2d09345e44abb0c39d38d262464f91823  testnet-chaindata-v2.0.8-20260419-053442.tar.gz" | sha256sum -c -
-   tar -xzf testnet-chaindata-v2.0.8-20260419-053442.tar.gz
-   rm testnet-chaindata-v2.0.8-20260419-053442.tar.gz
+   curl -L https://vinu-blockchain-genesis.s3.amazonaws.com/chaindata-snapshots/testnet-chaindata-v2.0.10-20260419T153040Z.tar.gz.sha256 | sha256sum -c -
+   tar -xzf testnet-chaindata-v2.0.10-20260419T153040Z.tar.gz
+   rm testnet-chaindata-v2.0.10-20260419T153040Z.tar.gz
    ```
 
-   The snapshot is approximately 1.1 GiB compressed (published 2026-04-19, taken from the canonical testnet trace node at block ~1.42M, epoch ~5637). New snapshots are published under `s3://vinu-blockchain-genesis/chaindata-snapshots/` — pick the most recent one for the shortest catch-up.
+   Direct HTTPS URL (public, no AWS credentials required):
+
+   ```
+   https://vinu-blockchain-genesis.s3.amazonaws.com/chaindata-snapshots/testnet-chaindata-v2.0.10-20260419T153040Z.tar.gz
+   ```
+
+   SHA256: `9b5dafecbb73f19a77e8ed4653007851ae6ba9d30398cfaf89abc5b594130ac2`. Size: approximately 2.3 GiB compressed (2,497,048,978 bytes). Published 2026-04-20 from the canonical testnet trace node at block ~1.42M / epoch ~5637, taken **after** `SfcV2Patch3` sealed so it is the correct bootstrap for v2.0.10 binaries. New snapshots are published under `s3://vinu-blockchain-genesis/chaindata-snapshots/` — pick the most recent v2.0.10-or-newer snapshot for the shortest catch-up. The bucket is public-read; `aws s3 ls s3://vinu-blockchain-genesis/chaindata-snapshots/` works with any AWS credentials or via `curl https://vinu-blockchain-genesis.s3.amazonaws.com/?list-type=2&prefix=chaindata-snapshots/` with none.
 
 5. Ensure `--nat extip:<your_public_ip>` is set and `<datadir>/go-opera/static-nodes.json` contains the canonical bootnode list from the [Start your node](#start-your-node) section.
 6. Restart opera. The node resumes from the snapshot's tip (~epoch 5637 at snapshot time) and syncs forward. Expect `New DAG summary age=<few seconds>` within 1-2 minutes of restart.
