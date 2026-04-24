@@ -248,7 +248,7 @@ Without `--nat`, opera advertises its enode at `ip=127.0.0.1` in the peer discov
 
 The fix is to pass `--nat extip:<your_public_ipv4>` on every launch. After restart, verify the startup log shows your real public IP:
 
-```
+```text
 INFO New local node record  seq=… id=… ip=<YOUR_PUBLIC_IP> udp=3000 tcp=3000
 ```
 
@@ -353,19 +353,19 @@ This is the one-time bytecode installation. After this fires, the SFC contract a
 
 #### Verification checklist
 
-| Check                                                         | Expected                                                                            |
-| ------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
-| Startup banner                                                | `VINUCHAIN v2.0 - ELEMONT` ASCII art printed to stderr                              |
-| `opera version`                                               | `Version: 2.0.8-elemont`                                                            |
-| Block production                                              | Resumes within seconds of startup; block numbers advance                            |
-| Peer count                                                    | Returns to prior steady-state within minutes                                        |
-| Staging log (testnet, first v2.0.5+ boot from older binary)   | 1× `Staged SfcV2Patch2 upgrade from binary rules; will activate at next epoch seal` |
-| Staging log (v2.0.5 → v2.0.6 upgrade, or mainnet, or testnet already sealed patch2) | None                                                                     |
-| Seal-time log (testnet, first epoch seal after staging)       | 1× `Re-applying SFC V2 bytecode upgrade (patch 2)   block=<N>`                     |
-| SFC verification on testnet explorer (after seal)             | `vinuchain-lists/contracts/vinuchain/SFC.sol` with solc 0.5.17 verifies successfully |
-| Block hash vs peer                                            | Identical                                                                           |
-| `rpc_modules` returns                                         | Includes `"vc":"1.0"` (new namespace with `vc_getPaybackBalance`)                   |
-| `vc_getPaybackBalance` call                                   | Returns hex-encoded wei (or `0x0` for ineligible addresses / Podgorica inactive)    |
+| Check                                                       | Expected                                                                             |
+| ----------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| Startup banner                                              | `VINUCHAIN v2.0 - ELEMONT` ASCII art printed to stderr                               |
+| `opera version`                                             | `Version: 2.0.8-elemont`                                                             |
+| Block production                                            | Resumes within seconds of startup; block numbers advance                             |
+| Peer count                                                  | Returns to prior steady-state within minutes                                         |
+| Staging log (testnet, first v2.0.5+ boot from older binary) | 1× `Staged SfcV2Patch2 upgrade from binary rules; will activate at next epoch seal`  |
+| Staging log — all other cases (mainnet or sealed testnet)   | None                                                                                 |
+| Seal-time log (testnet, first epoch seal after staging)     | 1× `Re-applying SFC V2 bytecode upgrade (patch 2)   block=<N>`                       |
+| SFC verification on testnet explorer (after seal)           | `vinuchain-lists/contracts/vinuchain/SFC.sol` with solc 0.5.17 verifies successfully |
+| Block hash vs peer                                          | Identical                                                                            |
+| `rpc_modules` returns                                       | Includes `"vc":"1.0"` (new namespace with `vc_getPaybackBalance`)                    |
+| `vc_getPaybackBalance` call                                 | Returns hex-encoded wei (or `0x0` for ineligible addresses / Podgorica inactive)     |
 
 {% endstep %}
 
@@ -463,7 +463,20 @@ v2.0.8-elemont does not change consensus rules — the only additions since v2.0
 Your node's locally-computed epoch state hash does not match what the rest of the network has for that epoch boundary. Every event validators emit carries the hash of the previous epoch's state (`PrevEpochHash`); the check lives in `gossip/c_event_callbacks.go` and rejects any event whose `PrevEpochHash` differs from the local store's `EpochState.Hash()`. There is no protocol-level recovery; chaindata must be replaced with a snapshot that matches canonical testnet state.
 
 {% hint style="danger" %}
-**Do not resync from genesis.** Under v2.0.10-elemont, a fresh replay from any testnet genesis file (`vitainu-genesis-testnet-20240621.g`, `vitainu-genesis-testnet-20260419.g`, or any older distribution) stages all four upgrade flags (`SfcV2`, `SfcV2Patch`, `SfcV2Patch2`, `SfcV2Patch3`) from binary rules and fires them all at the first epoch seal of the replay. That seal happens at a replay block different from the live chain's historical activation points, so your locally-computed epoch state hash will not match live — your first event from any live peer then rejects with "wrong event epoch hash". Use the v2.0.10 chaindata snapshot below instead; it was captured after `SfcV2Patch3` sealed on the live testnet and is the only supported bootstrap path for v2.0.10 operators. The prior v2.0.8 chaindata snapshot is stale under v2.0.10 rules and must not be used.
+**Do not resync from genesis.** Under v2.0.11-elemont, a fresh replay from any testnet genesis file stages every not-yet-sealed `SfcV2*` flag from binary rules and fires them all at the first epoch seal of the replay — at a replay block different from the live chain's historical activation points, so your locally-computed epoch state hash will not match live and your first event from any live peer rejects with `wrong event epoch hash`.
+
+* `vitainu-genesis-testnet-20240621.g` (archived) stages **all five**: `SfcV2`, `SfcV2Patch`, `SfcV2Patch2`, `SfcV2Patch3`, `SfcV2Patch4`.
+* `vitainu-genesis-testnet-20260419.g` (current) already has `SfcV2` / `SfcV2Patch` / `SfcV2Patch2` baked into its exported history, so only `SfcV2Patch3` and `SfcV2Patch4` stage and fire together. The diagnostic fingerprint is two log lines at the same replay block before divergence:
+
+  ```text
+  INFO Re-applying SFC V2 bytecode upgrade (patch 3) block=<N>
+  INFO Re-applying SFC V2 bytecode upgrade (patch 4) block=<N>
+  WARN Incoming event rejected event=… err="wrong event epoch hash"
+  ```
+
+  On the live chain `SfcV2Patch3` sealed mid-v2.0.10 (2026-04-20) and `SfcV2Patch4` sealed at block 1,430,436 (2026-04-23) — two different seal blocks — so co-firing them at a single replay block produces a divergent SFC bytecode state and breaks `EpochState.Hash()` parity.
+
+Use the v2.0.11 chaindata snapshot below instead; it was captured **after** `SfcV2Patch4` sealed on the live testnet and is the only supported bootstrap path for v2.0.11 operators. The prior v2.0.10 chaindata snapshot is stale under v2.0.11 rules and must not be used.
 {% endhint %}
 
 **Recovery procedure (testnet) — chaindata snapshot:**
@@ -490,9 +503,19 @@ Your node's locally-computed epoch state hash does not match what the rest of th
    rm testnet-chaindata-v2.0.11-20260423T151354Z-clean.tar.gz
    ```
 
+   **Sanity-check the extraction before restarting opera.** Every published snapshot has a companion `SNAPSHOT_INFO.txt` with the exact tip block and sealed upgrade-flag state at snapshot time. Snapshots published from 2026-04-24 onwards include the file at the tarball root (so it lands in your datadir automatically on extraction). Older snapshots — including the current v2.0.11 — have it published only as an out-of-band companion in S3. Either way, read it before starting opera:
+
+   ```bash
+   # If the tarball included it, it's in your datadir:
+   cat <datadir>/SNAPSHOT_INFO.txt 2>/dev/null \
+     || curl -sL https://vinu-blockchain-genesis.s3.amazonaws.com/chaindata-snapshots/testnet-chaindata-v2.0.11-20260423T151354Z-clean.SNAPSHOT_INFO.txt
+   ```
+
+   If the `cat` succeeds, the snapshot loaded correctly and the tip block listed in `SNAPSHOT_INFO.txt` is the minimum block number your first `New block` log line should show after restart. If neither the `cat` nor the `curl` returns anything, something is wrong with the extraction or network — do not start opera yet.
+
    Direct HTTPS URL (public, no AWS credentials required):
 
-   ```
+   ```text
    https://vinu-blockchain-genesis.s3.amazonaws.com/chaindata-snapshots/testnet-chaindata-v2.0.11-20260423T151354Z-clean.tar.gz
    ```
 
