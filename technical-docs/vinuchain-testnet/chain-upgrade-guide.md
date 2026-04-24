@@ -15,7 +15,7 @@
 {% endhint %}
 
 {% hint style="info" %}
-**Version string vs git tag.** The release is cut from git tag `v2.0.8-elemont`, but the binary reports `2.0.8-elemont`. Both refer to the same release; the leading `v` only appears on the git tag.
+**Version string vs git tag.** The release is cut from git tag `v2.0.11-elemont`, but the binary reports `2.0.11-elemont`. Both refer to the same release; the leading `v` only appears on the git tag.
 {% endhint %}
 
 ## Network Details
@@ -376,24 +376,37 @@ That guide uses the correct `opera validator new` command for generating a valid
 
 ## Rollback
 
-Because v2.0.8-elemont is a patch release and not a hard fork, rollback is straightforward:
+Because v2.0.11-elemont is a patch release and not a hard fork, rollback is straightforward:
 
 1. Stop the node (clean shutdown).
-2. Replace `opera` with the v2.0.6-elemont (or v2.0.5-elemont) release binary.
+2. Replace `opera` with a prior elemont release binary (e.g., v2.0.10-elemont, v2.0.9-elemont, or earlier).
 3. Start the node.
 
-No datadir changes are needed.
+No datadir changes are needed. Consensus state, receipts, and block hashes are identical across every adjacent pair of elemont releases listed below.
 
 {% hint style="info" %}
-**v2.0.8 → v2.0.7 rollback:** The only functional difference is that `validatePeerProgress` re-applies its drift caps (`maxPeerEpochDrift=1000`, `maxPeerBlockDrift=5000`). This is safe as long as the node is not offline long enough to fall past those caps; an offline stretch beyond ~1,000 epochs on v2.0.7 will lock the node out of re-peering (the bug v2.0.8 fixes). Consensus state, receipts, and block hashes are identical between the two versions.
+**Per-version rollback deltas.** Each bullet describes the only functional difference between the two versions.
 
-**v2.0.7 → v2.0.6 rollback:** The only functional difference is the per-peer event-processing quota reverts to its smaller value, so the `Peer exceeded event processing quota` warning storm returns during sync. Consensus state, receipts, and block hashes are identical between the two versions.
-
-**v2.0.6 → v2.0.5 rollback:** The only functional difference is the loss of the `vc_getPaybackBalance` RPC endpoint. Consensus state, receipts, and block hashes are identical between the two versions.
+- **v2.0.11 → v2.0.10 rollback:** Loses the `SfcV2Patch4` staging logic in binary rules and the `sfc.EnforcePatch4StartupCheck` build guard. If `SfcV2Patch4` has already sealed on testnet, the Cycle-160 bytecode at `0xFC00FACE...` persists in chain state (see Testnet note below); the v2.0.10 binary continues to dispatch against it unchanged. The relock invariant remains `endTime >= ld.endTime` because that logic lives in the deployed bytecode, not the binary.
+- **v2.0.10 → v2.0.9 rollback:** Loses the `SfcV2Patch3` staging logic. If `SfcV2Patch3` has already sealed, the Cycle-159 reentrancy-guard-fixed bytecode persists in chain state; all `nonReentrant` entrypoints continue to work because the `_reentrancyGuardCounter < 2` check is in the deployed bytecode.
+- **v2.0.9 → v2.0.8 rollback:** Loses the trusted-preset entry for `vitainu-genesis-testnet-20260419.g`. Fresh installs on v2.0.8 from that genesis file again require `--genesis.allowExperimental` and print the `SECURITY WARNING: Genesis file doesn't refer to any trusted preset` line on startup; existing datadirs are unaffected.
+- **v2.0.8 → v2.0.7 rollback:** `validatePeerProgress` re-applies its drift caps (`maxPeerEpochDrift=1000`, `maxPeerBlockDrift=5000`). Safe as long as the node is not offline long enough to fall past those caps; an offline stretch beyond ~1,000 epochs on v2.0.7 will lock the node out of re-peering (the bug v2.0.8 fixes).
+- **v2.0.7 → v2.0.6 rollback:** The per-peer event-processing quota reverts to its smaller value (200 DAG events / 100 stream items), so the `Peer exceeded event processing quota` warning storm returns during sync.
+- **v2.0.6 → v2.0.5 rollback:** The `vc_getPaybackBalance` JSON-RPC method disappears. Clients calling it receive `method not found`.
 {% endhint %}
 
-{% hint style="info" %}
-**Testnet note:** Once `SfcV2Patch2` has sealed on testnet (first introduced in v2.0.5), the SFC bytecode change is permanent in chain state — rolling back the binary to v2.0.4 or earlier does not revert the contract bytecode. This is expected behavior; the bytecode update is the intended outcome of the upgrade.
+{% hint style="warning" %}
+**Testnet note — sealed bytecode persists across rollbacks.** Once an `SfcV2Patch*` upgrade flag has sealed on testnet, the bytecode it flashed at `0xFC00FACE00000000000000000000000000000000` is permanent in chain state. Rolling back the binary does **not** revert the installed bytecode:
+
+| Sealed patch  | Introduced in | Testnet seal                 | Installed bytecode                                |
+| ------------- | ------------- | ---------------------------- | ------------------------------------------------- |
+| `SfcV2Patch2` | v2.0.5        | Mid-v2.0.5 boot              | Cycle-158 SFC (45,240 bytes)                      |
+| `SfcV2Patch3` | v2.0.10       | 2026-04-19 · block 1,424,440 | Cycle-159 SFC — inline reentrancy guard fix       |
+| `SfcV2Patch4` | v2.0.11       | 2026-04-23 · block 1,430,436 | Cycle-160 SFC — `_lockStake` / `relockStake` fix  |
+
+This is expected behavior — the bytecode update is the intended outcome of each upgrade and cannot be undone by swapping binaries. Reverting installed bytecode would require shipping another epoch-sealed upgrade flag, which is a forward-moving change rather than a rollback.
+
+Mainnet is currently unaffected — no `SfcV2*` flag has sealed on mainnet, so mainnet operators can freely roll back to any elemont binary.
 {% endhint %}
 
 ***
