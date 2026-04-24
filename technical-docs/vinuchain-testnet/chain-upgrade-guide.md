@@ -10,7 +10,7 @@
 * **Target tag:** `v2.0.11-elemont` (cut 2026-04-23; contains the real 45,240-byte Cycle-160 SFC runtime bytecode compiled from `VinuChain/vinuchain-lists@eecd660` with solc `0.5.17+commit.d19bba13 --optimize --optimize-runs=10000 --evm-version=istanbul`)
 * **Binary version string:** `2.0.11-elemont`
 * **Build requirements:** Go 1.25+, C compiler, \~50 GB free disk
-* **Fresh testnet genesis:** [vitainu-genesis-testnet-20260419.g](https://vinu-blockchain-genesis.s3.amazonaws.com/vitainu-genesis-testnet-20260419.g) (SHA256 `a541d761e5db846b84c5bf0eef9aa09f45246254a2876ab0f8caf0b47b32e0d9`, ~450 MB, history baked through epoch ~5637 / block ~1.42M — recognized as trusted preset under v2.0.9+, no `--genesis.allowExperimental` required). **Fresh-install operators should restore from the v2.0.11 post-seal chaindata snapshot** (published at [testnet-chaindata-v2.0.11-20260423T151354Z.tar.gz](https://vinu-blockchain-genesis.s3.amazonaws.com/chaindata-snapshots/testnet-chaindata-v2.0.11-20260423T151354Z.tar.gz), SHA256 `9ea5e7abf6d211889bab0846952bea9ecf60efb2fcd9ce021a2c4f6ea27cf6a9`). Fresh replay from genesis is not supported because all four `SfcV2Patch*` flags would fire at the first replay seal and produce a `wrong event epoch hash` divergence against the live chain.
+* **Fresh testnet genesis:** [vitainu-genesis-testnet-20260419.g](https://vinu-blockchain-genesis.s3.amazonaws.com/vitainu-genesis-testnet-20260419.g) (SHA256 `a541d761e5db846b84c5bf0eef9aa09f45246254a2876ab0f8caf0b47b32e0d9`, ~450 MB, history baked through epoch ~5637 / block ~1.42M — recognized as trusted preset under v2.0.9+, no `--genesis.allowExperimental` required). **Fresh-install operators should restore from the v2.0.11 post-seal chaindata snapshot** (published at [testnet-chaindata-v2.0.11-20260423T151354Z-clean.tar.gz](https://vinu-blockchain-genesis.s3.amazonaws.com/chaindata-snapshots/testnet-chaindata-v2.0.11-20260423T151354Z-clean.tar.gz), SHA256 `5b19cd392dc6a3ac7d52339a544747bac2132602a1f5c5b229ae3b3ce6736ab4`, 1.24 GB). The tarball is flat — top-level is `chaindata/` and `go-opera/` with no `datadir/` prefix, so `cd <your_datadir> && tar -xzf testnet-chaindata-v2.0.11-20260423T151354Z-clean.tar.gz` drops the directories directly where opera expects them. Fresh replay from genesis is not supported because all four `SfcV2Patch*` flags would fire at the first replay seal and produce a `wrong event epoch hash` divergence against the live chain.
 * **New on testnet:** one-shot `SfcV2Patch4` upgrade flag that re-flashes the SFC bytecode at `0xFC00FACE...` with the Cycle-160 build. Fires once at the next epoch seal after a v2.0.11 binary boot.
 {% endhint %}
 
@@ -483,20 +483,20 @@ Your node's locally-computed epoch state hash does not match what the rest of th
 
    ```bash
    cd <datadir>
-   curl -LO https://vinu-blockchain-genesis.s3.amazonaws.com/chaindata-snapshots/testnet-chaindata-v2.0.10-20260419T153040Z.tar.gz
+   curl -LO https://vinu-blockchain-genesis.s3.amazonaws.com/chaindata-snapshots/testnet-chaindata-v2.0.11-20260423T151354Z-clean.tar.gz
    # verify integrity
-   curl -L https://vinu-blockchain-genesis.s3.amazonaws.com/chaindata-snapshots/testnet-chaindata-v2.0.10-20260419T153040Z.tar.gz.sha256 | sha256sum -c -
-   tar -xzf testnet-chaindata-v2.0.10-20260419T153040Z.tar.gz
-   rm testnet-chaindata-v2.0.10-20260419T153040Z.tar.gz
+   curl -L https://vinu-blockchain-genesis.s3.amazonaws.com/chaindata-snapshots/testnet-chaindata-v2.0.11-20260423T151354Z-clean.tar.gz.sha256 | sha256sum -c -
+   tar -xzf testnet-chaindata-v2.0.11-20260423T151354Z-clean.tar.gz
+   rm testnet-chaindata-v2.0.11-20260423T151354Z-clean.tar.gz
    ```
 
    Direct HTTPS URL (public, no AWS credentials required):
 
    ```
-   https://vinu-blockchain-genesis.s3.amazonaws.com/chaindata-snapshots/testnet-chaindata-v2.0.10-20260419T153040Z.tar.gz
+   https://vinu-blockchain-genesis.s3.amazonaws.com/chaindata-snapshots/testnet-chaindata-v2.0.11-20260423T151354Z-clean.tar.gz
    ```
 
-   SHA256: `9b5dafecbb73f19a77e8ed4653007851ae6ba9d30398cfaf89abc5b594130ac2`. Size: approximately 2.3 GiB compressed (2,497,048,978 bytes). Published 2026-04-20 from the canonical testnet trace node at block ~1.42M / epoch ~5637, taken **after** `SfcV2Patch3` sealed so it is the correct bootstrap for v2.0.10 binaries. New snapshots are published under `s3://vinu-blockchain-genesis/chaindata-snapshots/` — pick the most recent v2.0.10-or-newer snapshot for the shortest catch-up. The bucket is public-read; `aws s3 ls s3://vinu-blockchain-genesis/chaindata-snapshots/` works with any AWS credentials or via `curl https://vinu-blockchain-genesis.s3.amazonaws.com/?list-type=2&prefix=chaindata-snapshots/` with none.
+   SHA256: `5b19cd392dc6a3ac7d52339a544747bac2132602a1f5c5b229ae3b3ce6736ab4`. Size: approximately 1.24 GiB compressed (1,243,197,032 bytes). Published 2026-04-24 from the canonical testnet trace node at block ~1.43M / epoch ~5637, taken **after** `SfcV2Patch4` sealed so it is the correct bootstrap for v2.0.11 binaries. The tarball is flat (top-level is `chaindata/` and `go-opera/` — no `datadir/` prefix to nest) and excludes `nodekey`, `keystore/`, `opera.ipc`, `static-nodes.json`, `trusted-nodes.json`, the archived `chaindata.bak.*/` from the pre-LevelDB-FSH migration, and any shell `history` file. New snapshots are published under `s3://vinu-blockchain-genesis/chaindata-snapshots/` — pick the most recent `-clean` snapshot for the shortest catch-up. The bucket is public-read; `aws s3 ls s3://vinu-blockchain-genesis/chaindata-snapshots/` works with any AWS credentials or via `curl https://vinu-blockchain-genesis.s3.amazonaws.com/?list-type=2&prefix=chaindata-snapshots/` with none.
 
 5. Ensure `--nat extip:<your_public_ip>` is set and `<datadir>/go-opera/static-nodes.json` contains the canonical bootnode list from the [Start your node](#start-your-node) section.
 6. Restart opera. The node resumes from the snapshot's tip (~epoch 5637 at snapshot time) and syncs forward. Expect `New DAG summary age=<few seconds>` within 1-2 minutes of restart.
