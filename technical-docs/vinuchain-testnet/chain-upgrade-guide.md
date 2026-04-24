@@ -500,7 +500,7 @@ If the peer count stays stuck at 1 after fixing `--nat`, check your host firewal
 
 ### `vc_getPaybackBalance` returns `-32005`
 
-The RPC-safe payback accessor is gated by a process-wide semaphore (8 in-flight, 2 s acquire timeout). Error code `-32005` is the rate-limit rejection. Clients should retry with exponential backoff; operators running high-volume scanners should either spread load across multiple RPC endpoints or reduce concurrent caller count. See [Changelog → v2.0.6-elemont Additions](#v206-elemont-additions).
+The RPC-safe payback accessor is gated by a process-wide semaphore (8 in-flight, 2 s acquire timeout). Error code `-32005` is the rate-limit rejection. Clients should retry with exponential backoff; operators running high-volume scanners should either spread load across multiple RPC endpoints or reduce concurrent caller count. See [Changelog → Payback Fee Refunds](#payback-fee-refunds).
 
 ***
 
@@ -594,15 +594,13 @@ This section consolidates release-specific change notes, JSON-RPC surface change
 
 **What's new in v2.0.9-elemont:** Adds a trusted-preset `AllowedOperaGenesis` entry recognizing the fresh 2026-04-19 testnet genesis export (`vitainu-genesis-testnet-20260419.g`). Operators doing fresh installs from that genesis no longer need `--genesis.allowExperimental` and no longer see the `SECURITY WARNING: Genesis file doesn't refer to any trusted preset` line on startup. Existing-datadir operators (those who already have chaindata) do not need to upgrade to v2.0.9 — v2.0.8 is functionally equivalent for them. **The 2024-06-21 testnet genesis (`vitainu-genesis-testnet-20240621.g`) is archived and must not be used for fresh installs under v2.0.8+** — it pre-dates `SfcV2` / `SfcV2Patch` / `SfcV2Patch2` and produces a `wrong event epoch hash` divergence on replay.
 
-**What's new in v2.0.9-elemont:** Adds a trusted-preset `AllowedOperaGenesis` entry recognizing the fresh 2026-04-19 testnet genesis export (`vitainu-genesis-testnet-20260419.g`). Operators doing fresh installs from that genesis no longer need `--genesis.allowExperimental` and no longer see the `SECURITY WARNING: Genesis file doesn't refer to any trusted preset` line on startup. Existing-datadir operators (those who already have chaindata) do not need to upgrade to v2.0.9 — v2.0.8 is functionally equivalent for them. **The 2024-06-21 testnet genesis (`vitainu-genesis-testnet-20240621.g`) is archived and must not be used for fresh installs under v2.0.8+** — it pre-dates `SfcV2` / `SfcV2Patch` / `SfcV2Patch2` and produces a `wrong event epoch hash` divergence on replay.
-
 **What's new in v2.0.8-elemont:** A targeted hotfix to `validatePeerProgress` in the gossip sync handler. v2.0.7's `validatePeerProgress` rejected any peer whose `ProgressMsg` reported an epoch more than 1,000 ahead of local, or a block more than 5,000 ahead. The cap was added as a Round-2 audit-finding guard, but it had no downstream DoS benefit (opera's `lightCheck` and `epochcheck.ErrNotRelevant` already gate event acceptance on epoch equality, so a peer lying about progress advances no state). The side effect was that **any validator that went offline long enough to fall more than 1,000 epochs behind tip rejected every live peer on the handshake** and could never rejoin — the stale node's log would show `Looking for peers peercount=1 tried=N` with `tried` climbing and `last_id` never advancing; the live-peer's log would show the stale node being dropped with `Removing p2p peer req=true err="subprotocol error" duration=~175ms` every ~30 s. v2.0.8 removes both drift caps and the unused constants, keeps the structural `progress.Epoch == 0` check, and restores the ability for a long-offline validator to catch up without a chaindata wipe. There are no consensus changes, no receipt or event format changes, no RPC additions, and no epoch-seal activation.
 
 **If you are already on v2.0.7-elemont:** the upgrade is a straight binary swap. No datadir reset, no peer reconnection, no new validator registration, no epoch-seal wait. After the restart, a stale node resumes normal sync forward to tip.
 
-**If you are already on v2.0.6-elemont:** v2.0.8-elemont also carries the per-peer event-processing quota fix introduced in v2.0.7 (see [§ v2.0.7-elemont Additions](#v207-elemont-additions)). v2.0.6's caps of 200 DAG events / 100 stream items per peer were smaller than a single legitimate sync chunk (`DefaultChunkItemsNum = 500`), so catch-up chunks were rejected with `Peer exceeded event processing quota`. v2.0.7 raised both caps to 3,250, matching `DagProcessor.EventsBufferLimit.Num`.
+**If you are already on v2.0.6-elemont:** v2.0.8-elemont also carries the per-peer event-processing quota fix introduced in v2.0.7 (see [Performance & Reliability Improvements](#performance--reliability-improvements)). v2.0.6's caps of 200 DAG events / 100 stream items per peer were smaller than a single legitimate sync chunk (`DefaultChunkItemsNum = 500`), so catch-up chunks were rejected with `Peer exceeded event processing quota`. v2.0.7 raised both caps to 3,250, matching `DagProcessor.EventsBufferLimit.Num`.
 
-**If you are still on v2.0.5-elemont:** v2.0.8-elemont also carries the `vc_getPaybackBalance` JSON-RPC method introduced in v2.0.6 (rate-limited by a process-wide semaphore: 8 in-flight, 2 s acquire timeout, rejection code `-32005`). See [§ v2.0.6-elemont Additions](#v206-elemont-additions).
+**If you are still on v2.0.5-elemont:** v2.0.8-elemont also carries the `vc_getPaybackBalance` JSON-RPC method introduced in v2.0.6 (rate-limited by a process-wide semaphore: 8 in-flight, 2 s acquire timeout, rejection code `-32005`). See [Payback Fee Refunds](#payback-fee-refunds).
 
 **If you are still on v2.0.4-elemont or earlier:** v2.0.8-elemont also carries the `SfcV2Patch2` flag introduced in v2.0.5 (testnet only). `SfcV2Patch2` installs the current Cycle-158 SFC bytecode at `0xFC00FACE00000000000000000000000000000000`, replacing the older b7ab5b5-era bytecode that was stuck on testnet. It fires once at the next epoch seal after a v2.0.5+ binary is first installed. Mainnet is unaffected — this flag is not set in mainnet rules.
 {% endhint %}
@@ -610,37 +608,21 @@ This section consolidates release-specific change notes, JSON-RPC surface change
 ### Release Overview
 
 {% hint style="info" %}
-**`v2.0.10-elemont`** — supersedes v2.0.9-elemont. This release adds a new testnet-only consensus flag (`SfcV2Patch3`) that re-flashes the on-chain SFC bytecode at `0xFC00FACE...` with the Cycle-159 build to fix the inline reentrancy guard. There are **no JSON-RPC surface changes, no new methods, no new error responses, no receipt or event format changes**. Existing receipts, method selectors, response shapes, batch caps, concurrency caps, and rate-limit codes are all identical to v2.0.9. However, **observable on-chain behavior changes**: every SFC `nonReentrant` entrypoint (`delegate`, `undelegate`, `withdraw`, `claimRewards`, `restakeRewards`, `stashRewards`, `createValidator`) that previously reverted with `"ReentrancyGuard: reentrant call"` on its first external call now proceeds as designed. See [§ v2.0.10-elemont Additions](#v2010-elemont-additions) below.
+**`v2.0.10-elemont`** — supersedes v2.0.9-elemont. Testnet-only consensus flag (`SfcV2Patch3`) that re-flashes the on-chain SFC bytecode with the Cycle-159 build to fix the inline reentrancy guard. **No JSON-RPC surface changes**. However, **observable on-chain behavior changes**: every SFC `nonReentrant` entrypoint (`delegate`, `undelegate`, `withdraw`, `claimRewards`, `restakeRewards`, `stashRewards`, `createValidator`) that previously reverted with `"ReentrancyGuard: reentrant call"` now proceeds as designed. See [SFC V2 Contract Upgrade](#sfc-v2-contract-upgrade).
 
-**`v2.0.9-elemont`** — added a trusted-preset genesis entry only. No RPC, consensus, or receipt changes vs v2.0.8; no new section needed here.
+**`v2.0.9-elemont`** — trusted-preset genesis entry only. No RPC, consensus, or receipt changes vs v2.0.8.
 
-All v2.0.2/v2.0.3/v2.0.4/v2.0.5/v2.0.6/v2.0.7/v2.0.8 sections below remain in force.
-{% endhint %}
+**`v2.0.8-elemont`** — node-internal hotfix: removes the peer-progress drift cap in the gossip sync handler that locked out any validator more than 1,000 epochs behind chain tip. No JSON-RPC, consensus, or receipt changes. See [Performance & Reliability Improvements](#performance--reliability-improvements).
 
-{% hint style="info" %}
-**`v2.0.8-elemont`** — supersedes v2.0.7-elemont. This release is a **node-internal hotfix only**: it removes a peer-progress drift cap in the gossip sync handler that was locking out any validator that fell more than 1,000 epochs behind chain tip. There are **no JSON-RPC surface changes, no new methods, no new error responses, no consensus changes, no new upgrade flags, and no receipt or event format changes**. Existing receipts, method selectors, response shapes, batch caps, concurrency caps, and rate-limit codes are all identical to v2.0.7. See [§ v2.0.8-elemont Additions](#v208-elemont-additions) below.
-{% endhint %}
+**`v2.0.7-elemont`** — node-internal hotfix: raises the per-peer in-flight event-processing quota in the gossip handler so that legitimate sync chunks are no longer rejected with `Peer exceeded event processing quota`. No JSON-RPC, consensus, or receipt changes. See [Performance & Reliability Improvements](#performance--reliability-improvements).
 
-{% hint style="info" %}
-**`v2.0.7-elemont`** — supersedes v2.0.6-elemont. This release is a **node-internal hotfix only**: it raises the per-peer in-flight event-processing quota in the gossip handler so that legitimate sync chunks (up to 500 events per chunk, 6 in-flight per session peer) are no longer rejected with the warning `Peer exceeded event processing quota`. There are **no JSON-RPC surface changes, no new methods, no new error responses, no consensus changes, no new upgrade flags, and no receipt or event format changes**. Existing receipts, method selectors, response shapes, batch caps, concurrency caps, and rate-limit codes are all identical to v2.0.6. See [§ v2.0.7-elemont Additions](#v207-elemont-additions) below.
-{% endhint %}
+**`v2.0.6-elemont`** — pure RPC addition: the new `vc_getPaybackBalance` method and RPC-safe payback accessor with a process-wide concurrency cap. No consensus or receipt changes. See [Payback Fee Refunds](#payback-fee-refunds).
 
-{% hint style="info" %}
-**`v2.0.6-elemont`** — supersedes v2.0.5-elemont. This release adds a new JSON-RPC method `vc_getPaybackBalance` and an RPC-safe payback accessor with a process-wide concurrency cap. There are **no consensus changes, no new upgrade flags, and no receipt or event format changes**; existing receipts, method selectors, and response shapes are identical to v2.0.5. See [§ v2.0.6-elemont Additions](#v206-elemont-additions) below.
-{% endhint %}
+**`v2.0.5-elemont`** — adds the `SfcV2Patch2` upgrade flag for testnet, which re-flashes SFC bytecode with the current Cycle-158 source. No RPC surface changes. See [SFC V2 Contract Upgrade](#sfc-v2-contract-upgrade).
 
-{% hint style="info" %}
-**`v2.0.5-elemont`** — supersedes v2.0.4-elemont. This release adds the `SfcV2Patch2` upgrade flag for testnet, which re-flashes the SFC contract bytecode at `0xFC00FACE00000000000000000000000000000000` with the current Cycle-158 source. There are **no RPC surface changes**; the receipt format, method signatures, and response shapes are identical to v2.0.4. See [§ v2.0.5-elemont Additions](#v205-elemont-additions) below.
+**`v2.0.4-elemont`** — bumps lachesis-base to `v0.1.6-elemont`; consensus and reliability fixes with no direct RPC consumer impact. Also carries all v2.0.3 defensive RPC caps. See [Performance & Reliability Improvements](#performance--reliability-improvements).
 
-All v2.0.2/v2.0.3/v2.0.4 sections below remain in force; they describe earlier activations still relevant to infrastructure operators.
-{% endhint %}
-
-{% hint style="info" %}
-**`v2.0.4-elemont`** — supersedes the tagged-but-never-rolled v2.0.3-elemont. All v2.0.3 additions (defensive RPC caps from `go-vinu v1.20.14-quota`) apply in v2.0.4 as well. v2.0.4 additionally bumps lachesis-base to `v0.1.6-elemont`, which carries consensus and reliability fixes that have **no direct RPC consumer impact** — see [§ v2.0.4-elemont Additions](#v204-elemont-additions) below. Both releases take effect **immediately on binary restart** (no epoch-seal wait).
-
-Most v2.0.3/v2.0.4 caps sit far above typical usage envelopes — consumer impact is limited to high-volume clients that batched heavily or submitted large `stateOverride` blobs. See [§ v2.0.3-elemont Additions](#v203-elemont-additions) below.
-
-All v2.0.2-elemont sections below remain in force; they describe the one-time consensus-changing activations.
+**`v2.0.3-elemont`** — defensive RPC caps (batch size, concurrency, state override) from the upstream `go-vinu v1.20.14-quota` fork. Active immediately on restart. See [JSON-RPC Defensive Caps & Rate Limits](#json-rpc-defensive-caps--rate-limits).
 {% endhint %}
 
 {% hint style="warning" %}
@@ -654,240 +636,13 @@ All v2.0.2-elemont sections below remain in force; they describe the one-time co
 - **v2.0.2-elemont consensus changes** (`feeRefund`, base fee burn, Elemont consensus fixes): activate at the **next epoch seal** after a node first installs a v2.0.2+ binary. On startup you see three `Staged … upgrade from binary rules; will activate at next epoch seal` log lines before block processing resumes. Until the seal fires (up to ~4h after restart — the `MaxEpochDuration` cap; epochs may seal earlier from gas, event count, or cheaters), receipts and fee accounting continue to use pre-upgrade behavior. At the seal the new rules activate atomically on the same block.
 - **v2.0.2+ → v2.0.3 / v2.0.4 upgrades**: if your node already sealed an epoch under v2.0.2-elemont, no second activation occurs on v2.0.3 or v2.0.4. The consensus flags are latched; both are pure binary swaps.
 - **v2.0.4-elemont lachesis-base bump** (vecengine cap, dagprocessor drain fix, kvdb flushable, semaphore metric, gossip deadlock fix): active immediately on restart. Internal consensus-engine plumbing only — no RPC surface change, no receipt change, no new error responses for consumers.
+- **v2.0.5-elemont `SfcV2Patch2`** (testnet only): activates at the **next epoch seal** after a v2.0.5+ binary boots. One-time bytecode installation; no receipt or RPC format change.
+- **v2.0.6-elemont `vc_getPaybackBalance`**: active immediately on restart. Registered when the RPC server starts.
+- **v2.0.7-elemont per-peer quota resize**: active immediately on restart. No epoch-seal wait, no staging log.
+- **v2.0.8-elemont peer-progress drift cap removal**: active immediately on restart. No epoch-seal wait, no staging log.
+- **v2.0.10-elemont `SfcV2Patch3`** (testnet only): activates at the **next epoch seal** after a v2.0.10+ binary boots.
+- **v2.0.11-elemont `SfcV2Patch4`** (testnet only): activates at the **next epoch seal** after a v2.0.11+ binary boots.
 {% endhint %}
-
----
-
-### v2.0.10-elemont Additions
-
-v2.0.10-elemont supersedes v2.0.9-elemont. It is a **testnet-only SFC bytecode re-flash** that fixes the inline reentrancy guard in the SFC contract at `0xFC00FACE...`. Mainnet rules are unchanged — mainnet has not yet activated any `SfcV2*` flag, and the Cycle-159 bytecode will be installed directly when mainnet first activates `SfcV2` (no separate `SfcV2Patch3` is required on mainnet).
-
-#### What changed
-
-A new upgrade flag, `SfcV2Patch3`, is set to `true` in testnet rules (`opera/rules.go`). When a v2.0.10 binary boots on a node that has not yet sealed `SfcV2Patch3`, the flag is staged in `DirtyRules` at startup and activates on the next epoch seal. At activation, the block processor re-flashes `sfc.GetContractBin()` (Cycle-159, 45,240 bytes, solc `0.5.17+commit.d19bba13`, `--optimize --optimize-runs=10000 --evm-version=istanbul`) over the existing SFC code at `0xFC00FACE...` via `StateDB.SetCode(...)` — one atomic code swap per node, idempotent across restarts.
-
-#### Why (bug and fix)
-
-The Cycle-158 bytecode installed by `SfcV2Patch2` required `_reentrancyGuardCounter == 1` in the inline `nonReentrant` modifier. That storage slot was appended to SFC storage layout **after** the contract was genesis-deployed at `0xFC00FACE...`, so the slot is `0` on-chain. SFC's `initialize()` (which sets the slot to `1`) is gated by OpenZeppelin's `initializer` modifier and cannot re-run after an evmwriter bytecode patch. Net effect: **every SFC `nonReentrant` entrypoint reverted on its first external call** with `"ReentrancyGuard: reentrant call"` — `delegate`, `undelegate`, `withdraw`, `claimRewards`, `restakeRewards`, `stashRewards`, `createValidator`, plus four admin paths.
-
-The Cycle-159 bytecode relaxes the guard to `_reentrancyGuardCounter < 2` at all 11 inlined modifier sites. State `0` (never-written) and `1` (initialized) both count as "not entered"; `2` still means "actively entered" and reverts on reentry; any value `≥ 2` (only possible via a storage-layout collision, e.g. from a future upgrade inheriting OZ `ReentrancyGuard` over the same slot) still reverts to fail closed. The post-body write normalises `0 → 1`, so after the first successful guarded call on each contract instance the standard OZ 1/2 pattern resumes unchanged.
-
-#### Byte-diff
-
-Against the Cycle-158 source: exactly the 11 guard sites (one `EQ 1` pattern flipped to `LT 2` per inlined site) plus the 32-byte Solidity bzzr metadata hash. Same solc version (`0.5.17+commit.d19bba13`), same settings (`--optimize --optimize-runs=10000 --evm-version=istanbul`), same contract length (45,240 bytes).
-
-#### Consumer impact
-
-JSON-RPC surface, ABI, method selectors, event topics, receipt encoding, and batch/concurrency/rate limits are **unchanged from v2.0.9**. Wallets and dApps calling `SFC.delegate(uint256)` etc. will see one observable behavior change: the call now **succeeds** (subject to normal revert conditions like insufficient balance, validator doesn't exist, or amount-below-minimum), instead of reverting universally with `"ReentrancyGuard: reentrant call"` during `eth_call` / `eth_estimateGas` / `eth_sendTransaction`.
-
-The SFC ABI at [vinuchain-lists/contracts/vinuchain/SFC_abi.json](https://github.com/VinuChain/vinuchain-lists/blob/main/contracts/vinuchain/SFC_abi.json) is **byte-identical** to the pre-fix ABI — the modifier change is implementation-only. Downstream consumers (`vinuscan-backend`'s bundled ABI, `vinuexplorer-backend`'s cached ABI, third-party integrators) do not need to re-input or regenerate anything.
-
-#### Activation
-
-The flag stages at startup on any v2.0.10 binary boot and activates at the next epoch seal on the testnet consensus (up to `MaxEpochDuration = 4h` after restart; typically much sooner on an active network). The bytecode swap log line — `"Re-applying SFC V2 bytecode upgrade (patch 3)"` — fires exactly once per node, on the block where the seal commits. On 2026-04-19 testnet this happened at block **1424440** at **14:56:46 UTC** (epoch 5639 → 5640 transition).
-
-#### Blockscout verification
-
-After the re-flash fires, `testnet.vinuexplorer.org` and future `mainnet.vinuexplorer.org` will temporarily show stale bytecode because Blockscout's Elixir indexer never re-fetches `addresses.contract_code` for system-contract addresses whose code is swapped via the evmwriter precompile rather than a `CREATE` tx. A plain re-verify POST accepts (`"verification started"`) but compares against the stale cached bytecode and cannot overwrite the existing `smart_contracts` row. Testnet was re-verified on 2026-04-19 using the standard post-evmwriter recipe: `DELETE` the stale `smart_contracts` row, `UPDATE addresses.contract_code` with fresh `eth_getCode`, then `POST /api/v2/smart-contracts/0xfc00face.../verification/via/flattened-code` with the solc settings above. Mainnet operators will need to repeat the recipe when the Cycle-159 bytecode lands on mainnet via the first `SfcV2` activation.
-
-### v2.0.8-elemont Additions
-
-v2.0.8-elemont is a **pure node-internal hotfix** on top of v2.0.7-elemont. No consensus rules change, no upgrade flags, no receipt format changes, no JSON-RPC surface changes, no new methods, and no new error responses on existing endpoints. Nodes on mixed v2.0.7 / v2.0.8 remain fully compatible and produce identical state roots.
-
-#### What changed
-
-`gossip/handler_sync.go::validatePeerProgress` — added in v2.0.7 (commit `9278d71`, "resolve remaining Round 2 audit findings") — rejected any peer whose `ProgressMsg` claimed an epoch more than 1,000 ahead of local, or a block more than 5,000 ahead. v2.0.8 removes both upper bounds and the unused constants, keeping only the structural `progress.Epoch == 0` check.
-
-| Check                       | v2.0.7 behavior  | v2.0.8 behavior |
-| --------------------------- | ---------------- | --------------- |
-| `progress.Epoch == 0`       | reject (invalid) | reject (invalid) |
-| `progress.Epoch > local+1000` | reject ("peer epoch N too far ahead") | **accepted** (catch-up is expected) |
-| `progress.LastBlockIdx > local+5000` | reject ("peer block N too far ahead") | **accepted** |
-
-#### Who is affected
-
-- **Validator operators returning from extended downtime**: on v2.0.7, any node whose chain state was more than 1,000 epochs behind live tip would successfully RLPx-handshake with current peers, then its own `validatePeerProgress` would reject every incoming `ProgressMsg` and it would close the subprotocol within ~175 ms. Visible symptom on the stale node: `Looking for peers peercount=1 tried=N` with `tried` climbing and `last_id` never advancing. Visible symptom on the tip-side peer: `Removing p2p peer req=true err="subprotocol error" duration=~175ms`, repeating every ~30 s against the same remote. v2.0.8 restores the ability for these nodes to catch up via normal DAG sync.
-- **Fresh-install validators on testnet**: this release alone does **not** unblock fresh installs from the distributed 2024-06-21 genesis — that hits a separate "wrong event epoch hash" divergence at the first post-startup epoch seal, because the genesis pre-dates several SFC upgrade flags. See the chaindata snapshot instructions in the [Troubleshooting → wrong event epoch hash](#warn-incoming-event-rejected-err-wrong-event-epoch-hash) section above.
-- **dApps, wallets, indexers, explorers**: no action — the JSON-RPC surface is byte-for-byte identical to v2.0.7.
-
-#### DoS guarantee
-
-The removed check never closed a real DoS vector. The deeper per-event acceptance path (`lightCheck` in `gossip/handler_sync.go:89` and the `epochcheck.ErrNotRelevant` gate) already refuses events whose epoch does not match local, so a peer lying about progress consumes no state. `progress.Epoch == 0` remains the structural sanity guard.
-
-#### Activation
-
-Immediate on restart. No epoch-seal wait, no staging log, no flag transition.
-
----
-
-### v2.0.7-elemont Additions
-
-v2.0.7-elemont is a **pure node-internal hotfix** on top of v2.0.6-elemont. No consensus rules change, no upgrade flags, no receipt format changes, no JSON-RPC surface changes, no new methods, and no new error responses on existing endpoints. Nodes on mixed v2.0.6 / v2.0.7 remain fully compatible and produce identical state roots.
-
-#### What changed
-
-The per-peer in-flight quota in the gossip handler (`gossip/peer_ratelimit.go`) was sized smaller than a single legitimate DAG sync chunk:
-
-| Quota                       | v2.0.6 cap | v2.0.7 cap | Sized to                                                |
-| --------------------------- | ---------- | ---------- | ------------------------------------------------------- |
-| `peerEventQuota` (DAG events) | 200        | 3,250      | `ParallelChunksDownload * DefaultChunkItemsNum + softLimitItems` (matches `DagProcessor.EventsBufferLimit.Num`) |
-| `peerStreamQuota` (BV/BR/EP)  | 100        | 3,250      | Same formula                                              |
-
-Because the dagstreamleecher delivers chunks of up to `DefaultChunkItemsNum = 500` events with `ParallelChunksDownload = 6` chunks in flight per active sync session (sessions are per-peer via `IsValidSession`), v2.0.6 dropped every legitimate chunk during catch-up and logged `Peer exceeded event processing quota` on every drop. v2.0.7 raises both per-peer caps to match the dagprocessor's own buffer (`EventsBufferLimit.Num = 3,250`).
-
-#### DoS guarantee preserved
-
-`gossip/config.go::Config.Validate()` still enforces `EventsSemaphoreLimit ≥ 2 × EventsBufferLimit`, so the global event-processing semaphore is at least 6,500 items. A single peer remains bounded to ≤50% of total capacity (3,250 of ≥6,500). v2.0.7 also adds a startup sanity assertion that fails fast if anyone ever shrinks the per-peer cap below the processor buffer in a future change, so this class of regression cannot recur silently.
-
-#### Who is affected
-
-- **Validator and RPC operators**: no consumer-facing action needed. After the binary swap, the warning storm stops on the next chunk.
-- **dApps, wallets, indexers, explorers**: no action — the JSON-RPC surface is byte-for-byte identical to v2.0.6.
-- **Network analysts / observability**: any alerting on the `Peer exceeded event processing quota` log line should be updated to reflect that the warning is now an actual abuse signal rather than background sync noise.
-
-#### Activation
-
-Immediate on restart. No epoch-seal wait, no staging log, no flag transition.
-
----
-
-### v2.0.6-elemont Additions
-
-v2.0.6-elemont is a **pure RPC addition** on top of v2.0.5-elemont. No consensus rules change, no upgrade flags, no receipt format changes, no new error responses on existing endpoints. Nodes on mixed v2.0.5 / v2.0.6 remain fully compatible and produce identical state roots.
-
-#### New method: `vc_getPaybackBalance`
-
-| Field            | Value                                                                              |
-| ---------------- | ---------------------------------------------------------------------------------- |
-| Namespace        | `vc` (not `eth`)                                                                   |
-| Method           | `vc_getPaybackBalance`                                                             |
-| Params           | `[address]` — 20-byte hex string. Optional second param: block number or `"latest"` (default) |
-| Returns          | Hex-encoded wei value (`*hexutil.Big`). Returns `0x0` for the zero address, when Podgorica is inactive, or when the caller stakes below minimum |
-| Error `-32005`   | Rate-limit rejection when the process-wide in-flight cap is saturated              |
-
-**Example:**
-
-```bash
-curl -s -X POST http://localhost:18545/ \
-  -H "Content-Type: application/json" \
-  -d '{"jsonrpc":"2.0","method":"vc_getPaybackBalance","params":["0xABCDEF0123456789ABCDEF0123456789ABCDEF01"],"id":1}'
-```
-
-Returns the currently available payback balance for the address at the latest sealed block.
-
-#### Concurrency cap and rejection code
-
-Each call executes up to five EVM `StaticCall`s against the payback proxy and SFC contracts (≈500k gas total), so the handler is gated by a process-wide semaphore:
-
-| Knob                        | Value      |
-| --------------------------- | ---------- |
-| Max in-flight calls         | 8          |
-| Acquire timeout             | 2 seconds  |
-| Rejection error code        | `-32005`   |
-| Rejection error message     | `payback query rate-limited` |
-
-Clients should treat `-32005` as a transient rate-limit signal and retry with backoff. High-volume callers (indexers, scanners) should stagger requests or open multiple RPC endpoints rather than request a higher cap.
-
-#### Why a new namespace instead of `eth_`?
-
-The accessor is intentionally RPC-safe: it never reads or writes `PaybackCache.blkCtx` and never mutates `StakesMap`, so concurrent RPC traffic cannot corrupt in-flight block-processing state. Placing it in the `vc` namespace keeps it distinct from Ethereum-standard methods and signals to consumers that it exposes VinuChain-specific accounting (fee-refund quota under the Podgorica upgrade) rather than EVM state.
-
-#### Who is affected
-
-- **dApps, wallets, block explorers**: no action needed. Existing `eth_*` / `debug_*` / `trace_*` behavior is unchanged.
-- **Scanners/indexers that want payback balance data**: replace any prior workaround (reading SFC state directly via `eth_call`) with `vc_getPaybackBalance`. The new method returns the final refund amount after the five internal StaticCalls that compute it.
-- **Clients calling `eth_getPaybackBalance`**: that method never shipped in any public release. If you have custom client code referencing it from an internal branch, switch to `vc_getPaybackBalance`.
-
-#### Activation
-
-Immediate on restart. No epoch-seal wait, no staging log, no flag transition — the method is registered when the RPC server starts.
-
----
-
-### v2.0.5-elemont Additions
-
-v2.0.5-elemont ships the same RPC surface as v2.0.4-elemont. The only addition is the `SfcV2Patch2` upgrade flag (testnet only):
-
-| Scope | Change | Consumer impact |
-| --- | --- | --- |
-| `SfcV2Patch2` (testnet) | Re-flashes SFC contract bytecode at `0xFC00FACE00000000000000000000000000000000` with current Cycle-158 45,240-byte source at next epoch seal | None for RPC consumers — no new methods, fields, or response shape changes. dApps calling `staticCall` on the SFC will now interact with the corrected bytecode |
-| SFC contract verification | After the epoch seal that fires `SfcV2Patch2`, the contract at `0xFC00FACE00000000000000000000000000000000` can be verified on testnet explorer using the current SFC source at [`vinuchain-lists/contracts/vinuchain/SFC.sol`](https://github.com/VinuChain/vinuchain-lists/blob/main/contracts/vinuchain/SFC.sol) and solc 0.5.17 | Infrastructure operators running their own Blockscout instance against testnet can now complete contract verification |
-
-**Who is affected:**
-
-- **Most consumers:** No action needed. The receipt format, method selectors, and ABI for SFC external functions are unchanged.
-- **dApps relying on SFC internal state:** The corrected bytecode includes Cycle-158 hardening (reentrancyguard fix, slashing refund timelock, precision fixes). Behavior is compatible with all existing delegations and staking state; no migration is needed.
-- **Explorer operators:** Blockscout verification against testnet will succeed after the epoch seal fires the patch.
-
-**Activation timing:** `SfcV2Patch2` fires at the **next epoch seal** after a node running v2.0.5-elemont starts. The node logs:
-
-```text
-INFO Staged SfcV2Patch2 upgrade from binary rules; will activate at next epoch seal
-```
-
-...at startup, and then at the seal:
-
-```text
-INFO Re-applying SFC V2 bytecode upgrade (patch 2)   block=<N>
-```
-
-Mainnet is unaffected — `SfcV2Patch2` is not set in mainnet rules.
-
----
-
-### v2.0.4-elemont Additions
-
-v2.0.4-elemont ships the same RPC surface as v2.0.3-elemont. The only additions are consensus-engine internals in lachesis-base `v0.1.6-elemont`:
-
-| Scope | Change | Consumer impact |
-| --- | --- | --- |
-| `vecengine` | Cap per-validator branch allocation | None — prevents Byzantine vector memory inflation; no observable behavior on healthy networks |
-| `dagprocessor` / `gossip` | Drain queued events on quit, prevent checker-exit deadlock | None — only affects clean shutdown paths |
-| `kvdb` | Clear flushable write buffer only after successful batch write | None — removes a race that could lose writes on crash mid-batch |
-| `semaphore` | Zero metric after termination, clamp underflow | None — metric/debug plumbing |
-
-RPC consumers (indexers, dApps, wallets) **do not need to change anything** for the v2.0.3 → v2.0.4 bump. All v2.0.3 migration checklist items below still apply.
-
----
-
-### v2.0.3-elemont Additions
-
-The following caps and behaviors ship with **`v2.0.3-elemont`** via the upstream `go-vinu v1.20.14-quota` fork. They are **defensive hardening** — DoS mitigations, not protocol changes — but high-volume clients may see new error responses where previously the node accepted unbounded input.
-
-| Cap / change | RPC method(s) | New limit | Error on exceed |
-| --- | --- | --- | --- |
-| JSON-RPC batch size ceiling | Any batched call (`POST` with a JSON array) | **100 messages per batch** | `invalid request: batch too large` |
-| In-flight RPC concurrency | All HTTP & WS RPC methods | **50 concurrent requests** (new default; configurable via `--rpc.maxconcurrent`) | HTTP 503 Service Unavailable |
-| `StateOverride.code` byte cap | `eth_call`, `eth_estimateGas`, `debug_traceCall` | **`MaxCodeSize` (24,576 bytes)** per account | `code size exceeds MaxCodeSize` |
-| `StateOverride.stateDiff` entry count | `eth_call`, `eth_estimateGas`, `debug_traceCall` | **1,000 entries per account** | `stateDiff size exceeds 1000 entries` |
-| Receipt `feeRefund` byte cap (P2P ingress) | Internal — peer-to-peer receipt RLP decoding | **32 bytes / 256-bit integer** | Peer connection drops offending receipt |
-| Graceful shutdown error response | Any RPC method during node shutdown | (new) handler returns proper JSON-RPC error on shutdown instead of silent connection drop | `handler is stopping` |
-
-#### Who is affected
-
-- **Batch size (100 msgs):** indexers and explorers sometimes batch block-range queries. 100 covers >99% of observed batch sizes on the existing testnet; clients hitting this should paginate.
-- **Concurrency (50):** the default prevents goroutine flooding on a single node. Operators with heavy analytics workloads can raise it via `--rpc.maxconcurrent=N` in the node flags; set to 0 for unlimited.
-- **`stateOverride` caps:** tools that simulate large contracts (`eth_call` with injected contract code) must stay under 24,576 bytes. `stateDiff` entry cap of 1,000 is larger than most account storage layouts; affects only stress-test or fuzzer workloads.
-- **`feeRefund` byte cap:** internal P2P validation only. No consumer impact — the cap matches the on-chain 256-bit integer type and prevents malformed peer data from entering the node.
-- **Graceful shutdown error:** clients that reconnect after an interrupted request now receive a descriptive JSON-RPC error instead of a bare TCP close. Improves debuggability; no contract break.
-
-#### Operator configuration
-
-The concurrency cap accepts a CLI flag:
-
-```bash
-opera --rpc.maxconcurrent 100    # allow 100 in-flight RPC requests
-opera --rpc.maxconcurrent 0      # disable the cap entirely
-```
-
-The batch size cap (100) and `stateOverride` caps are hard-coded. Clients that batch aggressively should reduce batch size rather than request a higher cap.
-
-#### Migration checklist for v2.0.3-elemont
-
-- [ ] Indexers: split any batch >100 messages into chunks of ≤100
-- [ ] Analytics: if you run 50+ concurrent `eth_call` against a single node, either set `--rpc.maxconcurrent` to your peak or distribute the load across multiple RPC endpoints
-- [ ] Tooling: ensure `stateOverride.code` blobs stay under 24,576 bytes per account
-- [ ] Error handling: accept the new `invalid request: batch too large` and `handler is stopping` error strings in retry logic
 
 ---
 
@@ -917,6 +672,8 @@ Transaction receipts now include an optional `feeRefund` field (hex-encoded wei 
 
 The same `feeRefund` key also appears on the transaction object returned by `eth_getTransactionByHash`, `eth_getTransactionByBlockHashAndIndex`, and `eth_getTransactionByBlockNumberAndIndex` — not only on receipts. Clients that read refund amounts off the transaction response (rather than pulling the receipt) should handle it there as well.
 
+A separate defensive cap on the `feeRefund` P2P ingress value (32 bytes / 256-bit integer) is documented under [JSON-RPC Defensive Caps & Rate Limits](#json-rpc-defensive-caps--rate-limits).
+
 ---
 
 ### SFC V2 Contract Upgrade
@@ -932,6 +689,63 @@ The on-chain SFC contract at `0xfc00face00000000000000000000000000000000` is rew
 - Does **not** change the function selectors (on-chain ABI) used by the driver contract or internal transactions — dApps and on-chain contracts calling the SFC continue to work without modification.
 
 **Impact on smart contracts:** If your on-chain contract directly reads SFC state (e.g., via `staticCall`), you should verify the call succeeds after the upgrade. Staking, delegation, and withdrawal operations should remain unaffected.
+
+#### `SfcV2Patch2` — Cycle-158 bytecode re-flash (v2.0.5-elemont, testnet only)
+
+v2.0.5-elemont ships the same RPC surface as v2.0.4-elemont; the only addition is the `SfcV2Patch2` upgrade flag (testnet only):
+
+| Scope | Change | Consumer impact |
+| --- | --- | --- |
+| `SfcV2Patch2` (testnet) | Re-flashes SFC contract bytecode at `0xFC00FACE00000000000000000000000000000000` with current Cycle-158 45,240-byte source at next epoch seal | None for RPC consumers — no new methods, fields, or response shape changes. dApps calling `staticCall` on the SFC will now interact with the corrected bytecode |
+| SFC contract verification | After the epoch seal that fires `SfcV2Patch2`, the contract can be verified on testnet explorer using the current SFC source at [`vinuchain-lists/contracts/vinuchain/SFC.sol`](https://github.com/VinuChain/vinuchain-lists/blob/main/contracts/vinuchain/SFC.sol) and solc 0.5.17 | Infrastructure operators running their own Blockscout instance against testnet can now complete contract verification |
+
+**Who is affected:**
+
+- **Most consumers:** No action needed. The receipt format, method selectors, and ABI for SFC external functions are unchanged.
+- **dApps relying on SFC internal state:** The corrected bytecode includes Cycle-158 hardening (reentrancyguard fix, slashing refund timelock, precision fixes). Behavior is compatible with all existing delegations and staking state; no migration is needed.
+- **Explorer operators:** Blockscout verification against testnet will succeed after the epoch seal fires the patch.
+
+**Activation timing.** `SfcV2Patch2` fires at the **next epoch seal** after a node running v2.0.5-elemont starts. The node logs:
+
+```text
+INFO Staged SfcV2Patch2 upgrade from binary rules; will activate at next epoch seal
+```
+
+...at startup, and then at the seal:
+
+```text
+INFO Re-applying SFC V2 bytecode upgrade (patch 2)   block=<N>
+```
+
+Mainnet is unaffected — `SfcV2Patch2` is not set in mainnet rules.
+
+#### `SfcV2Patch3` — Cycle-159 reentrancy guard fix (v2.0.10-elemont, testnet only)
+
+v2.0.10-elemont is a **testnet-only SFC bytecode re-flash** that fixes the inline reentrancy guard in the SFC contract at `0xFC00FACE...`. Mainnet rules are unchanged — mainnet has not yet activated any `SfcV2*` flag, and the Cycle-159 bytecode will be installed directly when mainnet first activates `SfcV2` (no separate `SfcV2Patch3` is required on mainnet).
+
+**What changed.** A new upgrade flag, `SfcV2Patch3`, is set to `true` in testnet rules (`opera/rules.go`). When a v2.0.10 binary boots on a node that has not yet sealed `SfcV2Patch3`, the flag is staged in `DirtyRules` at startup and activates on the next epoch seal. At activation, the block processor re-flashes `sfc.GetContractBin()` (Cycle-159, 45,240 bytes, solc `0.5.17+commit.d19bba13`, `--optimize --optimize-runs=10000 --evm-version=istanbul`) over the existing SFC code at `0xFC00FACE...` via `StateDB.SetCode(...)` — one atomic code swap per node, idempotent across restarts.
+
+**Why (bug and fix).** The Cycle-158 bytecode installed by `SfcV2Patch2` required `_reentrancyGuardCounter == 1` in the inline `nonReentrant` modifier. That storage slot was appended to SFC storage layout **after** the contract was genesis-deployed at `0xFC00FACE...`, so the slot is `0` on-chain. SFC's `initialize()` (which sets the slot to `1`) is gated by OpenZeppelin's `initializer` modifier and cannot re-run after an evmwriter bytecode patch. Net effect: **every SFC `nonReentrant` entrypoint reverted on its first external call** with `"ReentrancyGuard: reentrant call"` — `delegate`, `undelegate`, `withdraw`, `claimRewards`, `restakeRewards`, `stashRewards`, `createValidator`, plus four admin paths.
+
+The Cycle-159 bytecode relaxes the guard to `_reentrancyGuardCounter < 2` at all 11 inlined modifier sites. State `0` (never-written) and `1` (initialized) both count as "not entered"; `2` still means "actively entered" and reverts on reentry; any value `≥ 2` (only possible via a storage-layout collision, e.g. from a future upgrade inheriting OZ `ReentrancyGuard` over the same slot) still reverts to fail closed. The post-body write normalises `0 → 1`, so after the first successful guarded call on each contract instance the standard OZ 1/2 pattern resumes unchanged.
+
+**Byte-diff.** Against the Cycle-158 source: exactly the 11 guard sites (one `EQ 1` pattern flipped to `LT 2` per inlined site) plus the 32-byte Solidity bzzr metadata hash. Same solc version (`0.5.17+commit.d19bba13`), same settings (`--optimize --optimize-runs=10000 --evm-version=istanbul`), same contract length (45,240 bytes).
+
+**Consumer impact.** JSON-RPC surface, ABI, method selectors, event topics, receipt encoding, and batch/concurrency/rate limits are **unchanged from v2.0.9**. Wallets and dApps calling `SFC.delegate(uint256)` etc. will see one observable behavior change: the call now **succeeds** (subject to normal revert conditions like insufficient balance, validator doesn't exist, or amount-below-minimum), instead of reverting universally with `"ReentrancyGuard: reentrant call"` during `eth_call` / `eth_estimateGas` / `eth_sendTransaction`.
+
+The SFC ABI at [vinuchain-lists/contracts/vinuchain/SFC_abi.json](https://github.com/VinuChain/vinuchain-lists/blob/main/contracts/vinuchain/SFC_abi.json) is **byte-identical** to the pre-fix ABI — the modifier change is implementation-only. Downstream consumers (`vinuscan-backend`'s bundled ABI, `vinuexplorer-backend`'s cached ABI, third-party integrators) do not need to re-input or regenerate anything.
+
+**Activation.** The flag stages at startup on any v2.0.10 binary boot and activates at the next epoch seal on the testnet consensus (up to `MaxEpochDuration = 4h` after restart; typically much sooner on an active network). The bytecode swap log line — `"Re-applying SFC V2 bytecode upgrade (patch 3)"` — fires exactly once per node, on the block where the seal commits. On 2026-04-19 testnet this happened at block **1424440** at **14:56:46 UTC** (epoch 5639 → 5640 transition).
+
+**Blockscout verification.** After the re-flash fires, `testnet.vinuexplorer.org` and future `mainnet.vinuexplorer.org` will temporarily show stale bytecode because Blockscout's Elixir indexer never re-fetches `addresses.contract_code` for system-contract addresses whose code is swapped via the evmwriter precompile rather than a `CREATE` tx. A plain re-verify POST accepts (`"verification started"`) but compares against the stale cached bytecode and cannot overwrite the existing `smart_contracts` row. Testnet was re-verified on 2026-04-19 using the standard post-evmwriter recipe: `DELETE` the stale `smart_contracts` row, `UPDATE addresses.contract_code` with fresh `eth_getCode`, then `POST /api/v2/smart-contracts/0xfc00face.../verification/via/flattened-code` with the solc settings above. Mainnet operators will need to repeat the recipe when the Cycle-159 bytecode lands on mainnet via the first `SfcV2` activation.
+
+#### `SfcV2Patch4` — Cycle-160 lock-end-time fix (v2.0.11-elemont, testnet only)
+
+The v2.0.11-elemont release documented in the [Patch Release Semantics](#patch-release-semantics) block above fixes the SFC lock-end-time bug in `_lockStake` / `relockStake`. The Cycle-160 bytecode changes the relock invariant from `require(lockupDuration >= ld.duration)` (compared the **new duration** against the **original duration**) to `require(endTime >= ld.endTime)` (you cannot shorten the absolute lock **end time**). ABI and selectors are byte-identical to Cycle-159 — 123 functions + 39 events with zero additions or removals; the byte-diff is concentrated in ~335 optimizer-reshuffle regions plus the 32-byte bzzr metadata hash.
+
+A binary startup guard (`sfc.EnforcePatch4StartupCheck`, wired from `cmd/opera/launcher/patch4_startup_check.go:init()`) rejects and `log.Crit`s on any invalid Patch4 asset — sentinel-prefixed, under-size, all-zero, or byte-identical to Patch3 — so a build that accidentally shipped a placeholder refuses to start.
+
+**Activation.** At the next epoch seal after a v2.0.11 binary boots. On the 2026-04-23 live testnet, `SfcV2Patch4` sealed at block 1,430,436. Mainnet is unaffected — `SfcV2Patch4` is not set in mainnet rules; the Cycle-160 bytecode will be installed directly when mainnet first activates `SfcV2`.
 
 ---
 
@@ -990,19 +804,6 @@ When the Elemont upgrade is active, validators flagged as cheaters in an epoch h
 
 ---
 
-### Database & State Compatibility
-
-**No state resync required.** All three upgrades (SfcV2, Podgorica, Elemont) are compatible with the existing LevelDB chain state. The binary upgrade does not change the storage schema or require database migration:
-
-- **Existing delegations/stakes** remain valid under SFC V2 — no state migration happens.
-- **Chain state** from blocks before the upgrade is unchanged and remains queryable.
-- **Block history** is preserved — querying old blocks (before SfcV2/Elemont activation) returns pre-upgrade results.
-- **No snapshot import needed** — a simple binary swap and restart is sufficient; no full resync from genesis.
-
-Validators who miss the upgrade window can recover by installing the new binary and restarting (see "Recovering a node that missed the window" above).
-
----
-
 ### Payback Fee Refunds
 
 Stakers meeting the minimum stake threshold automatically receive gas fee refunds after each transaction they originate. This is the user-visible effect of the Podgorica upgrade and the `feeRefund` receipt field above.
@@ -1026,11 +827,108 @@ Stakers meeting the minimum stake threshold automatically receive gas fee refund
 - Refunds are applied **after** EVM execution. They do not change the declared `gasPrice`, `gasLimit`, or the `gasUsed` reported in the receipt.
 - A transaction's nominal fee still leaves the sender's balance during execution; the refund is a separate state transition in the same block.
 
+#### Programmatic access: `vc_getPaybackBalance` (v2.0.6-elemont)
+
+v2.0.6-elemont adds a dedicated JSON-RPC method for querying the currently available payback balance of an address. It is a **pure RPC addition** on top of v2.0.5-elemont: no consensus rules change, no upgrade flags, no receipt format changes. Nodes on mixed v2.0.5 / v2.0.6 produce identical state roots.
+
+| Field            | Value                                                                              |
+| ---------------- | ---------------------------------------------------------------------------------- |
+| Namespace        | `vc` (not `eth`)                                                                   |
+| Method           | `vc_getPaybackBalance`                                                             |
+| Params           | `[address]` — 20-byte hex string. Optional second param: block number or `"latest"` (default) |
+| Returns          | Hex-encoded wei value (`*hexutil.Big`). Returns `0x0` for the zero address, when Podgorica is inactive, or when the caller stakes below minimum |
+| Error `-32005`   | Rate-limit rejection when the process-wide in-flight cap is saturated              |
+
+**Example:**
+
+```bash
+curl -s -X POST http://localhost:18545/ \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","method":"vc_getPaybackBalance","params":["0xABCDEF0123456789ABCDEF0123456789ABCDEF01"],"id":1}'
+```
+
+Returns the currently available payback balance for the address at the latest sealed block.
+
+**Concurrency cap and rejection code.** Each call executes up to five EVM `StaticCall`s against the payback proxy and SFC contracts (≈500k gas total), so the handler is gated by a process-wide semaphore:
+
+| Knob                        | Value      |
+| --------------------------- | ---------- |
+| Max in-flight calls         | 8          |
+| Acquire timeout             | 2 seconds  |
+| Rejection error code        | `-32005`   |
+| Rejection error message     | `payback query rate-limited` |
+
+Clients should treat `-32005` as a transient rate-limit signal and retry with backoff. High-volume callers (indexers, scanners) should stagger requests or open multiple RPC endpoints rather than request a higher cap.
+
+**Why a new namespace instead of `eth_`?** The accessor is intentionally RPC-safe: it never reads or writes `PaybackCache.blkCtx` and never mutates `StakesMap`, so concurrent RPC traffic cannot corrupt in-flight block-processing state. Placing it in the `vc` namespace keeps it distinct from Ethereum-standard methods and signals to consumers that it exposes VinuChain-specific accounting rather than EVM state.
+
+**Who is affected:**
+
+- **dApps, wallets, block explorers**: no action needed. Existing `eth_*` / `debug_*` / `trace_*` behavior is unchanged.
+- **Scanners/indexers that want payback balance data**: replace any prior workaround (reading SFC state directly via `eth_call`) with `vc_getPaybackBalance`. The new method returns the final refund amount after the five internal StaticCalls that compute it.
+- **Clients calling `eth_getPaybackBalance`**: that method never shipped in any public release. If you have custom client code referencing it from an internal branch, switch to `vc_getPaybackBalance`.
+
+**Activation.** Immediate on restart. No epoch-seal wait, no staging log, no flag transition — the method is registered when the RPC server starts.
+
+---
+
+### JSON-RPC Defensive Caps & Rate Limits
+
+The following caps and behaviors ship with **`v2.0.3-elemont`** via the upstream `go-vinu v1.20.14-quota` fork and carry forward into every later elemont release. They are **defensive hardening** — DoS mitigations, not protocol changes — but high-volume clients may see new error responses where previously the node accepted unbounded input.
+
+| Cap / change | RPC method(s) | New limit | Error on exceed |
+| --- | --- | --- | --- |
+| JSON-RPC batch size ceiling | Any batched call (`POST` with a JSON array) | **100 messages per batch** | `invalid request: batch too large` |
+| In-flight RPC concurrency | All HTTP & WS RPC methods | **50 concurrent requests** (new default; configurable via `--rpc.maxconcurrent`) | HTTP 503 Service Unavailable |
+| `StateOverride.code` byte cap | `eth_call`, `eth_estimateGas`, `debug_traceCall` | **`MaxCodeSize` (24,576 bytes)** per account | `code size exceeds MaxCodeSize` |
+| `StateOverride.stateDiff` entry count | `eth_call`, `eth_estimateGas`, `debug_traceCall` | **1,000 entries per account** | `stateDiff size exceeds 1000 entries` |
+| Receipt `feeRefund` byte cap (P2P ingress) | Internal — peer-to-peer receipt RLP decoding | **32 bytes / 256-bit integer** | Peer connection drops offending receipt |
+| Graceful shutdown error response | Any RPC method during node shutdown | (new) handler returns proper JSON-RPC error on shutdown instead of silent connection drop | `handler is stopping` |
+
+#### Who is affected
+
+- **Batch size (100 msgs):** indexers and explorers sometimes batch block-range queries. 100 covers >99% of observed batch sizes on the existing testnet; clients hitting this should paginate.
+- **Concurrency (50):** the default prevents goroutine flooding on a single node. Operators with heavy analytics workloads can raise it via `--rpc.maxconcurrent=N` in the node flags; set to 0 for unlimited.
+- **`stateOverride` caps:** tools that simulate large contracts (`eth_call` with injected contract code) must stay under 24,576 bytes. `stateDiff` entry cap of 1,000 is larger than most account storage layouts; affects only stress-test or fuzzer workloads.
+- **`feeRefund` byte cap:** internal P2P validation only. No consumer impact — the cap matches the on-chain 256-bit integer type and prevents malformed peer data from entering the node.
+- **Graceful shutdown error:** clients that reconnect after an interrupted request now receive a descriptive JSON-RPC error instead of a bare TCP close. Improves debuggability; no contract break.
+
+#### Operator configuration
+
+The concurrency cap accepts a CLI flag:
+
+```bash
+opera --rpc.maxconcurrent 100    # allow 100 in-flight RPC requests
+opera --rpc.maxconcurrent 0      # disable the cap entirely
+```
+
+The batch size cap (100) and `stateOverride` caps are hard-coded. Clients that batch aggressively should reduce batch size rather than request a higher cap.
+
+#### Migration checklist
+
+- [ ] Indexers: split any batch >100 messages into chunks of ≤100
+- [ ] Analytics: if you run 50+ concurrent `eth_call` against a single node, either set `--rpc.maxconcurrent` to your peak or distribute the load across multiple RPC endpoints
+- [ ] Tooling: ensure `stateOverride.code` blobs stay under 24,576 bytes per account
+- [ ] Error handling: accept the new `invalid request: batch too large` and `handler is stopping` error strings in retry logic
+
+---
+
+### Database & State Compatibility
+
+**No state resync required.** All three upgrades (SfcV2, Podgorica, Elemont) are compatible with the existing LevelDB chain state. The binary upgrade does not change the storage schema or require database migration:
+
+- **Existing delegations/stakes** remain valid under SFC V2 — no state migration happens.
+- **Chain state** from blocks before the upgrade is unchanged and remains queryable.
+- **Block history** is preserved — querying old blocks (before SfcV2/Elemont activation) returns pre-upgrade results.
+- **No snapshot import needed** — a simple binary swap and restart is sufficient; no full resync from genesis.
+
+Validators who miss the upgrade window can recover by installing the new binary and restarting (see "Recovering a node that missed the window" above).
+
 ---
 
 ### Performance & Reliability Improvements
 
-The Elemont release includes several performance optimizations and reliability fixes across RPC, tracing, gas accounting, and pruning subsystems.
+The Elemont release includes several performance optimizations and reliability fixes across RPC, tracing, gas accounting, pruning, P2P gossip, and consensus-engine subsystems.
 
 #### RPC concurrency limiting
 
@@ -1077,6 +975,64 @@ Several fixes improve the stability and efficiency of the `trace_*` RPC namespac
 #### EVM execution guards
 
 - `eth_call` now enforces `MaxCodeSize` limit even when code is provided via state overrides, preventing oversized contract simulations.
+
+#### Consensus engine internals (v2.0.4-elemont, lachesis-base v0.1.6-elemont)
+
+v2.0.4-elemont ships the same RPC surface as v2.0.3-elemont. The only additions are consensus-engine internals in lachesis-base `v0.1.6-elemont`:
+
+| Scope | Change | Consumer impact |
+| --- | --- | --- |
+| `vecengine` | Cap per-validator branch allocation | None — prevents Byzantine vector memory inflation; no observable behavior on healthy networks |
+| `dagprocessor` / `gossip` | Drain queued events on quit, prevent checker-exit deadlock | None — only affects clean shutdown paths |
+| `kvdb` | Clear flushable write buffer only after successful batch write | None — removes a race that could lose writes on crash mid-batch |
+| `semaphore` | Zero metric after termination, clamp underflow | None — metric/debug plumbing |
+
+RPC consumers (indexers, dApps, wallets) **do not need to change anything** for the v2.0.3 → v2.0.4 bump. All v2.0.3 migration checklist items above still apply.
+
+#### P2P gossip — per-peer event-processing quota (v2.0.7-elemont)
+
+v2.0.7-elemont is a **pure node-internal hotfix** on top of v2.0.6-elemont. No consensus rules change, no upgrade flags, no receipt format changes, no JSON-RPC surface changes. Nodes on mixed v2.0.6 / v2.0.7 produce identical state roots.
+
+The per-peer in-flight quota in the gossip handler (`gossip/peer_ratelimit.go`) was sized smaller than a single legitimate DAG sync chunk:
+
+| Quota                       | v2.0.6 cap | v2.0.7 cap | Sized to                                                |
+| --------------------------- | ---------- | ---------- | ------------------------------------------------------- |
+| `peerEventQuota` (DAG events) | 200        | 3,250      | `ParallelChunksDownload * DefaultChunkItemsNum + softLimitItems` (matches `DagProcessor.EventsBufferLimit.Num`) |
+| `peerStreamQuota` (BV/BR/EP)  | 100        | 3,250      | Same formula                                              |
+
+Because the dagstreamleecher delivers chunks of up to `DefaultChunkItemsNum = 500` events with `ParallelChunksDownload = 6` chunks in flight per active sync session (sessions are per-peer via `IsValidSession`), v2.0.6 dropped every legitimate chunk during catch-up and logged `Peer exceeded event processing quota` on every drop. v2.0.7 raises both per-peer caps to match the dagprocessor's own buffer (`EventsBufferLimit.Num = 3,250`).
+
+**DoS guarantee preserved.** `gossip/config.go::Config.Validate()` still enforces `EventsSemaphoreLimit ≥ 2 × EventsBufferLimit`, so the global event-processing semaphore is at least 6,500 items. A single peer remains bounded to ≤50% of total capacity (3,250 of ≥6,500). v2.0.7 also adds a startup sanity assertion that fails fast if anyone ever shrinks the per-peer cap below the processor buffer in a future change.
+
+**Who is affected:**
+
+- **Validator and RPC operators**: no consumer-facing action needed. After the binary swap, the warning storm stops on the next chunk.
+- **dApps, wallets, indexers, explorers**: no action — the JSON-RPC surface is byte-for-byte identical to v2.0.6.
+- **Network analysts / observability**: any alerting on the `Peer exceeded event processing quota` log line should be updated to reflect that the warning is now an actual abuse signal rather than background sync noise.
+
+**Activation.** Immediate on restart. No epoch-seal wait, no staging log, no flag transition.
+
+#### P2P gossip — peer-progress drift caps removed (v2.0.8-elemont)
+
+v2.0.8-elemont is a **pure node-internal hotfix** on top of v2.0.7-elemont. No consensus rules change, no upgrade flags, no receipt format changes, no JSON-RPC surface changes. Nodes on mixed v2.0.7 / v2.0.8 produce identical state roots.
+
+`gossip/handler_sync.go::validatePeerProgress` — added in v2.0.7 (commit `9278d71`, "resolve remaining Round 2 audit findings") — rejected any peer whose `ProgressMsg` claimed an epoch more than 1,000 ahead of local, or a block more than 5,000 ahead. v2.0.8 removes both upper bounds and the unused constants, keeping only the structural `progress.Epoch == 0` check.
+
+| Check                       | v2.0.7 behavior  | v2.0.8 behavior |
+| --------------------------- | ---------------- | --------------- |
+| `progress.Epoch == 0`       | reject (invalid) | reject (invalid) |
+| `progress.Epoch > local+1000` | reject ("peer epoch N too far ahead") | **accepted** (catch-up is expected) |
+| `progress.LastBlockIdx > local+5000` | reject ("peer block N too far ahead") | **accepted** |
+
+**Who is affected:**
+
+- **Validator operators returning from extended downtime**: on v2.0.7, any node whose chain state was more than 1,000 epochs behind live tip would successfully RLPx-handshake with current peers, then its own `validatePeerProgress` would reject every incoming `ProgressMsg` and it would close the subprotocol within ~175 ms. Visible symptom on the stale node: `Looking for peers peercount=1 tried=N` with `tried` climbing and `last_id` never advancing. Visible symptom on the tip-side peer: `Removing p2p peer req=true err="subprotocol error" duration=~175ms`, repeating every ~30 s against the same remote. v2.0.8 restores the ability for these nodes to catch up via normal DAG sync.
+- **Fresh-install validators on testnet**: this release alone does **not** unblock fresh installs from the distributed 2024-06-21 genesis — that hits a separate "wrong event epoch hash" divergence at the first post-startup epoch seal, because the genesis pre-dates several SFC upgrade flags. See the chaindata snapshot instructions in the [Troubleshooting → wrong event epoch hash](#warn-incoming-event-rejected-err-wrong-event-epoch-hash) section above.
+- **dApps, wallets, indexers, explorers**: no action — the JSON-RPC surface is byte-for-byte identical to v2.0.7.
+
+**DoS guarantee.** The removed check never closed a real DoS vector. The deeper per-event acceptance path (`lightCheck` in `gossip/handler_sync.go:89` and the `epochcheck.ErrNotRelevant` gate) already refuses events whose epoch does not match local, so a peer lying about progress consumes no state. `progress.Epoch == 0` remains the structural sanity guard.
+
+**Activation.** Immediate on restart. No epoch-seal wait, no staging log, no flag transition.
 
 ---
 
