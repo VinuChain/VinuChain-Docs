@@ -50,6 +50,10 @@ Ensure these remain open in your firewall:
 
 ## Upgrade Steps
 
+{% hint style="info" %}
+**Fresh install?** This guide covers binary swaps on existing validator nodes. If you're bootstrapping a brand-new testnet node, replay from genesis is **not supported under v2.0.11** — follow the snapshot-restore procedure in [Troubleshooting → Wrong event epoch hash](#warn-incoming-event-rejected-err-wrong-event-epoch-hash) instead. Mainnet operators bootstrapping fresh can replay from the standard mainnet genesis as no `SfcV2*` flag has activated there yet.
+{% endhint %}
+
 {% stepper %}
 {% step %}
 
@@ -502,6 +506,18 @@ If you encounter issues during the upgrade, reach out to the VinuChain team thro
 
 ## Changelog
 
+### Network upgrades
+
+The codebase uses three internal upgrade names. They activate at the same epoch seal when SfcV2 first fires, so consumers usually treat them as one event.
+
+| Name        | What it covers                                                                                              |
+| ----------- | ----------------------------------------------------------------------------------------------------------- |
+| **SfcV2**   | Replaces the on-chain SFC contract bytecode at `0xFC00FACE...` and turns on the 30% base fee burn.          |
+| **Podgorica** | Payback fee refund mechanism. Source of the optional `feeRefund` field on receipts and transactions.       |
+| **Elemont** | Cheater fee zeroing at `SealEpoch` plus the broader v2.0+ release-series naming used in version strings.   |
+
+Testnet has all three plus the trailing `SfcV2Patch2` / `SfcV2Patch3` / `SfcV2Patch4` bytecode re-flashes sealed. Mainnet has none active yet — when it activates `SfcV2`, the latest Cycle-160 bytecode is installed directly without separate `Patch*` events.
+
 ### Release overview
 
 | Version             | Type                            | What changed                                                                                                        |
@@ -615,6 +631,18 @@ The `vc` namespace is intentionally separate from `eth` — the accessor is RPC-
 
 Indexers batching block-range queries should paginate at ≤100 messages. Heavy analytics workloads can raise concurrency with `--rpc.maxconcurrent N` or distribute across endpoints.
 
+### Pruning
+
+Operator-facing controls for managing chaindata size on long-lived nodes.
+
+| Surface                              | Purpose                                                                                       |
+| ------------------------------------ | --------------------------------------------------------------------------------------------- |
+| `--prune-keep-epochs <N>`            | Retain the last N sealed epochs of state; prune older. Negative values are rejected with a clear error (previously wrapped to large unsigned values and pruned everything). |
+| `--prune-keep-blocks <N>`            | Same semantics, applied to receipt/log retention.                                             |
+| `opera snapshot prune-receipts`      | One-shot subcommand for fine-grained receipt retention control outside the live retention flags. |
+
+**Crash-safe.** If a prune operation is interrupted (node crash, OOM kill), the next startup automatically resumes the interrupted prune — no manual intervention. The `Snapshots count=128` default produces enough snapshot density for prune to find recoverable boundaries on restart.
+
 ### Other reliability fixes
 
 - **Peer-progress drift caps removed (v2.0.8).** `validatePeerProgress` no longer rejects peers more than 1,000 epochs / 5,000 blocks ahead. The deeper acceptance gate (`lightCheck`, `epochcheck.ErrNotRelevant`) already prevents abuse.
@@ -622,7 +650,6 @@ Indexers batching block-range queries should paginate at ≤100 messages. Heavy 
 - **Tracing.** `trace_filter` with `Count==0` caps at 10,000 entries (was unbounded). Span-leak fix on tracing on/off. `traceBlock` bounds-checks malformed receipts.
 - **`eth_feeHistory`** copies the tips slice per entry (was sharing backing array — mutations cross-contaminated).
 - **Gas accounting.** Block-vote gas calc uses overflow-safe addition. Gas oracle guards against `MaxAllocPeriod=0`. `MinGasPrice=0` is rejected.
-- **Pruning.** `--prune-keep-epochs` / `--prune-keep-blocks` reject negative values. New `opera snapshot prune-receipts` subcommand. Interrupted prune resumes automatically on next startup.
 - **EVM.** `eth_call` enforces `MaxCodeSize` even when code comes from `stateOverride`.
 
 ***
