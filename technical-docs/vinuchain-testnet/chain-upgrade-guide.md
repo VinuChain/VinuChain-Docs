@@ -111,7 +111,7 @@ The build directory is independent of your node's `--datadir`. The build process
 ```bash
 git clone https://github.com/VinuChain/VinuChain.git $HOME/vinuchain-upgrade
 cd $HOME/vinuchain-upgrade
-git checkout v2.0.8-elemont
+git checkout v2.0.11-elemont
 make opera
 # Binary is at $HOME/vinuchain-upgrade/build/opera
 ```
@@ -121,7 +121,7 @@ make opera
 Substitute `/opt/vinuchain-upgrade` (or any other path) if `$HOME` is not the right partition for your setup — every later command in this guide that references `$HOME/vinuchain-upgrade` should be adjusted to match.
 
 {% hint style="info" %}
-**`go.mod` pins unchanged.** The `v2.0.8-elemont` tag uses the same go-vinu `v1.20.14-quota` and lachesis-base `v0.1.6-elemont` pins as v2.0.4 and v2.0.5. `git checkout v2.0.8-elemont` pulls in the correct pins, and `make opera` fetches dependencies on first build.
+**`go.mod` pins unchanged across the elemont series.** `v2.0.11-elemont` uses the same go-vinu `v1.20.14-quota` and lachesis-base `v0.1.6-elemont` pins as earlier elemont releases. `make opera` fetches dependencies on first build.
 {% endhint %}
 {% endstep %}
 
@@ -134,11 +134,11 @@ The newly-built binary is at `vinuchain-upgrade/build/opera`. Move into that dir
 ```bash
 cd $HOME/vinuchain-upgrade/build
 ./opera version
-# Expected: Version: 2.0.8-elemont
+# Expected: Version: 2.0.11-elemont
 ```
 
 {% hint style="info" %}
-`opera version` prints `2.0.8-elemont` — this matches the git tag `v2.0.8-elemont`. See the note at the top of this page.
+`opera version` prints `2.0.11-elemont` — this matches the git tag `v2.0.11-elemont`. See the note at the top of this page.
 {% endhint %}
 {% endstep %}
 
@@ -267,7 +267,7 @@ For testing or development, you can run in the foreground:
 
 What to expect:
 
-**Startup banner.** Every v2.x build prints the VinuChain banner. This is the first visual confirmation that you are running v2.0.8-elemont and not the previous binary:
+**Startup banner.** Every v2.x build prints the VinuChain banner. This is the first visual confirmation that you are running v2.0.11-elemont and not the previous binary:
 
 ```text
  ██╗   ██╗██╗███╗   ██╗██╗   ██╗ ██████╗██╗  ██╗ █████╗ ██╗███╗   ██╗
@@ -279,44 +279,40 @@ What to expect:
 
                         v2.0  -  ELEMONT
 
-  Version: 2.0.8-elemont
+  Version: 2.0.11-elemont
 ```
 
-**Staging log (testnet only, first-time `SfcV2Patch2` install).** If you are upgrading from v2.0.4-elemont (never ran v2.0.5+), you will see on first boot:
+**Staging log (testnet only, first-time `SfcV2Patch4` install).** On the first v2.0.11 boot of a node that hasn't yet sealed `SfcV2Patch4`, you will see:
 
 ```text
-INFO Staged SfcV2Patch2 upgrade from binary rules; will activate at next epoch seal
+INFO Staged SfcV2Patch4 upgrade from binary rules; will activate at next epoch seal
 ```
 
-This confirms the flag is pending. If you do not see this line, either you are running a pre-v2.0.5 binary (`opera version` check), or the flag has already been sealed in a prior v2.0.5/v2.0.6 boot on this datadir.
-
-Mainnet nodes, and any testnet node that already sealed the patch on a prior v2.0.5/v2.0.6 boot, will not show this line.
-
-**No new activation logs on v2.0.5 → v2.0.6 → v2.0.7 upgrades.** v2.0.8-elemont adds no consensus flags. A node moving between any of v2.0.5 / v2.0.6 / v2.0.7 will not print any `Staged ... upgrade` lines — this is expected.
+This confirms the flag is pending. If you do not see this line, either you are running a pre-v2.0.11 binary (`opera version` check) or `SfcV2Patch4` has already sealed on this datadir from a prior v2.0.11 boot. Mainnet nodes never show this line — `SfcV2Patch4` is testnet-only.
 
 **Seal-time activation (testnet only).** At the next epoch seal after the staging log appears, you will see:
 
 ```text
-INFO Re-applying SFC V2 bytecode upgrade (patch 2)   block=<N>
+INFO Re-applying SFC V2 bytecode upgrade (patch 4)   block=<N>
 ```
 
-This is the one-time bytecode installation. After this fires, the SFC contract at `0xFC00FACE00000000000000000000000000000000` contains the current Cycle-158 bytecode and can be verified on the testnet explorer using the current SFC source at [`vinuchain-lists/contracts/vinuchain/SFC.sol`](https://github.com/VinuChain/vinuchain-lists/blob/main/contracts/vinuchain/SFC.sol) (ABI alongside at `SFC_abi.json`).
+This is the one-time bytecode installation. After this fires, the SFC contract at `0xFC00FACE00000000000000000000000000000000` contains the Cycle-160 bytecode and can be verified on the testnet explorer using the current SFC source at [`vinuchain-lists/contracts/vinuchain/SFC.sol`](https://github.com/VinuChain/vinuchain-lists/blob/main/contracts/vinuchain/SFC.sol) (ABI alongside at `SFC_abi.json`).
 
 #### Verification checklist
 
-| Check                                                       | Expected                                                                             |
-| ----------------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| Startup banner                                              | `VINUCHAIN v2.0 - ELEMONT` ASCII art printed to stderr                               |
-| `opera version`                                             | `Version: 2.0.8-elemont`                                                             |
-| Block production                                            | Resumes within seconds of startup; block numbers advance                             |
-| Peer count                                                  | Returns to prior steady-state within minutes                                         |
-| Staging log (testnet, first v2.0.5+ boot from older binary) | 1× `Staged SfcV2Patch2 upgrade from binary rules; will activate at next epoch seal`  |
-| Staging log — all other cases (mainnet or sealed testnet)   | None                                                                                 |
-| Seal-time log (testnet, first epoch seal after staging)     | 1× `Re-applying SFC V2 bytecode upgrade (patch 2)   block=<N>`                       |
-| SFC verification on testnet explorer (after seal)           | `vinuchain-lists/contracts/vinuchain/SFC.sol` with solc 0.5.17 verifies successfully |
-| Block hash vs peer                                          | Identical                                                                            |
-| `rpc_modules` returns                                       | Includes `"vc":"1.0"` (new namespace with `vc_getPaybackBalance`)                    |
-| `vc_getPaybackBalance` call                                 | Returns hex-encoded wei (or `0x0` for ineligible addresses / Podgorica inactive)     |
+| Check                                                     | Expected                                                                             |
+| --------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| Startup banner                                            | `VINUCHAIN v2.0 - ELEMONT` ASCII art printed to stderr                               |
+| `opera version`                                           | `Version: 2.0.11-elemont`                                                            |
+| Block production                                          | Resumes within seconds of startup; block numbers advance                             |
+| Peer count                                                | Returns to prior steady-state within minutes                                         |
+| Staging log (testnet, first v2.0.11 boot)                 | 1× `Staged SfcV2Patch4 upgrade from binary rules; will activate at next epoch seal`  |
+| Staging log — all other cases (mainnet or sealed testnet) | None                                                                                 |
+| Seal-time log (testnet, first epoch seal after staging)   | 1× `Re-applying SFC V2 bytecode upgrade (patch 4)   block=<N>`                       |
+| SFC verification on testnet explorer (after seal)         | `vinuchain-lists/contracts/vinuchain/SFC.sol` with solc 0.5.17 verifies successfully |
+| Block hash vs peer                                        | Identical                                                                            |
+| `rpc_modules` returns                                     | Includes `"vc":"1.0"` (`vc_getPaybackBalance`)                                       |
+| `vc_getPaybackBalance` call                               | Returns hex-encoded wei (or `0x0` for ineligible addresses / Podgorica inactive)     |
 
 {% endstep %}
 
@@ -344,7 +340,7 @@ If you kept a copy of your previous `opera` binary (or any other upgrade-related
 
 ```bash
 # Example — adapt to wherever you stashed the old binary
-rm -f /path/to/opera.v2.0.4-elemont
+rm -f /path/to/opera.v2.0.10-elemont
 ```
 
 The build directory under `$HOME/vinuchain-upgrade` can also be removed if you don't plan to rebuild locally.
