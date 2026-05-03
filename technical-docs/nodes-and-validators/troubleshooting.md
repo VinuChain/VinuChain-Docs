@@ -204,23 +204,67 @@ A canonical pubkey is **66 bytes / 134 hex characters** and starts with `0xc004�
 
 You can also confirm by reading `getEpochAccumulatedRewardPerToken(epoch, <VID>)` for several recent epochs — a malformed validator returns `0` at every epoch, while a healthy validator's value strictly increases.
 
-### How to recover (zero penalty if no rewards have ever stashed)
+### How to recover (zero penalty, but in three phases)
 
-Because the malformed validator never accumulates rewards, the early-unlock penalty math at `_popDelegationUnlockPenalty` evaluates to `lockupExtraRewardShare + lockupBaseRewardShare / 2 = 0 + 0 / 2 = 0` — `unlockStake` imposes **zero penalty** for any delegator on a malformed validator. Three transactions return your full principal:
+`unlockStake` cannot be called directly on a stuck delegation — it reverts with `"claim rewards blocked by corruption; wait for epoch correction"`. The revert comes from a per-delegator reward-stashing cursor (`stashedRewardsUntilEpoch[delegator][validatorID]`) that advances by **at most 100 epochs per call** to any function that triggers `_stashRewards`. For a delegator on a long-active malformed validator, the cursor lags `currentSealedEpoch` by hundreds or thousands of epochs, and `unlockStake`'s guard refuses the call until the cursor is fully caught up.
+
+The fix is to call `delegate(<VID>)` repeatedly with a tiny `msg.value` until the cursor catches up, then unlock and withdraw.
+
+#### Phase 1 — advance the cursor to currentSealedEpoch
+
+`delegate(<VID>)` calls `_rawDelegate`, which calls `_stashRewards`, which advances the cursor by up to 100 epochs per invocation. The minimum delegation amount is **0.01 VC** (`minDelegation()`). Calculate how many calls you need:
 
 ```javascript
-// 1. Release the entire locked amount (zero penalty)
-sfcc.unlockStake(<VID>, <yourFullStakeAmount>)
+const sealed = await sfcc.currentSealedEpoch()
+const cursor = await sfcc.stashedRewardsUntilEpoch(yourAddress, <VID>)
+const calls  = Math.ceil((sealed - cursor) / 100)
+console.log(`need ${calls} delegate calls of 0.01 VC each (= ${calls * 0.01} VC + gas)`)
+```
 
-// 2. Enqueue a withdrawal request for the now-unlocked amount
-sfcc.undelegate(<VID>, <yourFullStakeAmount>)
+Issue them in a loop:
 
-// 3. Wait at least 6 epochs AND 1 day, then withdraw
-//    (use the wrID returned by undelegate, queryable via the WithdrawalRequest mapping)
+```javascript
+const tinyAmount = web3.toWei("0.01", "vc")
+for (let i = 0; i < calls; i++) {
+  await sfcc.delegate(<VID>, { from: yourAddress, value: tinyAmount })
+}
+```
+
+Each call costs 0.01 VC of stake (added to `getStake[yourAddress][<VID>]` as **unlocked** stake) plus normal gas. After the loop, `stashedRewardsUntilEpoch == currentSealedEpoch` and the corruption guard in `unlockStake` will pass.
+
+#### Phase 2 — unlock the locked stake (zero penalty)
+
+```javascript
+sfcc.unlockStake(<VID>, <originalLockedAmount>)
+```
+
+Because the malformed validator never accumulates rewards, `getStashedLockupRewards` is `(0, 0, 0)` and the early-unlock penalty math at `_popDelegationUnlockPenalty` evaluates to `lockupExtraRewardShare + lockupBaseRewardShare / 2 = 0 + 0 / 2 = 0`. `unlockStake` imposes **zero penalty**; the full locked amount becomes unlocked stake. Verify before calling:
+
+```javascript
+const stash = await sfcc.getStashedLockupRewards(yourAddress, <VID>)
+// stash should be [0, 0, 0]
+```
+
+If any value is non-zero, the validator was rewarding for some span of its lifetime and the penalty is non-zero — simulate the unlock through a tracer (`debug_traceCall`) before sending it on-chain.
+
+#### Phase 3 — undelegate and withdraw
+
+```javascript
+// Undelegate everything (the original locked amount + the 0.01 VC * calls
+// you added during phase 1, all of which are now unlocked).
+const total = (await sfcc.getStake(yourAddress, <VID>))
+sfcc.undelegate(<VID>, total)
+// Note the wrID emitted by Undelegated(delegator, <VID>, wrID, total).
+
+// Wait at least 6 epochs AND 1 day, then withdraw:
 sfcc.withdraw(<VID>, <wrID>)
 ```
 
-`getStashedLockupRewards(<yourAddress>, <VID>)` should return `(0, 0, 0)` before you call `unlockStake` — confirm this first to be sure the zero-penalty calculation applies to your situation. If any of the three values are non-zero, the validator was rewarding for some span of its lifetime and the penalty math is non-zero; in that case, simulate the unlock through a tracer (`debug_traceCall`) before sending it on-chain.
+You receive the full delegation back to your wallet at `withdraw`. No fees beyond gas.
+
+### Why this dance is necessary
+
+The reward-stashing cursor is bounded by `MAX_CORRUPTION_CHECK_EPOCHS = 100` per call to limit gas. The cursor was designed to keep a per-delegator scan of `accumulatedRewardPerToken[validatorID]` monotonic so a downward "rate inversion" cannot mint phantom rewards — but the same scan also has to walk forward through quiet (zero-reward) epochs to update the cursor, even when there's nothing to stash. The public `stashRewards()` helper specifically reverts on `"nothing to stash"`, and `claimRewards` / `restakeRewards` revert on `"zero rewards"`, so neither lets you advance the cursor on a zero-rewards validator. `delegate` is the only public path that calls `_stashRewards` without a `rewards != 0` precondition.
 
 ### Future prevention
 
