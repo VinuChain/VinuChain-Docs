@@ -187,3 +187,41 @@ The default value of 1024, which may be not enough in some cases.You can adjust 
 
 * `ulimit -n 500000`&#x20;
 * change it in `/etc/security/limits.conf` configuration file, limit type nofile.
+
+## 6. Delegated stake stuck on a non-rewarding validator
+
+If your delegation to a particular validator returns "zero rewards" on `claimRewards` and `restakeRewards`, AND `undelegate` reverts with `"not enough unlocked stake"` even though you can see your stake on-chain, the validator you delegated to may have been admitted with a malformed pubkey before the canonical-pubkey enforcement landed in `v2.0.14-elemont`. A validator with a non-`0xc0`-prefixed pubkey produces no consensus-verifiable events, earns zero uptime, and never accumulates rewards-per-token, so any stake delegated to it is permanently stuck until you unwind it manually.
+
+### How to confirm
+
+Read the validator's pubkey from the SFC contract (replace `<VID>` with the validator ID you delegated to):
+
+```javascript
+sfcc.getValidatorPubkey(<VID>)
+```
+
+A canonical pubkey is **66 bytes / 134 hex characters** and starts with `0xc004…`. Anything shorter (especially 65 bytes / 132 hex characters starting with `0x04…`) is malformed.
+
+You can also confirm by reading `getEpochAccumulatedRewardPerToken(epoch, <VID>)` for several recent epochs — a malformed validator returns `0` at every epoch, while a healthy validator's value strictly increases.
+
+### How to recover (zero penalty if no rewards have ever stashed)
+
+Because the malformed validator never accumulates rewards, the early-unlock penalty math at `_popDelegationUnlockPenalty` evaluates to `lockupExtraRewardShare + lockupBaseRewardShare / 2 = 0 + 0 / 2 = 0` — `unlockStake` imposes **zero penalty** for any delegator on a malformed validator. Three transactions return your full principal:
+
+```javascript
+// 1. Release the entire locked amount (zero penalty)
+sfcc.unlockStake(<VID>, <yourFullStakeAmount>)
+
+// 2. Enqueue a withdrawal request for the now-unlocked amount
+sfcc.undelegate(<VID>, <yourFullStakeAmount>)
+
+// 3. Wait at least 6 epochs AND 1 day, then withdraw
+//    (use the wrID returned by undelegate, queryable via the WithdrawalRequest mapping)
+sfcc.withdraw(<VID>, <wrID>)
+```
+
+`getStashedLockupRewards(<yourAddress>, <VID>)` should return `(0, 0, 0)` before you call `unlockStake` — confirm this first to be sure the zero-penalty calculation applies to your situation. If any of the three values are non-zero, the validator was rewarding for some span of its lifetime and the penalty math is non-zero; in that case, simulate the unlock through a tracer (`debug_traceCall`) before sending it on-chain.
+
+### Future prevention
+
+`v2.0.14-elemont` (testnet) / Cycle-161 SFC bytecode rejects malformed pubkeys at `createValidator` ingress, so this condition cannot recur for new admissions. The `ElemontPubkeyValidation` upgrade flag also ejects already-admitted malformed validators from the active set at the next epoch seal. See [Become a Validator](become-a-validator.md#register-your-validator) and [Validator Calls → Create validator](validator-calls.md#create-validator) for the canonical pubkey format requirements.

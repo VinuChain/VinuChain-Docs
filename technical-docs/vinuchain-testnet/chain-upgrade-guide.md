@@ -1,21 +1,24 @@
 # Chain Upgrade Guide (v2-elemont)
 
 {% hint style="info" %}
-**Latest release:** v2.0.11-elemont (tagged 2026-04-23; deployed to testnet RPC + 4 validators; `SfcV2Patch4` activates at the next epoch seal)
+**Latest release:** v2.0.14-elemont (tagged 2026-05-03; deployed to testnet RPC + 4 validators; `SfcV2Patch5` and `ElemontPubkeyValidation` activate at the next epoch seal)
 {% endhint %}
 
 {% hint style="info" %}
 **TL;DR**
 
-* **Target tag:** `v2.0.11-elemont` (cut 2026-04-23; contains the real 45,240-byte Cycle-160 SFC runtime bytecode compiled from `VinuChain/vinuchain-lists@eecd660` with solc `0.5.17+commit.d19bba13 --optimize --optimize-runs=10000 --evm-version=istanbul`)
-* **Binary version string:** `2.0.11-elemont`
+* **Target tag:** `v2.0.14-elemont` (cut 2026-05-03; contains the real 45,496-byte Cycle-161 SFC runtime bytecode compiled from `VinuChain/vinuchain-lists@9b9c280` with solc `0.5.17+commit.d19bba13 --optimize --optimize-runs=10000 --evm-version=istanbul`. Hex-string sha256 `d3a6c816fb6b56464b463d074a08d27b82d61742d2bccdc784ff9844af1f4a2b`; raw-bytes sha256 `8276a8f3854e4c5a0aa6e23f511ae9028d0074ecec2f4c1368713ab877e640e1`.)
+* **Binary version string:** `2.0.14-elemont`
 * **Build requirements:** Go 1.25+, C compiler, \~50 GB free disk
-* **Fresh testnet genesis:** [vitainu-genesis-testnet-20260419.g](https://vinu-blockchain-genesis.s3.amazonaws.com/vitainu-genesis-testnet-20260419.g) (SHA256 `a541d761e5db846b84c5bf0eef9aa09f45246254a2876ab0f8caf0b47b32e0d9`, ~450 MB, history baked through epoch ~5637 / block ~1.42M — recognized as trusted preset under v2.0.9+, no `--genesis.allowExperimental` required). **Fresh-install operators should restore from the v2.0.11 post-seal chaindata snapshot** (published at [testnet-chaindata-v2.0.11-20260423T151354Z-clean.tar.gz](https://vinu-blockchain-genesis.s3.amazonaws.com/chaindata-snapshots/testnet-chaindata-v2.0.11-20260423T151354Z-clean.tar.gz), SHA256 `5b19cd392dc6a3ac7d52339a544747bac2132602a1f5c5b229ae3b3ce6736ab4`, 1.24 GB). The tarball is flat — top-level is `chaindata/` and `go-opera/` with no `datadir/` prefix, so `cd <your_datadir> && tar -xzf testnet-chaindata-v2.0.11-20260423T151354Z-clean.tar.gz` drops the directories directly where opera expects them. Fresh replay from genesis is not supported because all four `SfcV2Patch*` flags would fire at the first replay seal and produce a `wrong event epoch hash` divergence against the live chain.
-* **New on testnet:** one-shot `SfcV2Patch4` upgrade flag that re-flashes the SFC bytecode at `0xFC00FACE...` with the Cycle-160 build. Fires once at the next epoch seal after a v2.0.11 binary boot.
+* **Fresh testnet genesis:** [vitainu-genesis-testnet-20260419.g](https://vinu-blockchain-genesis.s3.amazonaws.com/vitainu-genesis-testnet-20260419.g) (SHA256 `a541d761e5db846b84c5bf0eef9aa09f45246254a2876ab0f8caf0b47b32e0d9`, ~450 MB, history baked through epoch ~5637 / block ~1.42M — recognized as trusted preset under v2.0.9+, no `--genesis.allowExperimental` required). **Fresh-install operators should restore from the latest published post-seal chaindata snapshot** (current artefact: [testnet-chaindata-v2.0.11-20260423T151354Z-clean.tar.gz](https://vinu-blockchain-genesis.s3.amazonaws.com/chaindata-snapshots/testnet-chaindata-v2.0.11-20260423T151354Z-clean.tar.gz), SHA256 `5b19cd392dc6a3ac7d52339a544747bac2132602a1f5c5b229ae3b3ce6736ab4`, 1.24 GB; a fresh post-Patch5 / post-ElemontPubkeyValidation snapshot will be published once v2.0.14 activation seals on live testnet). The tarball is flat — top-level is `chaindata/` and `go-opera/` with no `datadir/` prefix, so `cd <your_datadir> && tar -xzf <snapshot>.tar.gz` drops the directories directly where opera expects them. Fresh replay from genesis is not supported under v2.0.14 because all five `SfcV2Patch*` flags plus `ElemontPubkeyValidation` would fire at the first replay seal and produce a `wrong event epoch hash` divergence against the live chain.
+* **New on testnet (v2.0.14):** two coordinated upgrade flags activating at the same epoch seal —
+  * **`SfcV2Patch5`** — one-shot re-flash of the SFC bytecode at `0xFC00FACE...` with the Cycle-161 build. The Cycle-161 delta adds canonical-pubkey validation (`length == 66 && pubkey[0] == 0xc0`) at three on-chain ingress points: `SFC.createValidator`, `SFC._rawCreateValidator` (which also covers `setGenesisValidator`), and `NodeDriverAuth.updateValidatorPubkey`. Existing stored pubkeys (notably testnet validator 16's malformed 65-byte 0x04-prefixed pubkey) are not modified by the bytecode swap; only **new** admissions are subject to the check.
+  * **`ElemontPubkeyValidation`** — off-chain sealer guard that skips validators whose stored pubkey fails `validatorpk.Validate()` at epoch seal. Ejects testnet validator 16 from the active set with the log line `Skipping validator with malformed pubkey at epoch seal id=16` at the first post-activation seal — that is **expected behaviour**, not a divergence.
+* **Also in v2.0.14:** `eth_feeHistory` returns the real `block.GasUsed / block.GasLimit` ratio instead of a hardcoded `0.99`, so wallets compute correct fee suggestions. `go vet` warnings cleared on `utils/fast/buffer.go` (`WriteByte`/`ReadByte` renamed to `WriteByteFast`/`ReadByteFast`).
 {% endhint %}
 
 {% hint style="info" %}
-**Version string vs git tag.** The release is cut from git tag `v2.0.11-elemont`, but the binary reports `2.0.11-elemont`. Both refer to the same release; the leading `v` only appears on the git tag.
+**Version string vs git tag.** The release is cut from git tag `v2.0.14-elemont`, but the binary reports `2.0.14-elemont`. Both refer to the same release; the leading `v` only appears on the git tag.
 {% endhint %}
 
 ## Network Details
@@ -51,7 +54,7 @@ Ensure these remain open in your firewall:
 ## Upgrade Steps
 
 {% hint style="info" %}
-**Fresh install?** This guide covers binary swaps on existing validator nodes. If you're bootstrapping a brand-new testnet node, replay from genesis is **not supported under v2.0.11** — follow the snapshot-restore procedure in [Troubleshooting → Wrong event epoch hash](#warn-incoming-event-rejected-err-wrong-event-epoch-hash) instead. Mainnet operators bootstrapping fresh can replay from the standard mainnet genesis as no `SfcV2*` flag has activated there yet.
+**Fresh install?** This guide covers binary swaps on existing validator nodes. If you're bootstrapping a brand-new testnet node, replay from genesis is **not supported under v2.0.14** — follow the snapshot-restore procedure in [Troubleshooting → Wrong event epoch hash](#warn-incoming-event-rejected-err-wrong-event-epoch-hash) instead. Mainnet operators bootstrapping fresh can replay from the standard mainnet genesis as no `SfcV2*` flag has activated there yet.
 {% endhint %}
 
 {% stepper %}
@@ -115,7 +118,7 @@ The build directory is independent of your node's `--datadir`. The build process
 ```bash
 git clone https://github.com/VinuChain/VinuChain.git $HOME/vinuchain-upgrade
 cd $HOME/vinuchain-upgrade
-git checkout v2.0.11-elemont
+git checkout v2.0.14-elemont
 make opera
 # Binary is at $HOME/vinuchain-upgrade/build/opera
 ```
@@ -125,7 +128,7 @@ make opera
 Substitute `/opt/vinuchain-upgrade` (or any other path) if `$HOME` is not the right partition for your setup — every later command in this guide that references `$HOME/vinuchain-upgrade` should be adjusted to match.
 
 {% hint style="info" %}
-**`go.mod` pins unchanged across the elemont series.** `v2.0.11-elemont` uses the same go-vinu `v1.20.14-quota` and lachesis-base `v0.1.6-elemont` pins as earlier elemont releases. `make opera` fetches dependencies on first build.
+**`go.mod` pins unchanged across the elemont series.** `v2.0.14-elemont` uses the same go-vinu `v1.20.14-quota` and lachesis-base `v0.1.6-elemont` pins as earlier elemont releases. `make opera` fetches dependencies on first build.
 {% endhint %}
 {% endstep %}
 
@@ -138,11 +141,11 @@ The newly-built binary is at `vinuchain-upgrade/build/opera`. Move into that dir
 ```bash
 cd $HOME/vinuchain-upgrade/build
 ./opera version
-# Expected: Version: 2.0.11-elemont
+# Expected: Version: 2.0.14-elemont
 ```
 
 {% hint style="info" %}
-`opera version` prints `2.0.11-elemont` — this matches the git tag `v2.0.11-elemont`. See the note at the top of this page.
+`opera version` prints `2.0.14-elemont` — this matches the git tag `v2.0.14-elemont`. See the note at the top of this page.
 {% endhint %}
 {% endstep %}
 
@@ -271,7 +274,7 @@ For testing or development, you can run in the foreground:
 
 What to expect:
 
-**Startup banner.** Every v2.x build prints the VinuChain banner. This is the first visual confirmation that you are running v2.0.11-elemont and not the previous binary:
+**Startup banner.** Every v2.x build prints the VinuChain banner. This is the first visual confirmation that you are running v2.0.14-elemont and not the previous binary:
 
 ```text
  ██╗   ██╗██╗███╗   ██╗██╗   ██╗ ██████╗██╗  ██╗ █████╗ ██╗███╗   ██╗
@@ -283,36 +286,40 @@ What to expect:
 
                         v2.0  -  ELEMONT
 
-  Version: 2.0.11-elemont
+  Version: 2.0.14-elemont
 ```
 
-**Staging log (testnet only, first-time `SfcV2Patch4` install).** On the first v2.0.11 boot of a node that hasn't yet sealed `SfcV2Patch4`, you will see:
+**Staging logs (testnet only, first-time `SfcV2Patch5` + `ElemontPubkeyValidation` install).** On the first v2.0.14 boot of a node that hasn't yet sealed both flags, you will see TWO staging lines (one per flag):
 
 ```text
-INFO Staged SfcV2Patch4 upgrade from binary rules; will activate at next epoch seal
+INFO Staged SfcV2Patch5 upgrade from binary rules; will activate at next epoch seal
+INFO Staged ElemontPubkeyValidation upgrade from binary rules; will activate at next epoch seal
 ```
 
-This confirms the flag is pending. If you do not see this line, either you are running a pre-v2.0.11 binary (`opera version` check) or `SfcV2Patch4` has already sealed on this datadir from a prior v2.0.11 boot. Mainnet nodes never show this line — `SfcV2Patch4` is testnet-only.
+These confirm both flags are pending. If you do not see either line, you are likely running a pre-v2.0.14 binary (`opera version` check) or both flags have already sealed on this datadir from a prior v2.0.14 boot. Mainnet nodes never show these lines — both flags are testnet-only.
 
-**Seal-time activation (testnet only).** At the next epoch seal after the staging log appears, you will see:
+**Seal-time activation (testnet only).** At the next epoch seal after the staging logs appear, you will see the bytecode re-flash and the validator-set ejection:
 
 ```text
-INFO Re-applying SFC V2 bytecode upgrade (patch 4)   block=<N>
+INFO Re-applying SFC V2 bytecode upgrade (patch 5)              block=<N>
+WARN Skipping validator with malformed pubkey at epoch seal     id=16  err="malformed pubkey"
 ```
 
-This is the one-time bytecode installation. After this fires, the SFC contract at `0xFC00FACE00000000000000000000000000000000` contains the Cycle-160 bytecode and can be verified on the testnet explorer using the current SFC source at [`vinuchain-lists/contracts/vinuchain/SFC.sol`](https://github.com/VinuChain/vinuchain-lists/blob/main/contracts/vinuchain/SFC.sol) (ABI alongside at `SFC_abi.json`).
+The first line is the one-time bytecode installation. After it fires, the SFC contract at `0xFC00FACE00000000000000000000000000000000` contains the Cycle-161 bytecode and can be verified on the testnet explorer using the current SFC source at [`vinuchain-lists/contracts/vinuchain/SFC.sol`](https://github.com/VinuChain/vinuchain-lists/blob/main/contracts/vinuchain/SFC.sol) (ABI alongside at `SFC_abi.json`).
+
+The second line is the **expected** ejection of testnet validator 16 (admitted at epoch 5682 with a malformed 65-byte 0x04-prefixed pubkey lacking the canonical `0xc0` Secp256k1 type-byte). The validator-set hash will change at this block; do **not** investigate it as a divergence — the line is the on-the-wire signal that `ElemontPubkeyValidation` activated correctly.
 
 #### Verification checklist
 
 | Check                                                     | Expected                                                                             |
 | --------------------------------------------------------- | ------------------------------------------------------------------------------------ |
 | Startup banner                                            | `VINUCHAIN v2.0 - ELEMONT` ASCII art printed to stderr                               |
-| `opera version`                                           | `Version: 2.0.11-elemont`                                                            |
+| `opera version`                                           | `Version: 2.0.14-elemont`                                                            |
 | Block production                                          | Resumes within seconds of startup; block numbers advance                             |
 | Peer count                                                | Returns to prior steady-state within minutes                                         |
-| Staging log (testnet, first v2.0.11 boot)                 | 1× `Staged SfcV2Patch4 upgrade from binary rules; will activate at next epoch seal`  |
+| Staging logs (testnet, first v2.0.14 boot)                | 1× `Staged SfcV2Patch5 …` AND 1× `Staged ElemontPubkeyValidation …`                  |
 | Staging log — all other cases (mainnet or sealed testnet) | None                                                                                 |
-| Seal-time log (testnet, first epoch seal after staging)   | 1× `Re-applying SFC V2 bytecode upgrade (patch 4)   block=<N>`                       |
+| Seal-time logs (testnet, first epoch seal after staging)  | 1× `Re-applying SFC V2 bytecode upgrade (patch 5) block=<N>` AND 1× `Skipping validator with malformed pubkey at epoch seal id=16` |
 | SFC verification on testnet explorer (after seal)         | `vinuchain-lists/contracts/vinuchain/SFC.sol` with solc 0.5.17 verifies successfully |
 | Block hash vs peer                                        | Identical                                                                            |
 | `rpc_modules` returns                                     | Includes `"vc":"1.0"` (`vc_getPaybackBalance`)                                       |
@@ -365,7 +372,7 @@ That guide uses the correct `opera validator new` command for generating a valid
 
 ## Rollback
 
-Because v2.0.11-elemont is a patch release and not a hard fork, rollback is straightforward:
+Because v2.0.14-elemont is a patch release and not a hard fork, rollback is straightforward:
 
 1. Stop the node (clean shutdown).
 2. Replace `opera` with a prior elemont release binary (e.g., v2.0.10-elemont, v2.0.9-elemont, or earlier).
@@ -376,6 +383,8 @@ No datadir changes are needed. Consensus state, receipts, and block hashes are i
 {% hint style="info" %}
 **Per-version rollback deltas.** Each bullet describes the only functional difference between the two versions.
 
+- **v2.0.14 → v2.0.13 rollback:** v2.0.13 was a same-day scaffolding release with the deadbeef-placeholder Cycle-161 bytecode and both flags defaulted off; the v2.0.13 binary refuses to start with `SfcV2Patch5: true` set against the placeholder, so this rollback path is **not safe** if `SfcV2Patch5` has already sealed on testnet. Rollback further to v2.0.12 instead.
+- **v2.0.14 → v2.0.12 rollback:** Loses both `SfcV2Patch5` staging and the `ElemontPubkeyValidation` sealer guard. If `SfcV2Patch5` has already sealed on testnet, the Cycle-161 bytecode at `0xFC00FACE...` persists in chain state (see Testnet note below); the v2.0.12 binary continues to dispatch against it unchanged. If `ElemontPubkeyValidation` has already sealed, validator 16 stays ejected from the active set in stored epoch state regardless of the binary running. `eth_feeHistory` reverts to the hardcoded `gasUsedRatio: 0.99` (the rollback target restores that pre-v2.0.13 behaviour).
 - **v2.0.11 → v2.0.10 rollback:** Loses the `SfcV2Patch4` staging logic in binary rules and the `sfc.EnforcePatch4StartupCheck` build guard. If `SfcV2Patch4` has already sealed on testnet, the Cycle-160 bytecode at `0xFC00FACE...` persists in chain state (see Testnet note below); the v2.0.10 binary continues to dispatch against it unchanged. The relock invariant remains `endTime >= ld.endTime` because that logic lives in the deployed bytecode, not the binary.
 - **v2.0.10 → v2.0.9 rollback:** Loses the `SfcV2Patch3` staging logic. If `SfcV2Patch3` has already sealed, the Cycle-159 reentrancy-guard-fixed bytecode persists in chain state; all `nonReentrant` entrypoints continue to work because the `_reentrancyGuardCounter < 2` check is in the deployed bytecode.
 - **v2.0.9 → v2.0.8 rollback:** Loses the trusted-preset entry for `vitainu-genesis-testnet-20260419.g`. Fresh installs on v2.0.8 from that genesis file again require `--genesis.allowExperimental` and print the `SECURITY WARNING: Genesis file doesn't refer to any trusted preset` line on startup; existing datadirs are unaffected.
@@ -392,6 +401,7 @@ No datadir changes are needed. Consensus state, receipts, and block hashes are i
 | `SfcV2Patch2` | v2.0.5        | Mid-v2.0.5 boot              | Cycle-158 SFC (45,240 bytes)                      |
 | `SfcV2Patch3` | v2.0.10       | 2026-04-19 · block 1,424,440 | Cycle-159 SFC — inline reentrancy guard fix       |
 | `SfcV2Patch4` | v2.0.11       | 2026-04-23 · block 1,430,436 | Cycle-160 SFC — `_lockStake` / `relockStake` fix  |
+| `SfcV2Patch5` | v2.0.14       | 2026-05-03 · pending seal    | Cycle-161 SFC — canonical-pubkey validation       |
 
 This is expected behavior — the bytecode update is the intended outcome of each upgrade and cannot be undone by swapping binaries. Reverting installed bytecode would require shipping another epoch-sealed upgrade flag, which is a forward-moving change rather than a rollback.
 
@@ -405,7 +415,7 @@ Mainnet is currently unaffected — no `SfcV2*` flag has sealed on mainnet, so m
 ### Node won't start after upgrade
 
 1. Check logs: `journalctl -u opera -f` (systemd) or your terminal / Docker output.
-2. Verify the binary: `opera version` must print `2.0.11-elemont`.
+2. Verify the binary: `opera version` must print `2.0.14-elemont`.
 3. If the database is reported as corrupted, restore from the chaindata snapshot below.
 
 ### Node starts but doesn't produce events
@@ -419,7 +429,7 @@ Mainnet is currently unaffected — no `SfcV2*` flag has sealed on mainnet, so m
 Your locally-computed epoch state hash does not match the network's. The check rejects any event whose `PrevEpochHash` differs from the local store's `EpochState.Hash()`. There is no protocol-level recovery; chaindata must be replaced with a snapshot.
 
 {% hint style="danger" %}
-**Do not resync from genesis on testnet.** A fresh replay stages every not-yet-sealed `SfcV2Patch*` flag and fires them at the first replay seal — at a different block from the live chain's historical activations — so the epoch state hash diverges immediately. Use the post-`SfcV2Patch4`-seal v2.0.11 snapshot below instead. The prior v2.0.10 snapshot is stale under v2.0.11 rules and must not be used.
+**Do not resync from genesis on testnet.** A fresh replay stages every not-yet-sealed `SfcV2Patch*` flag plus `ElemontPubkeyValidation` and fires them at the first replay seal — at a different block from the live chain's historical activations — so the epoch state hash diverges immediately. Use the latest published post-seal snapshot below instead. The prior v2.0.10 snapshot is stale under v2.0.14 rules and must not be used. Until a fresh v2.0.14 post-seal snapshot is published, the v2.0.11 post-Patch4 snapshot is the closest valid starting point — fresh installs sync forward through Patch5 + ElemontPubkeyValidation activation via peer events without divergence.
 {% endhint %}
 
 **Recovery procedure (testnet) — chaindata snapshot:**
@@ -492,9 +502,9 @@ The recommended rollout:
 1. VinuChain team announces the patch window. Date: TBD.
 2. Pre-stage the binary on every validator before the window (Upgrade Steps step 2).
 3. During the window, each operator performs the binary swap.
-4. Confirm in the coordination channel that block production resumed and `opera version` reports `2.0.11-elemont`.
+4. Confirm in the coordination channel that block production resumed and `opera version` reports `2.0.14-elemont`.
 
-**Missed the window?** No fork — upgrading later is a plain binary swap (rerun Upgrade Steps). On testnet, a node still on v2.0.10 or earlier cannot validate post-`SfcV2Patch4`-seal events; if the node also fell behind tip, restore from the chaindata snapshot in [Troubleshooting](#warn-incoming-event-rejected-err-wrong-event-epoch-hash) before restarting on v2.0.11.
+**Missed the window?** No fork — upgrading later is a plain binary swap (rerun Upgrade Steps). On testnet, a node still on v2.0.13 or earlier cannot validate post-`SfcV2Patch5`-seal or post-`ElemontPubkeyValidation`-seal events (validator-set hash mismatches); if the node also fell behind tip, restore from the chaindata snapshot in [Troubleshooting](#warn-incoming-event-rejected-err-wrong-event-epoch-hash) before restarting on v2.0.14.
 
 ***
 
@@ -516,13 +526,16 @@ The codebase uses three internal upgrade names. They activate at the same epoch 
 | **Podgorica** | Payback fee refund mechanism. Source of the optional `feeRefund` field on receipts and transactions.       |
 | **Elemont** | Cheater fee zeroing at `SealEpoch` plus the broader v2.0+ release-series naming used in version strings.   |
 
-Testnet has all three plus the trailing `SfcV2Patch2` / `SfcV2Patch3` / `SfcV2Patch4` bytecode re-flashes sealed. Mainnet has none active yet — when it activates `SfcV2`, the latest Cycle-160 bytecode is installed directly without separate `Patch*` events.
+Testnet has all three plus the trailing `SfcV2Patch2` / `SfcV2Patch3` / `SfcV2Patch4` / `SfcV2Patch5` bytecode re-flashes and the `ElemontPubkeyValidation` sealer guard sealed. Mainnet has none active yet — when it activates `SfcV2`, the latest Cycle-161 bytecode is installed directly without separate `Patch*` events.
 
 ### Release overview
 
-| Version             | Type                            | What changed                                                                                                        |
-| ------------------- | ------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| **v2.0.11-elemont** | Testnet consensus flag (Patch4) | Cycle-160 SFC bytecode. Fixes `_lockStake` / `relockStake`: invariant becomes `endTime >= ld.endTime`.              |
+| Version             | Type                                          | What changed                                                                                                        |
+| ------------------- | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| **v2.0.14-elemont** | Testnet consensus flags (Patch5 + ElemontPubkeyValidation) | Cycle-161 SFC bytecode. Adds canonical-pubkey validation (`length == 66 && pubkey[0] == 0xc0`) at `createValidator`, `_rawCreateValidator`, and `NodeDriverAuth.updateValidatorPubkey`. Off-chain sealer guard ejects validators with malformed stored pubkeys (testnet validator 16) at the next epoch seal. Also: real `gasUsedRatio` in `eth_feeHistory`. |
+| v2.0.13-elemont     | Same-day scaffolding (no live activation)     | Defines flags + ships the deadbeef-placeholder Cycle-161 bytecode; flipped to v2.0.14 same day with the real bytecode and activation. Don't deploy v2.0.13 standalone. |
+| v2.0.12-elemont     | Diagnostic + tooling                          | Multi-`SfcV2Patch*` divergence warn at single seal; chaindata snapshot producer (`scripts/create-chaindata-snapshot.sh` with `SNAPSHOT_INFO.txt`). Non-consensus. |
+| v2.0.11-elemont     | Testnet consensus flag (Patch4)               | Cycle-160 SFC bytecode. Fixes `_lockStake` / `relockStake`: invariant becomes `endTime >= ld.endTime`.              |
 | v2.0.10-elemont     | Testnet consensus flag (Patch3) | Cycle-159 SFC bytecode. Fixes inline reentrancy guard (`_reentrancyGuardCounter < 2`); unblocks `delegate`, `undelegate`, `withdraw`, `claimRewards`, `restakeRewards`, `stashRewards`, `createValidator`. |
 | v2.0.9-elemont      | Trusted-preset entry            | Recognizes `vitainu-genesis-testnet-20260419.g` — fresh installs no longer need `--genesis.allowExperimental`.       |
 | v2.0.8-elemont      | Hotfix                          | Removes `validatePeerProgress` drift caps so long-offline validators can rejoin.                                     |
@@ -533,10 +546,10 @@ Testnet has all three plus the trailing `SfcV2Patch2` / `SfcV2Patch3` / `SfcV2Pa
 | v2.0.3-elemont      | RPC defensive caps              | go-vinu fork `v1.20.14-quota`: batch-size cap (100), in-flight cap (50, configurable), state-override caps.          |
 | v2.0.2-elemont      | Consensus rules                 | `feeRefund` receipt field, 30% base fee burn, cheater fee zeroing, payback fee refunds.                              |
 
-Mainnet has not yet activated any `SfcV2*` flag — when it does, the latest bytecode (Cycle-160) installs directly; the testnet patch flags do not fire on mainnet.
+Mainnet has not yet activated any `SfcV2*` flag — when it does, the latest bytecode (Cycle-161) installs directly; the testnet patch flags do not fire on mainnet.
 
 {% hint style="info" %}
-**Activation timing.** Consensus flags (`SfcV2Patch2/3/4` and v2.0.2 rules) activate at the **next epoch seal** after the binary is first installed (up to `MaxEpochDuration = 4h`). All other changes — RPC caps, RPC additions, peer-quota resize, drift-cap removal, lachesis-base internals — are **immediate on restart**, no epoch-seal wait.
+**Activation timing.** Consensus flags (`SfcV2Patch2/3/4/5`, `ElemontPubkeyValidation`, and v2.0.2 rules) activate at the **next epoch seal** after the binary is first installed (up to `MaxEpochDuration = 4h`). All other changes — RPC caps, RPC additions, peer-quota resize, drift-cap removal, `eth_feeHistory.gasUsedRatio` fix, lachesis-base internals — are **immediate on restart**, no epoch-seal wait.
 {% endhint %}
 
 ### `feeRefund` receipt field

@@ -188,6 +188,7 @@ web3.toWei("200000.0", "vc")}) // 200000.0 VC
 
 * Use quotes for "0xYOUR\_PUBKEY" and "0xYOUR\_ADDRESS".
 * 0XYOUR\_ADDRESS refers to the wallet created on the validator.
+* `0xYOUR_PUBKEY` MUST be the **canonical 66-byte lachesis-base format** — paste the `Public key:` value from the `opera validator new` output verbatim. The string starts with `0xc004…` and is 134 characters long including the `0x` prefix. Do not strip the `0xc0` type-byte or hand-construct the value: the canonical format is `0xc0` (Secp256k1 type byte) + `0x04` (uncompressed-key marker) + 32-byte X coordinate + 32-byte Y coordinate. As of `v2.0.14-elemont` the SFC contract rejects any other shape with `"invalid pubkey length"` or `"invalid pubkey type"`. A validator admitted with a malformed pubkey before this enforcement landed cannot produce verifiable consensus events and any stake delegated to it earns zero rewards.
 
 <figure><img src="../../.gitbook/assets/bbadaa.png" alt=""><figcaption></figcaption></figure>
 
