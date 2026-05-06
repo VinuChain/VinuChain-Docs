@@ -22,7 +22,7 @@
 * **Target tag:** `v2.0.14-elemont` (cut 2026-05-03; contains the real 45,496-byte Cycle-161 SFC runtime bytecode compiled from `VinuChain/vinuchain-lists@9b9c280` with solc `0.5.17+commit.d19bba13 --optimize --optimize-runs=10000 --evm-version=istanbul`. Hex-string sha256 `d3a6c816fb6b56464b463d074a08d27b82d61742d2bccdc784ff9844af1f4a2b`; raw-bytes sha256 `8276a8f3854e4c5a0aa6e23f511ae9028d0074ecec2f4c1368713ab877e640e1`.)
 * **Binary version string:** `2.0.14-elemont`
 * **Build requirements:** Go 1.25+, C compiler, \~50 GB free disk
-* **Fresh testnet genesis:** [vitainu-genesis-testnet-20260419.g](https://vinu-blockchain-genesis.s3.amazonaws.com/vitainu-genesis-testnet-20260419.g) (SHA256 `a541d761e5db846b84c5bf0eef9aa09f45246254a2876ab0f8caf0b47b32e0d9`, ~450 MB, history baked through epoch ~5637 / block ~1.42M — recognized as trusted preset under v2.0.9+, no `--genesis.allowExperimental` required). **Fresh-install operators should restore from the latest published post-seal chaindata snapshot** (current artefact: [testnet-chaindata-v2.0.11-20260423T151354Z-clean.tar.gz](https://vinu-blockchain-genesis.s3.amazonaws.com/chaindata-snapshots/testnet-chaindata-v2.0.11-20260423T151354Z-clean.tar.gz), SHA256 `5b19cd392dc6a3ac7d52339a544747bac2132602a1f5c5b229ae3b3ce6736ab4`, 1.24 GB; a fresh post-Patch5 / post-ElemontPubkeyValidation snapshot will be published once v2.0.14 activation seals on live testnet). The tarball is flat — top-level is `chaindata/` and `go-opera/` with no `datadir/` prefix, so `cd <your_datadir> && tar -xzf <snapshot>.tar.gz` drops the directories directly where opera expects them. Fresh replay from genesis is not supported under v2.0.14 because all five `SfcV2Patch*` flags plus `ElemontPubkeyValidation` would fire at the first replay seal and produce a `wrong event epoch hash` divergence against the live chain.
+* **Fresh testnet genesis:** [vitainu-genesis-testnet-20260419.g](https://vinu-blockchain-genesis.s3.amazonaws.com/vitainu-genesis-testnet-20260419.g) (SHA256 `a541d761e5db846b84c5bf0eef9aa09f45246254a2876ab0f8caf0b47b32e0d9`, ~450 MB, history baked through epoch ~5637 / block ~1.42M — recognized as trusted preset under v2.0.9+, no `--genesis.allowExperimental` required). **Fresh-install operators should restore from the latest published post-seal chaindata snapshot** (current artefact: [testnet-chaindata-v2.0.15-20260506T141559Z-clean.tar.gz](https://vinu-blockchain-genesis.s3.amazonaws.com/chaindata-snapshots/testnet-chaindata-v2.0.15-20260506T141559Z-clean.tar.gz), SHA256 `f4bd1abe02b216695c100a3271ea245e4a8b96b8dcb94dc3201ab9be91376870`, 1.18 GiB, taken from the testnet trace node after `SfcV2Patch5` + `ElemontPubkeyValidation` sealed; tip block 1,446,860 / epoch 5741). The tarball is flat — top-level is `chaindata/`, `go-opera/`, and `SNAPSHOT_INFO.txt` with no `datadir/` prefix, so `cd <your_datadir> && tar -xzf <snapshot>.tar.gz` drops the directories directly where opera expects them. Fresh replay from genesis is not supported under v2.0.15 because all five `SfcV2Patch*` flags plus `ElemontPubkeyValidation` would fire at the first replay seal and produce a `wrong event epoch hash` divergence against the live chain.
 * **New on testnet (v2.0.14):** two coordinated upgrade flags activating at the same epoch seal —
   * **`SfcV2Patch5`** — one-shot re-flash of the SFC bytecode at `0xFC00FACE...` with the Cycle-161 build. The Cycle-161 delta adds canonical-pubkey validation (`length == 66 && pubkey[0] == 0xc0`) at three on-chain ingress points: `SFC.createValidator`, `SFC._rawCreateValidator` (which also covers `setGenesisValidator`), and `NodeDriverAuth.updateValidatorPubkey`. Existing stored pubkeys (notably testnet validator 16's malformed 65-byte 0x04-prefixed pubkey) are not modified by the bytecode swap; only **new** admissions are subject to the check.
   * **`ElemontPubkeyValidation`** — off-chain sealer guard that skips validators whose stored pubkey fails `validatorpk.Validate()` at epoch seal. Ejects testnet validator 16 from the active set with the log line `Skipping validator with malformed pubkey at epoch seal id=16` at the first post-activation seal — that is **expected behaviour**, not a divergence.
@@ -441,7 +441,7 @@ Mainnet is currently unaffected — no `SfcV2*` flag has sealed on mainnet, so m
 Your locally-computed epoch state hash does not match the network's. The check rejects any event whose `PrevEpochHash` differs from the local store's `EpochState.Hash()`. There is no protocol-level recovery; chaindata must be replaced with a snapshot.
 
 {% hint style="danger" %}
-**Do not resync from genesis on testnet.** A fresh replay stages every not-yet-sealed `SfcV2Patch*` flag plus `ElemontPubkeyValidation` and fires them at the first replay seal — at a different block from the live chain's historical activations — so the epoch state hash diverges immediately. Use the latest published post-seal snapshot below instead. The prior v2.0.10 snapshot is stale under v2.0.14 rules and must not be used. Until a fresh v2.0.14 post-seal snapshot is published, the v2.0.11 post-Patch4 snapshot is the closest valid starting point — fresh installs sync forward through Patch5 + ElemontPubkeyValidation activation via peer events without divergence.
+**Do not resync from genesis on testnet.** A fresh replay stages every not-yet-sealed `SfcV2Patch*` flag plus `ElemontPubkeyValidation` and fires them at the first replay seal — at a different block from the live chain's historical activations — so the epoch state hash diverges immediately. Use the latest published post-seal snapshot below instead. The prior v2.0.10 and v2.0.11 snapshots are stale under v2.0.15 rules and **must not be used**: they pre-date `SfcV2Patch5` + `ElemontPubkeyValidation` activation and will re-fire those flags at first restore seal, reproducing the same `wrong event epoch hash` divergence. The current canonical snapshot is `testnet-chaindata-v2.0.15-20260506T141559Z-clean.tar.gz` (post-Patch5, post-ElemontPubkeyValidation).
 {% endhint %}
 
 **Recovery procedure (testnet) — chaindata snapshot:**
@@ -461,33 +461,31 @@ Your locally-computed epoch state hash does not match the network's. The check r
 
    ```bash
    cd <datadir>
-   curl -LO https://vinu-blockchain-genesis.s3.amazonaws.com/chaindata-snapshots/testnet-chaindata-v2.0.11-20260423T151354Z-clean.tar.gz
+   curl -LO https://vinu-blockchain-genesis.s3.amazonaws.com/chaindata-snapshots/testnet-chaindata-v2.0.15-20260506T141559Z-clean.tar.gz
    # verify integrity
-   curl -L https://vinu-blockchain-genesis.s3.amazonaws.com/chaindata-snapshots/testnet-chaindata-v2.0.11-20260423T151354Z-clean.tar.gz.sha256 | sha256sum -c -
-   tar -xzf testnet-chaindata-v2.0.11-20260423T151354Z-clean.tar.gz
-   rm testnet-chaindata-v2.0.11-20260423T151354Z-clean.tar.gz
+   curl -L https://vinu-blockchain-genesis.s3.amazonaws.com/chaindata-snapshots/testnet-chaindata-v2.0.15-20260506T141559Z-clean.tar.gz.sha256 | sha256sum -c -
+   tar -xzf testnet-chaindata-v2.0.15-20260506T141559Z-clean.tar.gz
+   rm testnet-chaindata-v2.0.15-20260506T141559Z-clean.tar.gz
    ```
 
-   **Sanity-check the extraction before restarting opera.** Every published snapshot has a companion `SNAPSHOT_INFO.txt` with the exact tip block and sealed upgrade-flag state at snapshot time. Snapshots published from 2026-04-24 onwards include the file at the tarball root (so it lands in your datadir automatically on extraction). Older snapshots — including the current v2.0.11 — have it published only as an out-of-band companion in S3. Either way, read it before starting opera:
+   **Sanity-check the extraction before restarting opera.** Every snapshot published from 2026-04-24 onwards (including this one) includes a `SNAPSHOT_INFO.txt` at the tarball root, so it lands in your datadir automatically on extraction. Read it before starting opera:
 
    ```bash
-   # If the tarball included it, it's in your datadir:
-   cat <datadir>/SNAPSHOT_INFO.txt 2>/dev/null \
-     || curl -sL https://vinu-blockchain-genesis.s3.amazonaws.com/chaindata-snapshots/testnet-chaindata-v2.0.11-20260423T151354Z-clean.SNAPSHOT_INFO.txt
+   cat <datadir>/SNAPSHOT_INFO.txt
    ```
 
-   If the `cat` succeeds, the snapshot loaded correctly and the tip block listed in `SNAPSHOT_INFO.txt` is the minimum block number your first `New block` log line should show after restart. If neither the `cat` nor the `curl` returns anything, something is wrong with the extraction or network — do not start opera yet.
+   The file lists the network, snapshot timestamp, binary version, tip block, tip epoch, and the full set of sealed upgrade flags. The tip block listed there is the minimum block number your first `New block` log line should show after restart. If `cat` returns nothing, the tarball did not extract correctly — do not start opera; re-extract at the datadir root.
 
    Direct HTTPS URL (public, no AWS credentials required):
 
    ```text
-   https://vinu-blockchain-genesis.s3.amazonaws.com/chaindata-snapshots/testnet-chaindata-v2.0.11-20260423T151354Z-clean.tar.gz
+   https://vinu-blockchain-genesis.s3.amazonaws.com/chaindata-snapshots/testnet-chaindata-v2.0.15-20260506T141559Z-clean.tar.gz
    ```
 
-   SHA256: `5b19cd392dc6a3ac7d52339a544747bac2132602a1f5c5b229ae3b3ce6736ab4`. Size: approximately 1.24 GiB compressed (1,243,197,032 bytes). Published 2026-04-24 from the canonical testnet trace node at block ~1.43M / epoch ~5637, taken **after** `SfcV2Patch4` sealed so it is the correct bootstrap for v2.0.11 binaries. The tarball is flat (top-level is `chaindata/` and `go-opera/` — no `datadir/` prefix to nest) and excludes `nodekey`, `keystore/`, `opera.ipc`, `static-nodes.json`, `trusted-nodes.json`, the archived `chaindata.bak.*/` from the pre-LevelDB-FSH migration, and any shell `history` file. New snapshots are published under `s3://vinu-blockchain-genesis/chaindata-snapshots/` — pick the most recent `-clean` snapshot for the shortest catch-up. The bucket is public-read; `aws s3 ls s3://vinu-blockchain-genesis/chaindata-snapshots/` works with any AWS credentials or via `curl https://vinu-blockchain-genesis.s3.amazonaws.com/?list-type=2&prefix=chaindata-snapshots/` with none.
+   SHA256: `f4bd1abe02b216695c100a3271ea245e4a8b96b8dcb94dc3201ab9be91376870`. Size: 1.18 GiB compressed (1,265,663,855 bytes). Published 2026-05-06 from the canonical testnet trace node at block 1,446,860 / epoch 5741, taken **after** `SfcV2Patch5` + `ElemontPubkeyValidation` sealed so it is the correct bootstrap for v2.0.15 binaries. The tarball is flat (top-level is `chaindata/`, `go-opera/`, and `SNAPSHOT_INFO.txt` — no `datadir/` prefix to nest) and excludes `nodekey`, `keystore/`, `opera.ipc`, `static-nodes.json`, `trusted-nodes.json`, the archived `chaindata.bak.*/` from the pre-LevelDB-FSH migration, and any shell `history` file. New snapshots are published under `s3://vinu-blockchain-genesis/chaindata-snapshots/` — pick the most recent `-clean` snapshot for the shortest catch-up. The bucket is public-read; `aws s3 ls s3://vinu-blockchain-genesis/chaindata-snapshots/` works with any AWS credentials or via `curl https://vinu-blockchain-genesis.s3.amazonaws.com/?list-type=2&prefix=chaindata-snapshots/` with none.
 
 5. Ensure `--nat extip:<your_public_ip>` is set and `<datadir>/go-opera/static-nodes.json` contains the canonical bootnode list from the [Start your node](#start-your-node) section.
-6. Restart opera. The node resumes from the snapshot's tip (~epoch 5637 at snapshot time) and syncs forward. Expect `New DAG summary age=<few seconds>` within 1-2 minutes of restart.
+6. Restart opera. The node resumes from the snapshot's tip (epoch 5741 / block 1,446,860 at snapshot time) and syncs forward. Expect `New DAG summary age=<few seconds>` within 1-2 minutes of restart.
 
 ### Stuck at `net.peerCount == 1` with one stale peer
 
@@ -679,4 +677,4 @@ Operator-facing controls for managing chaindata size on long-lived nodes.
 
 ***
 
-_Last updated: 2026-04-25 · VinuChain tag `v2.0.11-elemont` · go-vinu `v1.20.14-quota` · lachesis-base `v0.1.6-elemont`_
+_Last updated: 2026-05-06 · VinuChain tag `v2.0.15-elemont` · go-vinu `v1.20.14-quota` · lachesis-base `v0.1.6-elemont`_
