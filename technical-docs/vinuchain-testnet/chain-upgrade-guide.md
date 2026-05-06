@@ -1,7 +1,19 @@
 # Chain Upgrade Guide (v2-elemont)
 
 {% hint style="info" %}
-**Latest release:** v2.0.14-elemont (tagged 2026-05-03; deployed to testnet RPC + 4 validators; `SfcV2Patch5` and `ElemontPubkeyValidation` activate at the next epoch seal)
+**Latest release:** v2.0.15-elemont (tagged 2026-05-06; deployed to testnet RPC + 4 validators). Non-consensus hotfix on top of the v2.0.14 consensus activation — restores default-bootnode resolution for nodes booting with the long-form network names. The v2.0.14 release notes below still describe the consensus state of the chain (`SfcV2Patch5` + `ElemontPubkeyValidation` activated at the v2.0.14 epoch seal); v2.0.15 changes only the launcher's bootnode lookup, the first-SfcV2-activation accessor (mainnet-future-only), and a payback-cap fail-closed (unreachable on testnet today).
+{% endhint %}
+
+{% hint style="warning" %}
+**Operators stuck on v2.0.14 with `peerCount=0`:** v2.0.14's default-bootnodes table was keyed only on the legacy `main`/`test` aliases, so any node booting without `--bootnodes` and without a populated `static-/trusted-nodes.json` got an empty bootstrap list and never discovered peers. **Upgrade to v2.0.15-elemont** for the durable fix, or pass the four testnet bootnodes explicitly as a transitional workaround:
+
+```
+--bootnodes enode://e2a95c1b8d85b018b8e88133bec342801b42e19b59a52e030462d04a5549f02fc57215b4ca97771ec6b3a0d30a78603fdccd2b5091c44f6ac439d6c8be8bc539@44.239.129.39:3000,enode://7a45d086b9c82bd3677a76d36e003b9490066d56b612f33d05cb4d242212acd4e5cab4abbcb15a0df9aa499e41b4b4e868d82ba1c509c1990c9217dfe4607775@44.239.129.39:3001,enode://d8e37eeba79b2c52dcba6e396ff907f27a6a8f7db34528cb8636bc3271291657a01c5649bff53429cea8a23b03fac13a178813c34c6d17d14f7b810a988393b5@44.239.129.39:3002,enode://3f15b5ac22dea3e37a90cd9378cf0cd4ed9ea122851846c8108fcc7d2c7e709ea4a089cf3da93c0d3d3053250417cf0ea9ad9eff0aa77ff07d76b6cf267a2937@44.239.129.39:3003
+```
+{% endhint %}
+
+{% hint style="info" %}
+**v2.0.15 binary (this is the recommended target):** Built byte-identical on both AWS build hosts at sha256 `d3618b8bf991078135041310961ee6add4fdf3254c3edfc2afeb372aac8a0dc0` (HEAD `dc36689`). Build via `git fetch --tags origin && git checkout v2.0.15-elemont && make opera`. Drop-in binary swap from v2.0.14 — no chaindata work required, no flag activation, no migration. Roll-forward is the same `systemctl restart vinu-validator-v{1..4}.service` (or equivalent) staggered with 20 s spacing, same as v2.0.14.
 {% endhint %}
 
 {% hint style="info" %}
