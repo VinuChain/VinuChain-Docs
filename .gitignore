@@ -1,4 +1,5 @@
 .claude/
+.serena/
 .omc/
 .DS_Store
 *.log
