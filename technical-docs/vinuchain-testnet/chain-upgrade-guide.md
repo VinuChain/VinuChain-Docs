@@ -5,7 +5,9 @@
 {% endhint %}
 
 {% hint style="info" %}
-**Next testnet release target (v2.0.16-elemont, not deployed as of 2026-05-10):** Payback receiver selection adds `QuotaContract.stakeFor(address)`. The payer supplies the VC stake, but the address passed to `stakeFor` owns the Quota stake and is the address whose later transactions are checked for fee refunds. Rollout order is node binary first, then Quota proxy implementation upgrade, then frontend receiver selector deployment.
+**Next testnet release target (v2.0.17-elemont, not deployed as of 2026-05-10):** Payback receiver selection adds `QuotaContract.stakeFor(address)` on the current testnet Quota proxy, `0x824B93dE7221cf8a35FBd29d5202f6eFa3A29C5D`. The payer supplies the VC stake, but the address passed to `stakeFor` owns the Quota stake and is the address whose later transactions are checked for fee refunds. Rollout order is node binary first, then Quota proxy implementation upgrade, then frontend receiver selector deployment.
+
+`v2.0.16-elemont` was tagged but superseded before deployment; use `v2.0.17-elemont` for Payback receiver rollout because it also aligns fresh testnet defaults with the live Quota proxy address.
 {% endhint %}
 
 {% hint style="warning" %}
@@ -546,7 +548,7 @@ Testnet has all three plus the trailing `SfcV2Patch2` / `SfcV2Patch3` / `SfcV2Pa
 
 | Version             | Type                                          | What changed                                                                                                        |
 | ------------------- | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| v2.0.16-elemont (target) | Payback/Quota receiver staking          | Adds `QuotaContract.stakeFor(address)` so one wallet can fund Payback stake for another wallet. The node PaybackCache recognizes `stakeFor(address)` as stake owned by the receiver, preserving same-epoch duration accounting for the refunding address. |
+| v2.0.17-elemont (target) | Payback/Quota receiver staking          | Adds `QuotaContract.stakeFor(address)` so one wallet can fund Payback stake for another wallet. The node PaybackCache recognizes `stakeFor(address)` as stake owned by the receiver, preserving same-epoch duration accounting for the refunding address. |
 | **v2.0.14-elemont** | Testnet consensus flags (Patch5 + ElemontPubkeyValidation) | Cycle-161 SFC bytecode. Adds canonical-pubkey validation (`length == 66 && pubkey[0] == 0xc0`) at `createValidator`, `_rawCreateValidator`, and `NodeDriverAuth.updateValidatorPubkey`. Off-chain sealer guard ejects validators with malformed stored pubkeys (testnet validator 16) at the next epoch seal. Also: real `gasUsedRatio` in `eth_feeHistory`. |
 | v2.0.13-elemont     | Same-day scaffolding (no live activation)     | Defines flags + ships the deadbeef-placeholder Cycle-161 bytecode; flipped to v2.0.14 same day with the real bytecode and activation. Don't deploy v2.0.13 standalone. |
 | v2.0.12-elemont     | Diagnostic + tooling                          | Multi-`SfcV2Patch*` divergence warn at single seal; chaindata snapshot producer (`scripts/create-chaindata-snapshot.sh` with `SNAPSHOT_INFO.txt`). Non-consensus. |
@@ -684,4 +686,4 @@ Operator-facing controls for managing chaindata size on long-lived nodes.
 
 ***
 
-_Last updated: 2026-05-10 · latest released VinuChain tag `v2.0.15-elemont` · next target `v2.0.16-elemont` · go-vinu `v1.20.14-quota` · lachesis-base `v0.1.6-elemont`_
+_Last updated: 2026-05-10 · latest released VinuChain tag `v2.0.15-elemont` · next target `v2.0.17-elemont` · go-vinu `v1.20.14-quota` · lachesis-base `v0.1.6-elemont`_
