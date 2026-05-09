@@ -27,6 +27,16 @@ ProxyAdmin owner:
 printf '%s' "$PRIVATE_TEST" | npm run configure:testnet:quota-upgrade-secret -- --stdin
 ```
 
+If the owner prefers not to store the key in GitHub Actions, prepare a
+read-only transaction request instead and submit it from the ProxyAdmin owner
+wallet. The helper validates chain ID, ProxyAdmin owner, the current live
+implementation, the verified receiver implementation bytecode, and an
+`eth_call` simulation before printing the transaction fields:
+
+```bash
+npm run prepare:testnet:quota-upgrade-tx
+```
+
 1. In `vinu-quotacontract`, dispatch the guarded `Quota Testnet Upgrade`
    preflight workflow. The helper refuses to dispatch unless the `PRIVATE_TEST`
    Actions repository secret exists, sends the proxy confirmation, and defaults
