@@ -18,6 +18,15 @@ Run this checklist after the ProxyAdmin owner key for
 `0x07B4eF04b62E69aE14A715cdcae692fa7033b9a5` has been added as the
 `PRIVATE_TEST` GitHub Actions secret in `VinuChain/vinu-quotacontract`.
 
+To set that repository secret from a checkout without exposing the key in shell
+arguments, use the stdin-based helper in `vinu-quotacontract`. It derives the
+signer address locally and refuses to write the secret unless it matches the
+ProxyAdmin owner:
+
+```bash
+printf '%s' "$PRIVATE_TEST" | npm run configure:testnet:quota-upgrade-secret -- --stdin
+```
+
 1. In `vinu-quotacontract`, dispatch the guarded `Quota Testnet Upgrade`
    preflight workflow. The helper refuses to dispatch unless the `PRIVATE_TEST`
    Actions repository secret exists, sends the proxy confirmation, and defaults
