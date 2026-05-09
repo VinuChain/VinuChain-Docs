@@ -8,6 +8,8 @@
 **Payback receiver rollout status:** The v2.0.17 node binary is deployed on testnet. The current testnet Quota proxy is `0x824B93dE7221cf8a35FBd29d5202f6eFa3A29C5D`; its implementation still needs to be upgraded and verified before the frontend receiver selector is deployed. After that proxy upgrade, `QuotaContract.stakeFor(address)` lets a funding wallet supply VC while the receiver address owns the Quota stake and receives refunds for transactions it signs.
 
 `v2.0.16-elemont` was tagged but superseded before deployment; use `v2.0.17-elemont` for Payback receiver rollout because it also aligns fresh testnet defaults with the live Quota proxy address.
+
+The guarded contract-side commands live in `vinu-quotacontract`: `yarn upgrade:testnet:quota` deploys and upgrades through ProxyAdmin, and `QUOTA_IMPLEMENTATION_ADDRESS=<address> yarn verify:testnet:quota` verifies the new implementation on VinuExplorer.
 {% endhint %}
 
 {% hint style="warning" %}
