@@ -44,6 +44,13 @@ Actions workflow `Quota Testnet Prepare Upgrade Tx`. It is read-only and uploads
 the latest `quota-prepared-upgrade-testnet` artifact containing
 `suggestedLegacyTransaction` for the ProxyAdmin owner to sign externally.
 
+From a checkout with `gh` authenticated, dispatch that read-only workflow with:
+
+```bash
+npm run dispatch:testnet:quota-prepare-upgrade-tx
+npm run dispatch:testnet:quota-prepare-upgrade-tx -- --wait
+```
+
 If the owner signs that exact transaction externally, the signed raw transaction
 can be validated and broadcast from the same checkout. The broadcaster rejects
 wrong signer, wrong chain, wrong nonce, wrong ProxyAdmin target, wrong calldata,
