@@ -71,11 +71,12 @@ Run this checklist after the ProxyAdmin owner key for
    ```
 
 6. In `vinuscan-frontend`, do not deploy the receiver selector until the
-   contract and list audits pass. Before deployment, confirm:
+   contract and list audits pass. Before deployment, run the guarded frontend
+   finalizer; it runs the receiver staking unit test, strict live proxy audit,
+   and production build in order:
 
    ```bash
-   npm test -- src/store/__tests__/quota-staking.test.js
-   REQUIRE_QUOTA_FRONTEND_READY=true npm run audit:quota-testnet
+   npm run finalize:quota-testnet
    ```
 
 7. Update this guide from "Quota proxy upgrade pending" to complete, including
