@@ -1,17 +1,17 @@
 # Chain Upgrade Guide (v2-elemont)
 
 {% hint style="info" %}
-**Latest release:** v2.0.15-elemont (tagged 2026-05-06; deployed to testnet RPC + 4 validators). Non-consensus hotfix on top of the v2.0.14 consensus activation — restores default-bootnode resolution for nodes booting with the long-form network names. The v2.0.14 release notes below still describe the consensus state of the chain (`SfcV2Patch5` + `ElemontPubkeyValidation` activated at the v2.0.14 epoch seal); v2.0.15 changes only the launcher's bootnode lookup, the first-SfcV2-activation accessor (mainnet-future-only), and a payback-cap fail-closed (unreachable on testnet today).
+**Latest node release:** v2.0.17-elemont (tagged and deployed to the testnet trace RPC + 4 validators on 2026-05-10). This release adds Payback receiver accounting for `QuotaContract.stakeFor(address)` and aligns fresh testnet defaults with the live Quota proxy address. The v2.0.14 release notes below still describe the consensus state of the chain (`SfcV2Patch5` + `ElemontPubkeyValidation` activated at the v2.0.14 epoch seal).
 {% endhint %}
 
 {% hint style="info" %}
-**Next testnet release target (v2.0.17-elemont, not deployed as of 2026-05-10):** Payback receiver selection adds `QuotaContract.stakeFor(address)` on the current testnet Quota proxy, `0x824B93dE7221cf8a35FBd29d5202f6eFa3A29C5D`. The payer supplies the VC stake, but the address passed to `stakeFor` owns the Quota stake and is the address whose later transactions are checked for fee refunds. Rollout order is node binary first, then Quota proxy implementation upgrade, then frontend receiver selector deployment.
+**Payback receiver rollout status:** The v2.0.17 node binary is deployed on testnet. The current testnet Quota proxy is `0x824B93dE7221cf8a35FBd29d5202f6eFa3A29C5D`; its implementation still needs to be upgraded and verified before the frontend receiver selector is deployed. After that proxy upgrade, `QuotaContract.stakeFor(address)` lets a funding wallet supply VC while the receiver address owns the Quota stake and receives refunds for transactions it signs.
 
 `v2.0.16-elemont` was tagged but superseded before deployment; use `v2.0.17-elemont` for Payback receiver rollout because it also aligns fresh testnet defaults with the live Quota proxy address.
 {% endhint %}
 
 {% hint style="warning" %}
-**Operators stuck on v2.0.14 with `peerCount=0`:** v2.0.14's default-bootnodes table was keyed only on the legacy `main`/`test` aliases, so any node booting without `--bootnodes` and without a populated `static-/trusted-nodes.json` got an empty bootstrap list and never discovered peers. **Upgrade to v2.0.15-elemont** for the durable fix, or pass the four testnet bootnodes explicitly as a transitional workaround:
+**Operators stuck on v2.0.14 with `peerCount=0`:** v2.0.14's default-bootnodes table was keyed only on the legacy `main`/`test` aliases, so any node booting without `--bootnodes` and without a populated `static-/trusted-nodes.json` got an empty bootstrap list and never discovered peers. **Upgrade to v2.0.17-elemont** for the current durable fix, or pass the four testnet bootnodes explicitly as a transitional workaround:
 
 ```
 --bootnodes enode://e2a95c1b8d85b018b8e88133bec342801b42e19b59a52e030462d04a5549f02fc57215b4ca97771ec6b3a0d30a78603fdccd2b5091c44f6ac439d6c8be8bc539@44.239.129.39:3000,enode://7a45d086b9c82bd3677a76d36e003b9490066d56b612f33d05cb4d242212acd4e5cab4abbcb15a0df9aa499e41b4b4e868d82ba1c509c1990c9217dfe4607775@44.239.129.39:3001,enode://d8e37eeba79b2c52dcba6e396ff907f27a6a8f7db34528cb8636bc3271291657a01c5649bff53429cea8a23b03fac13a178813c34c6d17d14f7b810a988393b5@44.239.129.39:3002,enode://3f15b5ac22dea3e37a90cd9378cf0cd4ed9ea122851846c8108fcc7d2c7e709ea4a089cf3da93c0d3d3053250417cf0ea9ad9eff0aa77ff07d76b6cf267a2937@44.239.129.39:3003
@@ -19,7 +19,7 @@
 {% endhint %}
 
 {% hint style="info" %}
-**v2.0.15 binary (this is the recommended target):** Built byte-identical on both AWS build hosts at sha256 `d3618b8bf991078135041310961ee6add4fdf3254c3edfc2afeb372aac8a0dc0` (HEAD `dc36689`). Build via `git fetch --tags origin && git checkout v2.0.15-elemont && make opera`. Drop-in binary swap from v2.0.14 — no chaindata work required, no flag activation, no migration. Roll-forward is the same `systemctl restart vinu-validator-v{1..4}.service` (or equivalent) staggered with 20 s spacing, same as v2.0.14.
+**v2.0.17 binary (current testnet node target):** Built byte-identical on both AWS build hosts at sha256 `b96651d8f0403bf57a3f6b124669f574b1b10082ddc6f8dacb42fc1b96811106` (HEAD `bbc34e6`). Build via `git fetch --tags origin && git checkout v2.0.17-elemont && make opera`. Drop-in binary swap from v2.0.15 — no chaindata work required, no flag activation, no migration. Roll-forward is the same `systemctl restart vinu-validator-v{1..4}.service` (or equivalent) staggered with 20 s spacing.
 {% endhint %}
 
 {% hint style="info" %}
@@ -548,7 +548,7 @@ Testnet has all three plus the trailing `SfcV2Patch2` / `SfcV2Patch3` / `SfcV2Pa
 
 | Version             | Type                                          | What changed                                                                                                        |
 | ------------------- | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| v2.0.17-elemont (target) | Payback/Quota receiver staking          | Adds `QuotaContract.stakeFor(address)` so one wallet can fund Payback stake for another wallet. The node PaybackCache recognizes `stakeFor(address)` as stake owned by the receiver, preserving same-epoch duration accounting for the refunding address. |
+| v2.0.17-elemont | Payback/Quota receiver staking          | Deployed to testnet RPC + validators on 2026-05-10. The node PaybackCache recognizes `stakeFor(address)` as stake owned by the receiver, preserving same-epoch duration accounting for the refunding address. Quota proxy implementation upgrade and source verification are still pending. |
 | **v2.0.14-elemont** | Testnet consensus flags (Patch5 + ElemontPubkeyValidation) | Cycle-161 SFC bytecode. Adds canonical-pubkey validation (`length == 66 && pubkey[0] == 0xc0`) at `createValidator`, `_rawCreateValidator`, and `NodeDriverAuth.updateValidatorPubkey`. Off-chain sealer guard ejects validators with malformed stored pubkeys (testnet validator 16) at the next epoch seal. Also: real `gasUsedRatio` in `eth_feeHistory`. |
 | v2.0.13-elemont     | Same-day scaffolding (no live activation)     | Defines flags + ships the deadbeef-placeholder Cycle-161 bytecode; flipped to v2.0.14 same day with the real bytecode and activation. Don't deploy v2.0.13 standalone. |
 | v2.0.12-elemont     | Diagnostic + tooling                          | Multi-`SfcV2Patch*` divergence warn at single seal; chaindata snapshot producer (`scripts/create-chaindata-snapshot.sh` with `SNAPSHOT_INFO.txt`). Non-consensus. |
@@ -686,4 +686,4 @@ Operator-facing controls for managing chaindata size on long-lived nodes.
 
 ***
 
-_Last updated: 2026-05-10 · latest released VinuChain tag `v2.0.15-elemont` · next target `v2.0.17-elemont` · go-vinu `v1.20.14-quota` · lachesis-base `v0.1.6-elemont`_
+_Last updated: 2026-05-10 · latest released VinuChain tag `v2.0.17-elemont` · Quota proxy upgrade pending · go-vinu `v1.20.14-quota` · lachesis-base `v0.1.6-elemont`_
