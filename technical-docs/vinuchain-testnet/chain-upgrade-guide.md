@@ -90,8 +90,12 @@ Run this checklist after the ProxyAdmin owner key for
    npm run finalize:quota-testnet
    ```
 
-7. Update this guide from "Quota proxy upgrade pending" to complete, including
-   the verified implementation address and upgrade transaction hash.
+7. In `VinuChain-Docs`, after the live proxy audit passes and the upgrade
+   transaction hash is known, finalize this guide:
+
+   ```bash
+   QUOTA_UPGRADE_TX=<UPGRADE_TX_HASH> scripts/finalize-payback-receiver-docs.sh
+   ```
 
 {% hint style="warning" %}
 **Operators stuck on v2.0.14 with `peerCount=0`:** v2.0.14's default-bootnodes table was keyed only on the legacy `main`/`test` aliases, so any node booting without `--bootnodes` and without a populated `static-/trusted-nodes.json` got an empty bootstrap list and never discovered peers. **Upgrade to v2.0.17-elemont** for the current durable fix, or pass the four testnet bootnodes explicitly as a transitional workaround:
