@@ -12,6 +12,45 @@
 The guarded contract-side commands live in `vinu-quotacontract`: `yarn preflight:testnet:quota` checks the signer and live proxy state without deploying, `yarn upgrade:testnet:quota` deploys and upgrades through ProxyAdmin, `QUOTA_IMPLEMENTATION_ADDRESS=<address> yarn verify:testnet:quota` verifies the new implementation on VinuExplorer, and `REQUIRE_QUOTA_UPGRADED=true REQUIRE_QUOTA_VERIFIED=true yarn audit:testnet:quota` proves the live proxy now points at a verified `stakeFor(address)` implementation. The same path is available as the manual GitHub Actions workflow `Quota Testnet Upgrade`; it requires the ProxyAdmin owner key in the repository secret `PRIVATE_TEST`, an explicit proxy-address confirmation when dispatching, and supports `preflight_only=true` before the mutating upgrade run.
 {% endhint %}
 
+## Payback Receiver Completion Checklist
+
+Run this checklist after the ProxyAdmin owner key for
+`0x07B4eF04b62E69aE14A715cdcae692fa7033b9a5` has been added as the
+`PRIVATE_TEST` GitHub Actions secret in `VinuChain/vinu-quotacontract`.
+
+1. In `vinu-quotacontract`, dispatch the manual `Quota Testnet Upgrade`
+   workflow once with `preflight_only=true` and proxy confirmation
+   `0x824B93dE7221cf8a35FBd29d5202f6eFa3A29C5D`. This must pass before the
+   mutating run.
+2. Dispatch the same workflow with `preflight_only=false` and `verify=true`.
+   Record the printed implementation address and upgrade transaction hash from
+   the `quota-testnet-upgrade` artifact.
+3. In `vinu-quotacontract`, confirm:
+
+   ```bash
+   REQUIRE_QUOTA_UPGRADED=true REQUIRE_QUOTA_VERIFIED=true yarn audit:testnet:quota
+   ```
+
+4. In `vinuchain-lists`, update
+   `contracts/vinuchain/info.json` so the `QuotaContract` implementation entry
+   is the newly verified implementation address, then confirm:
+
+   ```bash
+   npm run validate
+   REQUIRE_QUOTA_LISTS_CURRENT=true npm run audit:vinuchain-quota
+   ```
+
+5. In `vinuscan-frontend`, do not deploy the receiver selector until the
+   contract and list audits pass. Before deployment, confirm:
+
+   ```bash
+   npm test -- src/store/__tests__/quota-staking.test.js
+   REQUIRE_QUOTA_FRONTEND_READY=true npm run audit:quota-testnet
+   ```
+
+6. Update this guide from "Quota proxy upgrade pending" to complete, including
+   the verified implementation address and upgrade transaction hash.
+
 {% hint style="warning" %}
 **Operators stuck on v2.0.14 with `peerCount=0`:** v2.0.14's default-bootnodes table was keyed only on the legacy `main`/`test` aliases, so any node booting without `--bootnodes` and without a populated `static-/trusted-nodes.json` got an empty bootstrap list and never discovered peers. **Upgrade to v2.0.17-elemont** for the current durable fix, or pass the four testnet bootnodes explicitly as a transitional workaround:
 
