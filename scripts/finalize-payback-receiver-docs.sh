@@ -112,13 +112,13 @@ function replaceOnce(pattern, replacement, label) {
 
 replaceOnce(
   /\*\*Payback receiver rollout status:\*\*[\s\S]*?\n\n`v2\.0\.16-elemont`/,
-  `**Payback receiver rollout status:** Complete as of ${completedDate}. The v2.0.17 node binary is deployed on testnet, the testnet Quota proxy \`0x824B93dE7221cf8a35FBd29d5202f6eFa3A29C5D\` points at the verified receiver-capable implementation \`${implementation}\`, and VinuExplorer reports verified unchanged bytecode. Upgrade transaction: \`${upgradeTx}\`. \`QuotaContract.stakeFor(address)\` lets a funding wallet supply VC while the receiver address owns the Quota stake and receives refunds for transactions it signs.\n\n\`v2.0.16-elemont\``,
+  `**Payback receiver rollout status:** Complete as of ${completedDate}. The v2.0.17 node binary is deployed on testnet, the testnet Quota proxy \`0x824B93dE7221cf8a35FBd29d5202f6eFa3A29C5D\` points at the verified receiver-capable implementation \`${implementation}\`, VinuExplorer reports verified unchanged bytecode, and the quota audit confirms the explorer ABI and deployed bytecode match the local \`QuotaContract\` artifact. Upgrade transaction: \`${upgradeTx}\`. \`QuotaContract.stakeFor(address)\` lets a funding wallet supply VC while the receiver address owns the Quota stake and receives refunds for transactions it signs.\n\n\`v2.0.16-elemont\``,
   'rollout status'
 )
 
 replaceOnce(
   /\| v2\.0\.17-elemont \| Payback\/Quota receiver staking\s+\|[^|]+\|/,
-  `| v2.0.17-elemont | Payback/Quota receiver staking          | Deployed to testnet RPC + validators on 2026-05-10. The node PaybackCache recognizes \`stakeFor(address)\` as stake owned by the receiver, preserving same-epoch duration accounting for the refunding address. Receiver implementation \`${implementation}\` is deployed, verified, and active behind the live Quota proxy; upgrade tx \`${upgradeTx}\`. |`,
+  `| v2.0.17-elemont | Payback/Quota receiver staking          | Deployed to testnet RPC + validators on 2026-05-10. The node PaybackCache recognizes \`stakeFor(address)\` as stake owned by the receiver, preserving same-epoch duration accounting for the refunding address. Receiver implementation \`${implementation}\` is deployed, verified with unchanged bytecode, artifact-matched, and active behind the live Quota proxy; upgrade tx \`${upgradeTx}\`. |`,
   'v2.0.17 release row'
 )
 
@@ -135,8 +135,8 @@ replaceOnce(
 )
 
 replaceOnce(
-  /_Last updated: 2026-05-10 · latest released VinuChain tag `v2\.0\.17-elemont` · receiver implementation verified; Quota proxy upgrade pending · go-vinu `v1\.20\.14-quota` · lachesis-base `v0\.1\.6-elemont`_/,
-  `_Last updated: ${completedDate} · latest released VinuChain tag \`v2.0.17-elemont\` · Payback receiver rollout complete; Quota proxy upgraded via \`${upgradeTx}\` · go-vinu \`v1.20.14-quota\` · lachesis-base \`v0.1.6-elemont\`_`,
+  /_Last updated: 2026-05-10 · latest released VinuChain tag `v2\.0\.17-elemont` · receiver implementation verified with unchanged bytecode and partial VinuExplorer status; Quota proxy upgrade pending · go-vinu `v1\.20\.14-quota` · lachesis-base `v0\.1\.6-elemont`_/,
+  `_Last updated: ${completedDate} · latest released VinuChain tag \`v2.0.17-elemont\` · Payback receiver rollout complete; Quota proxy upgraded via \`${upgradeTx}\`; explorer bytecode artifact-matched · go-vinu \`v1.20.14-quota\` · lachesis-base \`v0.1.6-elemont\`_`,
   'last updated marker'
 )
 
