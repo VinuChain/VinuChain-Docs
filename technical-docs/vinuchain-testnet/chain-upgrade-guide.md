@@ -60,6 +60,20 @@ nonzero value, low gas limit, or failed simulation before it sends anything:
 printf '%s' "$SIGNED_TX" | npm run broadcast:testnet:quota-upgrade-tx -- --stdin
 ```
 
+If the owner can provide the ProxyAdmin owner key locally but does not want to
+store it in GitHub Actions, the local signer reads the key from stdin, signs the
+freshly prepared transaction, and validates the signed transaction without
+printing the key or writing a secret. The default output redacts the signed raw
+transaction; `--broadcast` submits it after validation, and `--raw` prints only
+the signed raw transaction for piping into the broadcaster:
+
+```bash
+printf '%s' "$PRIVATE_TEST" | npm run sign:testnet:quota-upgrade-tx -- --stdin
+printf '%s' "$PRIVATE_TEST" | npm run sign:testnet:quota-upgrade-tx -- --stdin --broadcast
+printf '%s' "$PRIVATE_TEST" | node scripts/sign-quota-testnet-upgrade-tx.js --stdin --raw \
+  | npm run broadcast:testnet:quota-upgrade-tx -- --stdin
+```
+
 The same signed raw transaction can be validated or broadcast with the manual
 GitHub Actions workflow `Quota Testnet Signed Tx Broadcast`. It does not require
 the owner private key or the `PRIVATE_TEST` secret; leave `dry_run=true` for
