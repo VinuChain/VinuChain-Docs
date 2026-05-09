@@ -37,6 +37,15 @@ implementation, the verified receiver implementation bytecode, and an
 npm run prepare:testnet:quota-upgrade-tx
 ```
 
+If the owner signs that exact transaction externally, the signed raw transaction
+can be validated and broadcast from the same checkout. The broadcaster rejects
+wrong signer, wrong chain, wrong nonce, wrong ProxyAdmin target, wrong calldata,
+nonzero value, low gas limit, or failed simulation before it sends anything:
+
+```bash
+printf '%s' "$SIGNED_TX" | npm run broadcast:testnet:quota-upgrade-tx -- --stdin
+```
+
 1. In `vinu-quotacontract`, dispatch the guarded `Quota Testnet Upgrade`
    preflight workflow. The helper refuses to dispatch unless the `PRIVATE_TEST`
    Actions repository secret exists, sends the proxy confirmation, and defaults
