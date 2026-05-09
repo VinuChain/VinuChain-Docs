@@ -117,7 +117,13 @@ printf '%s' "$SIGNED_TX" | npm run dispatch:testnet:quota-signed-broadcast -- --
    The wrapper runs the strict VinuChain and contract audits first, then runs the
    `vinuchain-lists`, `vinuscan-frontend`, and docs finalizers. It does not
    commit generated changes; review, commit, and push the touched repos before
-   running the full rollout audit.
+   running the full rollout audit. To let the wrapper commit and push the
+   generated list/docs finalizer changes after the checks pass, add explicit
+   `--commit --push`:
+
+   ```bash
+   QUOTA_UPGRADE_TX=<UPGRADE_TX_HASH> scripts/finalize-payback-receiver-rollout.sh --commit --push
+   ```
 
 3. In `vinu-quotacontract`, confirm:
 
