@@ -56,12 +56,16 @@ transaction.
 
 From a checkout with `gh` authenticated, dispatch that signed-transaction
 workflow through stdin so the raw transaction is not placed in shell history.
-The default workflow mode validates only; the `:mutate` script broadcasts after
-validation:
+The default script validates locally without sending the signed transaction to
+GitHub. The `:mutate` script dispatches the workflow to broadcast after local
+validation. A GitHub dry-run is available with `--dispatch-dry-run`, but treat
+it like broadcast-sensitive input because the signed transaction is valid for
+anyone who can submit it:
 
 ```bash
 printf '%s' "$SIGNED_TX" | npm run dispatch:testnet:quota-signed-broadcast -- --stdin
 printf '%s' "$SIGNED_TX" | npm run dispatch:testnet:quota-signed-broadcast:mutate -- --stdin
+printf '%s' "$SIGNED_TX" | npm run dispatch:testnet:quota-signed-broadcast -- --stdin --dispatch-dry-run
 ```
 
 1. In `vinu-quotacontract`, dispatch the guarded `Quota Testnet Upgrade`
