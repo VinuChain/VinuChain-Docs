@@ -9,7 +9,7 @@
 
 `v2.0.16-elemont` was tagged but superseded before deployment; use `v2.0.17-elemont` for Payback receiver rollout because it also aligns fresh testnet defaults with the live Quota proxy address.
 
-The guarded contract-side commands live in `vinu-quotacontract`: `yarn deploy:testnet:quota-implementation` deploys only the receiver-capable implementation with any funded testnet key, `yarn preflight:testnet:quota` checks the signer and live proxy state without deploying, `yarn upgrade:testnet:quota` deploys and upgrades through ProxyAdmin, `QUOTA_IMPLEMENTATION_ADDRESS=<address> yarn verify:testnet:quota` verifies the new implementation on VinuExplorer, and `REQUIRE_QUOTA_UPGRADED=true REQUIRE_QUOTA_VERIFIED=true yarn audit:testnet:quota` proves the live proxy now points at a verified `stakeFor(address)` implementation. For the current rollout, pass `0x80DA5f5e78c94EE5125Be515Ad4cd248469B57ba` through `QUOTA_IMPLEMENTATION_ADDRESS` or the workflow `implementation_address` input so the owner key only performs the ProxyAdmin upgrade. The deploy-only path is also available as the manual GitHub Actions workflow `Quota Testnet Implementation`; it uploads a `quota-implementation-testnet` artifact and does not call ProxyAdmin. The node/rules/proxy audit lives in `VinuChain/scripts/audit-payback-receiver-testnet.sh`; run it with `REQUIRE_PAYBACK_RECEIVER_READY=true` after the proxy upgrade. The same upgrade path is available as the manual GitHub Actions workflow `Quota Testnet Upgrade`; it requires the ProxyAdmin owner key in the repository secret `PRIVATE_TEST`, an explicit proxy-address confirmation when dispatching, and supports `preflight_only=true` before the mutating upgrade run. The helper commands `yarn dispatch:testnet:quota-upgrade` and `yarn dispatch:testnet:quota-upgrade:mutate` dispatch the preflight and mutating workflow runs with the verified implementation address prefilled.
+The guarded contract-side commands live in `vinu-quotacontract`: `yarn deploy:testnet:quota-implementation` deploys only the receiver-capable implementation with any funded testnet key, `yarn preflight:testnet:quota` checks the signer and live proxy state without deploying, `yarn upgrade:testnet:quota` deploys and upgrades through ProxyAdmin, `QUOTA_IMPLEMENTATION_ADDRESS=<address> yarn verify:testnet:quota` verifies the new implementation on VinuExplorer, and `REQUIRE_QUOTA_UPGRADED=true REQUIRE_QUOTA_VERIFIED=true yarn audit:testnet:quota` proves the live proxy now points at a verified `stakeFor(address)` implementation. For the current rollout, pass `0x80DA5f5e78c94EE5125Be515Ad4cd248469B57ba` through `QUOTA_IMPLEMENTATION_ADDRESS` or the workflow `implementation_address` input so the owner key only performs the ProxyAdmin upgrade. The deploy-only path is also available as the manual GitHub Actions workflow `Quota Testnet Implementation`; it uploads a `quota-implementation-testnet` artifact and does not call ProxyAdmin. The node/rules/proxy audit lives in `VinuChain/scripts/audit-payback-receiver-testnet.sh`; run it with `REQUIRE_PAYBACK_RECEIVER_READY=true` after the proxy upgrade. The same upgrade path is available as the manual GitHub Actions workflow `Quota Testnet Upgrade`; it requires the ProxyAdmin owner key in the repository secret `PRIVATE_TEST`, an explicit proxy-address confirmation when dispatching, and supports `preflight_only=true` before the mutating upgrade run. The helper commands `yarn dispatch:testnet:quota-upgrade` and `yarn dispatch:testnet:quota-upgrade:mutate` dispatch the preflight and mutating workflow runs with the verified implementation address prefilled; if Yarn is unavailable locally, `npm run dispatch:testnet:quota-upgrade` and `npm run dispatch:testnet:quota-upgrade:mutate` run the same helper scripts.
 {% endhint %}
 
 ## Payback Receiver Completion Checklist
@@ -26,6 +26,8 @@ Run this checklist after the ProxyAdmin owner key for
 
    ```bash
    yarn dispatch:testnet:quota-upgrade
+   # or:
+   npm run dispatch:testnet:quota-upgrade
    ```
 
    This must pass before the mutating run.
@@ -44,6 +46,8 @@ Run this checklist after the ProxyAdmin owner key for
 
    ```bash
    yarn dispatch:testnet:quota-upgrade:mutate
+   # or:
+   npm run dispatch:testnet:quota-upgrade:mutate
    ```
 3. In `vinu-quotacontract`, confirm:
 
