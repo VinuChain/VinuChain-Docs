@@ -54,6 +54,16 @@ the owner private key or the `PRIVATE_TEST` secret; leave `dry_run=true` for
 validation and switch to `dry_run=false` only to broadcast the already-signed
 transaction.
 
+From a checkout with `gh` authenticated, dispatch that signed-transaction
+workflow through stdin so the raw transaction is not placed in shell history.
+The default workflow mode validates only; the `:mutate` script broadcasts after
+validation:
+
+```bash
+printf '%s' "$SIGNED_TX" | npm run dispatch:testnet:quota-signed-broadcast -- --stdin
+printf '%s' "$SIGNED_TX" | npm run dispatch:testnet:quota-signed-broadcast:mutate -- --stdin
+```
+
 1. In `vinu-quotacontract`, dispatch the guarded `Quota Testnet Upgrade`
    preflight workflow. The helper refuses to dispatch unless the `PRIVATE_TEST`
    Actions repository secret exists, sends the proxy confirmation, and defaults
