@@ -5,11 +5,11 @@
 {% endhint %}
 
 {% hint style="info" %}
-**Payback receiver rollout status:** The v2.0.17 node binary is deployed on testnet. The current testnet Quota proxy is `0x824B93dE7221cf8a35FBd29d5202f6eFa3A29C5D`; its pre-receiver implementation `0x0c8735bD6b3E90eaD4cdAB917474Cc6e8E58ce82` is verified on VinuExplorer, but the receiver-capable implementation still needs to be deployed through the proxy and verified before the frontend receiver selector is deployed. After that proxy upgrade, `QuotaContract.stakeFor(address)` lets a funding wallet supply VC while the receiver address owns the Quota stake and receives refunds for transactions it signs.
+**Payback receiver rollout status:** The v2.0.17 node binary is deployed on testnet. The current testnet Quota proxy is `0x824B93dE7221cf8a35FBd29d5202f6eFa3A29C5D`; it still points at the verified pre-receiver implementation `0x0c8735bD6b3E90eaD4cdAB917474Cc6e8E58ce82`. The receiver-capable implementation `0x80DA5f5e78c94EE5125Be515Ad4cd248469B57ba` is deployed and verified on VinuExplorer, and the remaining mutating step is the ProxyAdmin upgrade to point the proxy at that implementation before the frontend receiver selector is deployed. After that proxy upgrade, `QuotaContract.stakeFor(address)` lets a funding wallet supply VC while the receiver address owns the Quota stake and receives refunds for transactions it signs.
 
 `v2.0.16-elemont` was tagged but superseded before deployment; use `v2.0.17-elemont` for Payback receiver rollout because it also aligns fresh testnet defaults with the live Quota proxy address.
 
-The guarded contract-side commands live in `vinu-quotacontract`: `yarn deploy:testnet:quota-implementation` deploys only the receiver-capable implementation with any funded testnet key, `yarn preflight:testnet:quota` checks the signer and live proxy state without deploying, `yarn upgrade:testnet:quota` deploys and upgrades through ProxyAdmin, `QUOTA_IMPLEMENTATION_ADDRESS=<address> yarn verify:testnet:quota` verifies the new implementation on VinuExplorer, and `REQUIRE_QUOTA_UPGRADED=true REQUIRE_QUOTA_VERIFIED=true yarn audit:testnet:quota` proves the live proxy now points at a verified `stakeFor(address)` implementation. If the receiver-capable implementation is deployed separately, pass its address through `QUOTA_IMPLEMENTATION_ADDRESS` or the workflow `implementation_address` input so the owner key only performs the ProxyAdmin upgrade. The deploy-only path is also available as the manual GitHub Actions workflow `Quota Testnet Implementation`; it uploads a `quota-implementation-testnet` artifact and does not call ProxyAdmin. The node/rules/proxy audit lives in `VinuChain/scripts/audit-payback-receiver-testnet.sh`; run it with `REQUIRE_PAYBACK_RECEIVER_READY=true` after the proxy upgrade. The same upgrade path is available as the manual GitHub Actions workflow `Quota Testnet Upgrade`; it requires the ProxyAdmin owner key in the repository secret `PRIVATE_TEST`, an explicit proxy-address confirmation when dispatching, and supports `preflight_only=true` before the mutating upgrade run.
+The guarded contract-side commands live in `vinu-quotacontract`: `yarn deploy:testnet:quota-implementation` deploys only the receiver-capable implementation with any funded testnet key, `yarn preflight:testnet:quota` checks the signer and live proxy state without deploying, `yarn upgrade:testnet:quota` deploys and upgrades through ProxyAdmin, `QUOTA_IMPLEMENTATION_ADDRESS=<address> yarn verify:testnet:quota` verifies the new implementation on VinuExplorer, and `REQUIRE_QUOTA_UPGRADED=true REQUIRE_QUOTA_VERIFIED=true yarn audit:testnet:quota` proves the live proxy now points at a verified `stakeFor(address)` implementation. For the current rollout, pass `0x80DA5f5e78c94EE5125Be515Ad4cd248469B57ba` through `QUOTA_IMPLEMENTATION_ADDRESS` or the workflow `implementation_address` input so the owner key only performs the ProxyAdmin upgrade. The deploy-only path is also available as the manual GitHub Actions workflow `Quota Testnet Implementation`; it uploads a `quota-implementation-testnet` artifact and does not call ProxyAdmin. The node/rules/proxy audit lives in `VinuChain/scripts/audit-payback-receiver-testnet.sh`; run it with `REQUIRE_PAYBACK_RECEIVER_READY=true` after the proxy upgrade. The same upgrade path is available as the manual GitHub Actions workflow `Quota Testnet Upgrade`; it requires the ProxyAdmin owner key in the repository secret `PRIVATE_TEST`, an explicit proxy-address confirmation when dispatching, and supports `preflight_only=true` before the mutating upgrade run.
 {% endhint %}
 
 ## Payback Receiver Completion Checklist
@@ -20,10 +20,11 @@ Run this checklist after the ProxyAdmin owner key for
 
 1. In `vinu-quotacontract`, dispatch the manual `Quota Testnet Upgrade`
    workflow once with `preflight_only=true` and proxy confirmation
-   `0x824B93dE7221cf8a35FBd29d5202f6eFa3A29C5D`. If an implementation was
-   deployed separately, include it in `implementation_address`. This must pass
+   `0x824B93dE7221cf8a35FBd29d5202f6eFa3A29C5D`. Set
+   `implementation_address` to the verified receiver implementation
+   `0x80DA5f5e78c94EE5125Be515Ad4cd248469B57ba`. This must pass
    before the mutating run.
-   To split deploy from ownership, first deploy and verify the implementation
+   To split deploy from ownership in a future rollout, first deploy and verify the implementation
    with any funded testnet key, either locally or with the manual
    `Quota Testnet Implementation` workflow:
 
@@ -33,7 +34,7 @@ Run this checklist after the ProxyAdmin owner key for
    ```
 
 2. Dispatch the same workflow with `preflight_only=false` and `verify=true`.
-   Record the printed implementation address and upgrade transaction hash from
+   Record the upgrade transaction hash and confirmed implementation address from
    the `quota-testnet-upgrade` artifact.
 3. In `vinu-quotacontract`, confirm:
 
@@ -606,7 +607,7 @@ Testnet has all three plus the trailing `SfcV2Patch2` / `SfcV2Patch3` / `SfcV2Pa
 
 | Version             | Type                                          | What changed                                                                                                        |
 | ------------------- | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| v2.0.17-elemont | Payback/Quota receiver staking          | Deployed to testnet RPC + validators on 2026-05-10. The node PaybackCache recognizes `stakeFor(address)` as stake owned by the receiver, preserving same-epoch duration accounting for the refunding address. Quota proxy implementation upgrade and source verification are still pending. |
+| v2.0.17-elemont | Payback/Quota receiver staking          | Deployed to testnet RPC + validators on 2026-05-10. The node PaybackCache recognizes `stakeFor(address)` as stake owned by the receiver, preserving same-epoch duration accounting for the refunding address. Receiver implementation `0x80DA5f5e78c94EE5125Be515Ad4cd248469B57ba` is deployed and verified; the live Quota proxy upgrade is still pending. |
 | **v2.0.14-elemont** | Testnet consensus flags (Patch5 + ElemontPubkeyValidation) | Cycle-161 SFC bytecode. Adds canonical-pubkey validation (`length == 66 && pubkey[0] == 0xc0`) at `createValidator`, `_rawCreateValidator`, and `NodeDriverAuth.updateValidatorPubkey`. Off-chain sealer guard ejects validators with malformed stored pubkeys (testnet validator 16) at the next epoch seal. Also: real `gasUsedRatio` in `eth_feeHistory`. |
 | v2.0.13-elemont     | Same-day scaffolding (no live activation)     | Defines flags + ships the deadbeef-placeholder Cycle-161 bytecode; flipped to v2.0.14 same day with the real bytecode and activation. Don't deploy v2.0.13 standalone. |
 | v2.0.12-elemont     | Diagnostic + tooling                          | Multi-`SfcV2Patch*` divergence warn at single seal; chaindata snapshot producer (`scripts/create-chaindata-snapshot.sh` with `SNAPSHOT_INFO.txt`). Non-consensus. |
@@ -686,7 +687,7 @@ Stakers meeting the minimum stake threshold automatically receive gas refunds. *
 3. After epoch seal, the payback system queries the sender's stake. If eligible, a refund is returned from the validator's earned fees.
 4. Validator earnings decrease by the refund; sender balance increases by it.
 
-In the unreleased Payback receiver flow, a funding wallet may call `QuotaContract.stakeFor(receiver)` instead of `stake()`. The receiver owns that Quota stake, so refunds still follow the transaction sender: the receiver gets refunds for transactions the receiver signs, while the funding wallet does not gain refund eligibility from that delegated stake.
+In the pending proxy-upgrade Payback receiver flow, a funding wallet may call `QuotaContract.stakeFor(receiver)` instead of `stake()`. The receiver owns that Quota stake, so refunds still follow the transaction sender: the receiver gets refunds for transactions the receiver signs, while the funding wallet does not gain refund eligibility from that delegated stake.
 
 The `feeRefund` receipt field reports the refund amount. dApps showing "gas spent" should subtract `feeRefund` from `gasUsed × effectiveGasPrice`.
 
@@ -744,4 +745,4 @@ Operator-facing controls for managing chaindata size on long-lived nodes.
 
 ***
 
-_Last updated: 2026-05-10 · latest released VinuChain tag `v2.0.17-elemont` · Quota proxy upgrade pending · go-vinu `v1.20.14-quota` · lachesis-base `v0.1.6-elemont`_
+_Last updated: 2026-05-10 · latest released VinuChain tag `v2.0.17-elemont` · receiver implementation verified; Quota proxy upgrade pending · go-vinu `v1.20.14-quota` · lachesis-base `v0.1.6-elemont`_
