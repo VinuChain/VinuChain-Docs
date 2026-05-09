@@ -106,6 +106,19 @@ printf '%s' "$SIGNED_TX" | npm run dispatch:testnet:quota-signed-broadcast -- --
    # or:
    npm run dispatch:testnet:quota-upgrade:mutate
    ```
+
+   After the proxy upgrade transaction is known, the existing repo finalizers can
+   be run from `VinuChain` in the correct order:
+
+   ```bash
+   QUOTA_UPGRADE_TX=<UPGRADE_TX_HASH> scripts/finalize-payback-receiver-rollout.sh
+   ```
+
+   The wrapper runs the strict VinuChain and contract audits first, then runs the
+   `vinuchain-lists`, `vinuscan-frontend`, and docs finalizers. It does not
+   commit generated changes; review, commit, and push the touched repos before
+   running the full rollout audit.
+
 3. In `vinu-quotacontract`, confirm:
 
    ```bash
