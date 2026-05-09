@@ -135,7 +135,7 @@ replaceOnce(
 )
 
 replaceOnce(
-  /_Last updated: 2026-05-10 · latest released VinuChain tag `v2\.0\.17-elemont` · receiver implementation verified with unchanged bytecode and partial VinuExplorer status; Quota proxy upgrade pending · go-vinu `v1\.20\.14-quota` · lachesis-base `v0\.1\.6-elemont`_/,
+  /_Last updated: 2026-05-10 · latest released VinuChain tag `v2\.0\.17-elemont` · receiver implementation fully verified with unchanged bytecode; Quota proxy upgrade pending · go-vinu `v1\.20\.14-quota` · lachesis-base `v0\.1\.6-elemont`_/,
   `_Last updated: ${completedDate} · latest released VinuChain tag \`v2.0.17-elemont\` · Payback receiver rollout complete; Quota proxy upgraded via \`${upgradeTx}\`; explorer bytecode artifact-matched · go-vinu \`v1.20.14-quota\` · lachesis-base \`v0.1.6-elemont\`_`,
   'last updated marker'
 )
