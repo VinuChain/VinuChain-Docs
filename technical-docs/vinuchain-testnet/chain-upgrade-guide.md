@@ -4,6 +4,10 @@
 **Latest release:** v2.0.15-elemont (tagged 2026-05-06; deployed to testnet RPC + 4 validators). Non-consensus hotfix on top of the v2.0.14 consensus activation — restores default-bootnode resolution for nodes booting with the long-form network names. The v2.0.14 release notes below still describe the consensus state of the chain (`SfcV2Patch5` + `ElemontPubkeyValidation` activated at the v2.0.14 epoch seal); v2.0.15 changes only the launcher's bootnode lookup, the first-SfcV2-activation accessor (mainnet-future-only), and a payback-cap fail-closed (unreachable on testnet today).
 {% endhint %}
 
+{% hint style="info" %}
+**Next testnet release target (v2.0.16-elemont, not deployed as of 2026-05-10):** Payback receiver selection adds `QuotaContract.stakeFor(address)`. The payer supplies the VC stake, but the address passed to `stakeFor` owns the Quota stake and is the address whose later transactions are checked for fee refunds. Rollout order is node binary first, then Quota proxy implementation upgrade, then frontend receiver selector deployment.
+{% endhint %}
+
 {% hint style="warning" %}
 **Operators stuck on v2.0.14 with `peerCount=0`:** v2.0.14's default-bootnodes table was keyed only on the legacy `main`/`test` aliases, so any node booting without `--bootnodes` and without a populated `static-/trusted-nodes.json` got an empty bootstrap list and never discovered peers. **Upgrade to v2.0.15-elemont** for the durable fix, or pass the four testnet bootnodes explicitly as a transitional workaround:
 
@@ -542,6 +546,7 @@ Testnet has all three plus the trailing `SfcV2Patch2` / `SfcV2Patch3` / `SfcV2Pa
 
 | Version             | Type                                          | What changed                                                                                                        |
 | ------------------- | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| v2.0.16-elemont (target) | Payback/Quota receiver staking          | Adds `QuotaContract.stakeFor(address)` so one wallet can fund Payback stake for another wallet. The node PaybackCache recognizes `stakeFor(address)` as stake owned by the receiver, preserving same-epoch duration accounting for the refunding address. |
 | **v2.0.14-elemont** | Testnet consensus flags (Patch5 + ElemontPubkeyValidation) | Cycle-161 SFC bytecode. Adds canonical-pubkey validation (`length == 66 && pubkey[0] == 0xc0`) at `createValidator`, `_rawCreateValidator`, and `NodeDriverAuth.updateValidatorPubkey`. Off-chain sealer guard ejects validators with malformed stored pubkeys (testnet validator 16) at the next epoch seal. Also: real `gasUsedRatio` in `eth_feeHistory`. |
 | v2.0.13-elemont     | Same-day scaffolding (no live activation)     | Defines flags + ships the deadbeef-placeholder Cycle-161 bytecode; flipped to v2.0.14 same day with the real bytecode and activation. Don't deploy v2.0.13 standalone. |
 | v2.0.12-elemont     | Diagnostic + tooling                          | Multi-`SfcV2Patch*` divergence warn at single seal; chaindata snapshot producer (`scripts/create-chaindata-snapshot.sh` with `SNAPSHOT_INFO.txt`). Non-consensus. |
@@ -621,6 +626,8 @@ Stakers meeting the minimum stake threshold automatically receive gas refunds. *
 3. After epoch seal, the payback system queries the sender's stake. If eligible, a refund is returned from the validator's earned fees.
 4. Validator earnings decrease by the refund; sender balance increases by it.
 
+In the unreleased Payback receiver flow, a funding wallet may call `QuotaContract.stakeFor(receiver)` instead of `stake()`. The receiver owns that Quota stake, so refunds still follow the transaction sender: the receiver gets refunds for transactions the receiver signs, while the funding wallet does not gain refund eligibility from that delegated stake.
+
 The `feeRefund` receipt field reports the refund amount. dApps showing "gas spent" should subtract `feeRefund` from `gasUsed × effectiveGasPrice`.
 
 #### `vc_getPaybackBalance`
@@ -677,4 +684,4 @@ Operator-facing controls for managing chaindata size on long-lived nodes.
 
 ***
 
-_Last updated: 2026-05-06 · VinuChain tag `v2.0.15-elemont` · go-vinu `v1.20.14-quota` · lachesis-base `v0.1.6-elemont`_
+_Last updated: 2026-05-10 · latest released VinuChain tag `v2.0.15-elemont` · next target `v2.0.16-elemont` · go-vinu `v1.20.14-quota` · lachesis-base `v0.1.6-elemont`_
