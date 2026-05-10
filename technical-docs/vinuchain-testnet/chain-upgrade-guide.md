@@ -202,6 +202,14 @@ printf '%s' "$SIGNED_TX" | npm run dispatch:testnet:quota-signed-broadcast -- --
    current prepared artifact, drift classification, safe signing/broadcast
    options, the exact prepared-JSON validation command, and remaining blockers.
 
+   To wait locally for the owner-submitted proxy upgrade and exit as soon as the
+   live proxy points at the receiver implementation, run:
+
+   ```bash
+   npm run watch:testnet:quota-upgrade
+   npm run watch:testnet:quota-upgrade -- --once
+   ```
+
    This must pass before the mutating run.
    To let the helper dispatch the mutating upgrade only after preflight passes,
    use the sequenced helper instead:
