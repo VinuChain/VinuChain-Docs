@@ -151,6 +151,7 @@ printf '%s' "$SIGNED_TX" | npm run dispatch:testnet:quota-signed-broadcast -- --
 
    ```bash
    npm run audit:testnet:quota-owner-action
+   npm run handoff:testnet:quota-owner
    ```
 
    That check reports the live proxy implementation, live Quota proxy stake and
@@ -163,6 +164,10 @@ printf '%s' "$SIGNED_TX" | npm run dispatch:testnet:quota-signed-broadcast -- --
    artifact was generated from an earlier commit, it also reports whether the
    later commit drift touched files that can affect prepared transaction
    generation.
+
+   The handoff command wraps that audit into a concise owner checklist with the
+   current prepared artifact, drift classification, safe signing/broadcast
+   options, and remaining blockers.
 
    This must pass before the mutating run.
    To let the helper dispatch the mutating upgrade only after preflight passes,
