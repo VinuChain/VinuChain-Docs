@@ -211,6 +211,11 @@ printf '%s' "$SIGNED_TX" | npm run dispatch:testnet:quota-signed-broadcast -- --
    npm run watch:testnet:quota-upgrade -- --once
    ```
 
+   When the watcher sees the receiver implementation live, its JSON output
+   includes the matching proxy `Upgraded(address)` transaction hash when that
+   event is available, plus the exact finalizer and strict-audit commands to
+   run from the `VinuChain` checkout.
+
    This must pass before the mutating run.
    To let the helper dispatch the mutating upgrade only after preflight passes,
    use the sequenced helper instead:
