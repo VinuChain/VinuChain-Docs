@@ -132,10 +132,11 @@ printf '%s' "$SIGNED_TX" | npm run dispatch:testnet:quota-signed-broadcast -- --
    ```
 
    That check reports the live proxy implementation, whether `PRIVATE_TEST`
-   exists as an Actions repository secret, the latest upgrade and
-   signed-broadcast workflow runs, whether the ProxyAdmin owner is unlocked on
-   the public RPC, and whether a local owner key or signed owner transaction is
-   present. It never prints private keys or signed raw transaction bytes.
+   exists as an Actions repository secret, the latest prepare, upgrade, and
+   signed-broadcast workflow runs, the latest prepared artifact download
+   command, whether the ProxyAdmin owner is unlocked on the public RPC, and
+   whether a local owner key or signed owner transaction is present. It never
+   prints private keys or signed raw transaction bytes.
 
    This must pass before the mutating run.
    To let the helper dispatch the mutating upgrade only after preflight passes,
