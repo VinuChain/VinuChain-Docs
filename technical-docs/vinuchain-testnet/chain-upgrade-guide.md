@@ -51,7 +51,8 @@ the latest `quota-prepared-upgrade-testnet` artifact containing
 wallet-friendly JSON shape. Current artifacts also include
 `quota-testnet-wallet-upgrade.html`, a static browser-wallet sender for owners
 who want to submit the prepared transaction from MetaMask, Rabby, or another
-injected wallet without sharing the private key.
+injected wallet without sharing the private key, plus `README.md` with the owner
+steps and artifact hashes.
 
 Print the current validated prepared request, artifact, download command, and
 validation command with:
