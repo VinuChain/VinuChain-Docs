@@ -51,6 +51,15 @@ npm run dispatch:testnet:quota-prepare-upgrade-tx
 npm run dispatch:testnet:quota-prepare-upgrade-tx -- --wait
 ```
 
+Download and validate the prepared artifact from the completed workflow run
+with the GitHub artifact API helper in `vinu-quotacontract`. This avoids
+depending on `gh run download` behavior while still requiring an authenticated
+`gh` session:
+
+```bash
+npm run download:testnet:quota-prepared-tx -- <run-id>
+```
+
 If the owner signs that exact transaction externally, the signed raw transaction
 can be validated and broadcast from the same checkout. The broadcaster rejects
 wrong signer, wrong chain, wrong nonce, wrong ProxyAdmin target, wrong calldata,
