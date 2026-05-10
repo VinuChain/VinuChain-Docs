@@ -216,6 +216,20 @@ printf '%s' "$SIGNED_TX" | npm run dispatch:testnet:quota-signed-broadcast -- --
    event is available, plus the exact finalizer and strict-audit commands to
    run from the `VinuChain` checkout.
 
+   To leave a local process waiting for the owner-submitted upgrade and then
+   immediately run the existing finalizer dry-run, use the VinuChain helper:
+
+   ```bash
+   scripts/wait-finalize-payback-receiver-rollout.sh
+   ```
+
+   After that dry-run passes, the same helper can run the committing finalizer,
+   push the generated list/docs commits, and run the strict rollout audit:
+
+   ```bash
+   scripts/wait-finalize-payback-receiver-rollout.sh --commit --push
+   ```
+
    This must pass before the mutating run.
    To let the helper dispatch the mutating upgrade only after preflight passes,
    use the sequenced helper instead:
