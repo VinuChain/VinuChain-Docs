@@ -60,6 +60,17 @@ depending on `gh run download` behavior while still requiring an authenticated
 npm run download:testnet:quota-prepared-tx -- <run-id>
 ```
 
+Before the owner signs the downloaded JSON file, recheck the local prepared
+transaction file:
+
+```bash
+npm run audit:testnet:quota-prepared-tx -- /tmp/quota-prepared-<run-id>/quota-prepared-upgrade-testnet.json
+```
+
+This validates the chain ID, ProxyAdmin owner, proxy, current implementation,
+target implementation, upgrade calldata, gas fields, nonce, and
+`suggestedLegacyTransaction`.
+
 If the owner signs that exact transaction externally, the signed raw transaction
 can be validated and broadcast from the same checkout. The broadcaster rejects
 wrong signer, wrong chain, wrong nonce, wrong ProxyAdmin target, wrong calldata,
