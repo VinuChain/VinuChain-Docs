@@ -104,6 +104,16 @@ wrong chain, wrong nonce, wrong proxy, wrong implementation, or failed
 simulation, then calls `eth_sendTransaction` with the exact transaction fields
 from the wallet JSON.
 
+To create a local handoff directory and archive for the ProxyAdmin owner, run:
+
+```bash
+npm run handoff:testnet:quota-owner-bundle -- <run-id>
+```
+
+That helper downloads and validates the prepared artifact, audits the static
+sender, writes a README with the browser-wallet and external-signing paths, and
+does not sign or broadcast anything.
+
 If the owner signs that exact transaction externally, the signed raw transaction
 can be validated and broadcast from the same checkout. The broadcaster rejects
 wrong signer, wrong chain, wrong nonce, wrong ProxyAdmin target, wrong calldata,
