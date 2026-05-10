@@ -35,11 +35,7 @@ wss://vinuchain-rpc.com:4100
 https://vinufoundation-rpc.com
 ChainID: 206
 Symbol: VC
-Explorer: https://testnet.vinuscan.com
-```
-
-```
-https://testnet-rpc.vinuchain.org
+Explorer: https://testnet.vinuexplorer.org
 ```
 
 #### WS
