@@ -48,12 +48,16 @@ Actions workflow `Quota Testnet Prepare Upgrade Tx`. It is read-only and uploads
 the latest `quota-prepared-upgrade-testnet` artifact containing
 `suggestedLegacyTransaction` for the ProxyAdmin owner to sign externally.
 
-The latest validated prepared request recorded here is workflow run
-`25618519444`, artifact `6900575226`, prepared JSON SHA256
-`088f4b8c9528483445bf96d97feb18e59f550970c00dee1353869f7cbd11a732`.
-It targets ProxyAdmin `0xcE154534e1E8F4Cc9Ab642Ad1816Ee1A237055F4`,
-owner nonce `73`, and receiver implementation
-`0x80DA5f5e78c94EE5125Be515Ad4cd248469B57ba`.
+Print the current validated prepared request, artifact, download command, and
+validation command with:
+
+```bash
+npm run handoff:testnet:quota-owner
+```
+
+The prepared request must target ProxyAdmin
+`0xcE154534e1E8F4Cc9Ab642Ad1816Ee1A237055F4`, owner nonce `73`, and receiver
+implementation `0x80DA5f5e78c94EE5125Be515Ad4cd248469B57ba`.
 
 From a checkout with `gh` authenticated, dispatch that read-only workflow with:
 
