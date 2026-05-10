@@ -115,6 +115,15 @@ printf '%s' "$SIGNED_TX" | npm run dispatch:testnet:quota-signed-broadcast -- --
    npm run dispatch:testnet:quota-upgrade
    ```
 
+   If you suspect `PRIVATE_TEST` is available through an inherited Actions scope
+   even though it is not listed as a repository secret, run only the preflight
+   path with `--skip-secret-check`. The workflow's own `Check deployer secret`
+   step still fails before checkout if Actions receives an empty `PRIVATE_TEST`:
+
+   ```bash
+   npm run dispatch:testnet:quota-upgrade -- --skip-secret-check
+   ```
+
    This must pass before the mutating run.
    To let the helper dispatch the mutating upgrade only after preflight passes,
    use the sequenced helper instead:
