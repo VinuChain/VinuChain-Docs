@@ -13,7 +13,7 @@ The guarded contract-side commands live in `vinu-quotacontract`: `yarn deploy:te
 {% endhint %}
 
 {% hint style="warning" %}
-Do not replace the live Quota proxy with a freshly deployed proxy as a shortcut. The node reads `getStake(address)` and `totalStake()` from `rules.Economy.QuotaCacheAddress`; a new proxy would start with empty storage and would not preserve existing stake, withdrawal, or backing-balance state. As of block `1451843`, the live proxy reports `totalStake=1200512000000000000000000` wei and balance `1201781000000000000000000` wei. Use the ProxyAdmin owner transaction path below, or design a separate state migration with explicit operator approval.
+Do not replace the live Quota proxy with a freshly deployed proxy as a shortcut. The node reads `getStake(address)` and `totalStake()` from `rules.Economy.QuotaCacheAddress`; a new proxy would start with empty storage and would not preserve existing stake, withdrawal, or backing-balance state. As of block `1451864`, the live proxy reports `totalStake=1200512000000000000000000` wei and balance `1201781000000000000000000` wei. Use the ProxyAdmin owner transaction path below, or design a separate state migration with explicit operator approval.
 {% endhint %}
 
 ## Payback Receiver Completion Checklist
@@ -49,8 +49,8 @@ the latest `quota-prepared-upgrade-testnet` artifact containing
 `suggestedLegacyTransaction` for the ProxyAdmin owner to sign externally.
 
 The latest validated prepared request recorded here is workflow run
-`25617457566`, artifact `6900278031`, prepared JSON SHA256
-`6eb1b059f0e12797d430d8fea47a12712921eee930d4577b4ba5448d2c26bdff`.
+`25617866246`, artifact `6900380176`, prepared JSON SHA256
+`f15ea3785b997bad959794bb56a1362f3dd6f7d5fad075f75f6536d2c22bee31`.
 It targets ProxyAdmin `0xcE154534e1E8F4Cc9Ab642Ad1816Ee1A237055F4`,
 owner nonce `73`, and receiver implementation
 `0x80DA5f5e78c94EE5125Be515Ad4cd248469B57ba`.
