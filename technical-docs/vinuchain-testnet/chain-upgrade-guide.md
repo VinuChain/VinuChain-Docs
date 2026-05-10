@@ -245,6 +245,15 @@ printf '%s' "$SIGNED_TX" | npm run dispatch:testnet:quota-signed-broadcast -- --
    QUOTA_UPGRADE_TX=<UPGRADE_TX_HASH> scripts/finalize-payback-receiver-rollout.sh
    ```
 
+   If the owner submits the proxy upgrade from a browser wallet and does not
+   provide the transaction hash, use the explicit auto-discovery path after the
+   live proxy is receiver-ready. It scans the Quota proxy `Upgraded(address)`
+   event for the verified receiver implementation before finalizing the docs:
+
+   ```bash
+   scripts/finalize-payback-receiver-rollout.sh --upgrade-tx auto
+   ```
+
    The wrapper runs the strict VinuChain, AWS RPC/validator, and contract audits
    first, then runs the `vinuchain-lists`, `vinuscan-frontend`, and docs
    finalizers. It does not commit generated changes; review, commit, and push the
