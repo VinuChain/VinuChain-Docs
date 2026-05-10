@@ -159,7 +159,10 @@ printf '%s' "$SIGNED_TX" | npm run dispatch:testnet:quota-signed-broadcast -- --
    prepare, upgrade, and signed-broadcast workflow runs, the latest prepared artifact download
    command, whether the ProxyAdmin owner is unlocked on the public RPC, and
    whether a local owner key or signed owner transaction is present. It never
-   prints private keys or signed raw transaction bytes.
+   prints private keys or signed raw transaction bytes. If the latest prepared
+   artifact was generated from an earlier commit, it also reports whether the
+   later commit drift touched files that can affect prepared transaction
+   generation.
 
    This must pass before the mutating run.
    To let the helper dispatch the mutating upgrade only after preflight passes,
