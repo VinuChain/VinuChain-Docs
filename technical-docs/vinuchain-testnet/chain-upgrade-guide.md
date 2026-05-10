@@ -140,12 +140,12 @@ printf '%s' "$SIGNED_TX" | npm run dispatch:testnet:quota-signed-broadcast -- --
    QUOTA_UPGRADE_TX=<UPGRADE_TX_HASH> scripts/finalize-payback-receiver-rollout.sh
    ```
 
-   The wrapper runs the strict VinuChain and contract audits first, then runs the
-   `vinuchain-lists`, `vinuscan-frontend`, and docs finalizers. It does not
-   commit generated changes; review, commit, and push the touched repos before
-   running the full rollout audit. To let the wrapper commit and push the
-   generated list/docs finalizer changes after the checks pass, add explicit
-   `--commit --push`:
+   The wrapper runs the strict VinuChain, AWS RPC/validator, and contract audits
+   first, then runs the `vinuchain-lists`, `vinuscan-frontend`, and docs
+   finalizers. It does not commit generated changes; review, commit, and push the
+   touched repos before running the full rollout audit. To let the wrapper commit
+   and push the generated list/docs finalizer changes after the checks pass, add
+   explicit `--commit --push`:
 
    ```bash
    QUOTA_UPGRADE_TX=<UPGRADE_TX_HASH> scripts/finalize-payback-receiver-rollout.sh --commit --push
@@ -164,7 +164,15 @@ printf '%s' "$SIGNED_TX" | npm run dispatch:testnet:quota-signed-broadcast -- --
    REQUIRE_PAYBACK_RECEIVER_READY=true scripts/audit-payback-receiver-testnet.sh
    ```
 
-5. In `vinuchain-lists`, finalize the registry after the live proxy points at
+5. In `VinuChain`, confirm the AWS-hosted testnet trace RPC and validators are
+   running the expected `v2.0.17-elemont` binary and commit without printing
+   process command lines or node keys:
+
+   ```bash
+   scripts/audit-testnet-aws-opera.sh
+   ```
+
+6. In `vinuchain-lists`, finalize the registry after the live proxy points at
    the receiver implementation. The finalizer refuses to write unless the live
    proxy points at `0x80DA5f5e78c94EE5125Be515Ad4cd248469B57ba`, the bytecode
    includes `stakeFor(address)`, VinuExplorer reports verified unchanged
@@ -177,7 +185,7 @@ printf '%s' "$SIGNED_TX" | npm run dispatch:testnet:quota-signed-broadcast -- --
    REQUIRE_QUOTA_LISTS_CURRENT=true npm run audit:vinuchain-quota
    ```
 
-6. In `vinuscan-frontend`, do not deploy the receiver selector until the
+7. In `vinuscan-frontend`, do not deploy the receiver selector until the
    contract and list audits pass. Before deployment, run the guarded frontend
    finalizer; it runs the receiver staking unit test, strict live proxy audit,
    and production build in order:
@@ -186,7 +194,7 @@ printf '%s' "$SIGNED_TX" | npm run dispatch:testnet:quota-signed-broadcast -- --
    npm run finalize:quota-testnet
    ```
 
-7. In `VinuChain-Docs`, after the live proxy audit passes and the upgrade
+8. In `VinuChain-Docs`, after the live proxy audit passes and the upgrade
    transaction hash is known, finalize this guide:
 
    ```bash

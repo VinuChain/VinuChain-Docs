@@ -137,8 +137,8 @@ replaceOnce(
 )
 
 replaceOnce(
-  /7\. In `VinuChain-Docs`, after the live proxy audit passes and the upgrade\n   transaction hash is known, finalize this guide:\n\n   ```bash\n   QUOTA_UPGRADE_TX=<UPGRADE_TX_HASH> scripts\/finalize-payback-receiver-docs\.sh\n   ```/,
-  `7. This guide records the completed Quota proxy upgrade to \`${implementation}\`, including upgrade transaction \`${upgradeTx}\`.`,
+  /8\. In `VinuChain-Docs`, after the live proxy audit passes and the upgrade\n   transaction hash is known, finalize this guide:\n\n   ```bash\n   QUOTA_UPGRADE_TX=<UPGRADE_TX_HASH> scripts\/finalize-payback-receiver-docs\.sh\n   ```/,
+  `8. This guide records the completed Quota proxy upgrade to \`${implementation}\`, including upgrade transaction \`${upgradeTx}\`.`,
   'completion checklist docs item'
 )
 
