@@ -37,7 +37,8 @@ wallet. The helper validates chain ID, ProxyAdmin owner, the current live
 implementation, the verified receiver implementation bytecode, and an
 `eth_call` simulation before printing the transaction fields. It includes a
 `suggestedLegacyTransaction` object with type `0`, the pending owner nonce,
-chain ID, calldata, gas price, and a buffered gas limit for offline signing:
+chain ID, calldata, a buffered gas price, and a buffered gas limit for offline
+signing:
 
 ```bash
 npm run prepare:testnet:quota-upgrade-tx
@@ -96,7 +97,9 @@ target implementation, upgrade calldata, gas fields, nonce, source provenance,
 and `suggestedLegacyTransaction`. Add `--live` immediately before signing to
 recheck current RPC state, including owner pending nonce, live proxy
 implementation, target bytecode, simulation, gas estimate, and gas price. The
-export command prints the same validated unsigned transaction in a
+prepared gas price intentionally includes a buffer over the observed RPC gas
+price so normal per-block gas-price jitter does not immediately invalidate the
+artifact. The export command prints the same validated unsigned transaction in a
 wallet-friendly JSON shape without signing or broadcasting. For current workflow
 artifacts, the downloader also validates `quota-wallet-upgrade-testnet.json` and
 `quota-testnet-wallet-upgrade.html` when they are present.
