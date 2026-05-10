@@ -80,11 +80,14 @@ transaction file:
 
 ```bash
 npm run audit:testnet:quota-prepared-tx -- /tmp/quota-prepared-<run-id>/quota-prepared-upgrade-testnet.json
+npm run export:testnet:quota-wallet-tx -- /tmp/quota-prepared-<run-id>/quota-prepared-upgrade-testnet.json
 ```
 
 This validates the chain ID, ProxyAdmin owner, proxy, current implementation,
 target implementation, upgrade calldata, gas fields, nonce, and
-`suggestedLegacyTransaction`.
+`suggestedLegacyTransaction`. The export command prints the same validated
+unsigned transaction in a wallet-friendly JSON shape without signing or
+broadcasting.
 
 If the owner signs that exact transaction externally, the signed raw transaction
 can be validated and broadcast from the same checkout. The broadcaster rejects
