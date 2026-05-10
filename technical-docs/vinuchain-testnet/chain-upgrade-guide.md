@@ -48,7 +48,7 @@ Actions workflow `Quota Testnet Prepare Upgrade Tx`. It is read-only and uploads
 the latest `quota-prepared-upgrade-testnet` artifact containing
 `suggestedLegacyTransaction` for the ProxyAdmin owner to sign externally.
 
-The current-head prepared request as of 2026-05-10 is workflow run
+The latest validated prepared request recorded here is workflow run
 `25617457566`, artifact `6900278031`, prepared JSON SHA256
 `6eb1b059f0e12797d430d8fea47a12712921eee930d4577b4ba5448d2c26bdff`.
 It targets ProxyAdmin `0xcE154534e1E8F4Cc9Ab642Ad1816Ee1A237055F4`,
