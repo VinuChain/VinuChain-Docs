@@ -52,7 +52,8 @@ wallet-friendly JSON shape. Current artifacts also include
 `quota-testnet-wallet-upgrade.html`, a static browser-wallet sender for owners
 who want to submit the prepared transaction from MetaMask, Rabby, or another
 injected wallet without sharing the private key, plus `README.md` with the owner
-steps and artifact hashes.
+steps, artifact hashes, and source repository, commit, ref, workflow, and run ID
+used to prepare the transaction.
 
 Print the current validated prepared request, artifact, download command, and
 validation command with:
@@ -90,8 +91,8 @@ npm run export:testnet:quota-wallet-tx -- /tmp/quota-prepared-<run-id>/quota-pre
 ```
 
 This validates the chain ID, ProxyAdmin owner, proxy, current implementation,
-target implementation, upgrade calldata, gas fields, nonce, and
-`suggestedLegacyTransaction`. The export command prints the same validated
+target implementation, upgrade calldata, gas fields, nonce, source provenance,
+and `suggestedLegacyTransaction`. The export command prints the same validated
 unsigned transaction in a wallet-friendly JSON shape without signing or
 broadcasting. For current workflow artifacts, the downloader also validates
 `quota-wallet-upgrade-testnet.json` and `quota-testnet-wallet-upgrade.html` when
@@ -191,12 +192,12 @@ printf '%s' "$SIGNED_TX" | npm run dispatch:testnet:quota-signed-broadcast -- --
    backing balance, whether a replacement proxy shortcut would preserve state,
    whether `PRIVATE_TEST` exists as an Actions repository secret, the latest
    prepare, upgrade, and signed-broadcast workflow runs, the latest prepared artifact download
-   command, whether the ProxyAdmin owner is unlocked on the public RPC, and
-   whether a local owner key or signed owner transaction is present. It never
-   prints private keys or signed raw transaction bytes. If the latest prepared
-   artifact was generated from an earlier commit, it also reports whether the
-   later commit drift touched files that can affect prepared transaction
-   generation.
+   command, whether the prepared artifact source commit matches the current checkout,
+   whether the ProxyAdmin owner is unlocked on the public RPC, and whether a local
+   owner key or signed owner transaction is present. It never prints private keys
+   or signed raw transaction bytes. If the latest prepared artifact was generated
+   from an earlier commit, it also reports whether the later commit drift touched
+   files that can affect prepared transaction generation.
 
    The handoff command wraps that audit into a concise owner checklist with the
    current prepared artifact, drift classification, safe signing/broadcast
