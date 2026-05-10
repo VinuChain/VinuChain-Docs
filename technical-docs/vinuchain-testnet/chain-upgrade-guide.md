@@ -48,7 +48,10 @@ Actions workflow `Quota Testnet Prepare Upgrade Tx`. It is read-only and uploads
 the latest `quota-prepared-upgrade-testnet` artifact containing
 `quota-prepared-upgrade-testnet.json` with `suggestedLegacyTransaction` and
 `quota-wallet-upgrade-testnet.json` with the same unsigned transaction in a
-wallet-friendly JSON shape.
+wallet-friendly JSON shape. Current artifacts also include
+`quota-testnet-wallet-upgrade.html`, a static browser-wallet sender for owners
+who want to submit the prepared transaction from MetaMask, Rabby, or another
+injected wallet without sharing the private key.
 
 Print the current validated prepared request, artifact, download command, and
 validation command with:
@@ -90,7 +93,16 @@ target implementation, upgrade calldata, gas fields, nonce, and
 `suggestedLegacyTransaction`. The export command prints the same validated
 unsigned transaction in a wallet-friendly JSON shape without signing or
 broadcasting. For current workflow artifacts, the downloader also validates
-`quota-wallet-upgrade-testnet.json` when it is present.
+`quota-wallet-upgrade-testnet.json` and `quota-testnet-wallet-upgrade.html` when
+they are present.
+
+If the ProxyAdmin owner uses a browser wallet, download the prepared artifact,
+open `quota-testnet-wallet-upgrade.html`, load
+`quota-wallet-upgrade-testnet.json`, connect the owner account, verify live
+state, and send. The static page loads no remote scripts, refuses wrong owner,
+wrong chain, wrong nonce, wrong proxy, wrong implementation, or failed
+simulation, then calls `eth_sendTransaction` with the exact transaction fields
+from the wallet JSON.
 
 If the owner signs that exact transaction externally, the signed raw transaction
 can be validated and broadcast from the same checkout. The broadcaster rejects
