@@ -49,8 +49,8 @@ the latest `quota-prepared-upgrade-testnet` artifact containing
 `suggestedLegacyTransaction` for the ProxyAdmin owner to sign externally.
 
 The latest validated prepared request recorded here is workflow run
-`25617866246`, artifact `6900380176`, prepared JSON SHA256
-`f15ea3785b997bad959794bb56a1362f3dd6f7d5fad075f75f6536d2c22bee31`.
+`25618519444`, artifact `6900575226`, prepared JSON SHA256
+`088f4b8c9528483445bf96d97feb18e59f550970c00dee1353869f7cbd11a732`.
 It targets ProxyAdmin `0xcE154534e1E8F4Cc9Ab642Ad1816Ee1A237055F4`,
 owner nonce `73`, and receiver implementation
 `0x80DA5f5e78c94EE5125Be515Ad4cd248469B57ba`.
