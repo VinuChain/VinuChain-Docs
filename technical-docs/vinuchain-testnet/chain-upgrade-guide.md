@@ -9,7 +9,7 @@
 
 `v2.0.16-elemont` was tagged but superseded before deployment; use `v2.0.17-elemont` for Payback receiver rollout because it also aligns fresh testnet defaults with the live Quota proxy address.
 
-The guarded contract-side commands live in `vinu-quotacontract`: `yarn deploy:testnet:quota-implementation` deploys only the receiver-capable implementation with any funded testnet key, `yarn preflight:testnet:quota` checks the signer and live proxy state without deploying, `yarn upgrade:testnet:quota` deploys and upgrades through ProxyAdmin, `QUOTA_IMPLEMENTATION_ADDRESS=<address> yarn verify:testnet:quota` submits standard-input verification to VinuExplorer and waits for `is_fully_verified=true`, and `REQUIRE_QUOTA_UPGRADED=true REQUIRE_QUOTA_VERIFIED=true yarn audit:testnet:quota` proves the live proxy now points at a verified `stakeFor(address)` implementation whose explorer bytecode and ABI match the local artifact. For the current rollout, pass `0x80DA5f5e78c94EE5125Be515Ad4cd248469B57ba` through `QUOTA_IMPLEMENTATION_ADDRESS` or the workflow `implementation_address` input so the owner key only performs the ProxyAdmin upgrade. The deploy-only path is also available as the manual GitHub Actions workflow `Quota Testnet Implementation`; it uploads a `quota-implementation-testnet` artifact and does not call ProxyAdmin. The node/rules/proxy audit lives in `VinuChain/scripts/audit-payback-receiver-testnet.sh`; run it with `REQUIRE_PAYBACK_RECEIVER_READY=true` after the proxy upgrade. The same upgrade path is available as the manual GitHub Actions workflow `Quota Testnet Upgrade`; it requires the ProxyAdmin owner key in the repository secret `PRIVATE_TEST`, an explicit proxy-address confirmation when dispatching, and supports `preflight_only=true` before the mutating upgrade run. The helper commands `yarn dispatch:testnet:quota-upgrade` and `yarn dispatch:testnet:quota-upgrade:mutate` dispatch the preflight and mutating workflow runs with the verified implementation address prefilled; if Yarn is unavailable locally, `npm run dispatch:testnet:quota-upgrade` and `npm run dispatch:testnet:quota-upgrade:mutate` run the same helper scripts. The `npm run dispatch:testnet:quota-upgrade:sequence` helper waits for preflight success before it dispatches the mutating upgrade.
+The guarded contract-side commands live in `vinu-quotacontract`: `yarn deploy:testnet:quota-implementation` deploys only the receiver-capable implementation with any funded testnet key, `yarn preflight:testnet:quota` checks the signer and live proxy state without deploying, `yarn upgrade:testnet:quota` deploys and upgrades through ProxyAdmin, `QUOTA_IMPLEMENTATION_ADDRESS=<address> yarn verify:testnet:quota` submits standard-input verification to VinuExplorer and waits for `is_fully_verified=true`, `npm run audit:testnet:quota-storage-layout` proves the receiver implementation preserves the live pre-receiver proxy storage layout, and `REQUIRE_QUOTA_UPGRADED=true REQUIRE_QUOTA_VERIFIED=true yarn audit:testnet:quota` proves the live proxy now points at a verified `stakeFor(address)` implementation whose explorer bytecode and ABI match the local artifact. For the current rollout, pass `0x80DA5f5e78c94EE5125Be515Ad4cd248469B57ba` through `QUOTA_IMPLEMENTATION_ADDRESS` or the workflow `implementation_address` input so the owner key only performs the ProxyAdmin upgrade. The deploy-only path is also available as the manual GitHub Actions workflow `Quota Testnet Implementation`; it uploads a `quota-implementation-testnet` artifact and does not call ProxyAdmin. The node/rules/proxy audit lives in `VinuChain/scripts/audit-payback-receiver-testnet.sh`; run it with `REQUIRE_PAYBACK_RECEIVER_READY=true` after the proxy upgrade. The same upgrade path is available as the manual GitHub Actions workflow `Quota Testnet Upgrade`; it requires the ProxyAdmin owner key in the repository secret `PRIVATE_TEST`, an explicit proxy-address confirmation when dispatching, and supports `preflight_only=true` before the mutating upgrade run. The helper commands `yarn dispatch:testnet:quota-upgrade` and `yarn dispatch:testnet:quota-upgrade:mutate` dispatch the preflight and mutating workflow runs with the verified implementation address prefilled; if Yarn is unavailable locally, `npm run dispatch:testnet:quota-upgrade` and `npm run dispatch:testnet:quota-upgrade:mutate` run the same helper scripts. The `npm run dispatch:testnet:quota-upgrade:sequence` helper waits for preflight success before it dispatches the mutating upgrade.
 {% endhint %}
 
 {% hint style="warning" %}
@@ -63,24 +63,29 @@ validation command with:
 npm run handoff:testnet:quota-owner
 ```
 
-As of `2026-05-11T14:07:11Z`, the current owner handoff artifact is workflow
-run `25675113647`, artifact `6920646377`, prepared from
-`VinuChain/vinu-quotacontract@0d2002e4e76912edf4039d41177954da5e1dd31c`.
+As of `2026-05-11T14:51:48Z`, the current owner handoff artifact is workflow
+run `25677545945`, artifact `6921695736`, prepared from
+`VinuChain/vinu-quotacontract@1790254fe14d234c066d5066bdafff372d6f4335`.
+The prepared request was generated at block `1453797` with owner nonce `73`.
 The validated files are:
 
 * `quota-prepared-upgrade-testnet.json` sha256
-  `ee2b00eed2ee35b99057d44600b25fc275c6ac21f3a94aee02a1cd9f2e46663c`
+  `8fb5fefe7e5bc1ed0b10c4702427258c6e7071dce359622730f03bb678b13a5f`
 * `quota-wallet-upgrade-testnet.json` sha256
-  `2db9754e46d28a3cf4f5cfde43a2ed73380d010167e47456647d4cd7ad980e22`
+  `14f56e8b1389a1296cd03622292566a77008b11e43164583ed993842d78d6c99`
 * `quota-testnet-wallet-upgrade.html` sha256
   `d5dcff05bc9c332802838541d3dc75a01b60530dc972293abaf1250d4244ee51`
 * artifact `README.md` sha256
-  `b8eced271fd91aa4c9474784e53c44dbfee5be8ed63654908418658f16c38980`
+  `b628420220af2ffcaa7183da3bc8b5febaab544ebfb5d49fc8efda2b2eaad0ae`
 * GitHub artifact zip sha256
-  `42f8c5f6adeb5199afd73ad40e5cbbec471ef6c173742e7da5562d4a9eb1e754`
+  `c0b8a463b877178d92e99c4aacbc07ecf6d9e31b3cfef29210697993c8341079`
+* local owner bundle README sha256
+  `e46c2bb3d0be2419ba991e427b18dd1e849411245d704bdac64698781498895d`
+* local owner bundle tarball sha256
+  `181b715030903b7e7a6d14f96eb2363373c8cb93021f8815a633617b60503468`
 
 The GitHub artifact API helper and a fresh `--live` validation checked this
-artifact against block `1453758`; the owner pending nonce was still `73`, the
+artifact against block `1453801`; the owner pending nonce was still `73`, the
 prepared gas price still had buffer over the observed RPC gas price, and the
 simulation returned `0x`.
 
@@ -138,6 +143,17 @@ artifact. The export command prints the same validated unsigned transaction in a
 wallet-friendly JSON shape without signing or broadcasting. For current workflow
 artifacts, the downloader also validates `quota-wallet-upgrade-testnet.json` and
 `quota-testnet-wallet-upgrade.html` when they are present.
+
+Before signing, also run the storage-layout compatibility audit from the
+`vinu-quotacontract` checkout:
+
+```bash
+npm run audit:testnet:quota-storage-layout
+```
+
+The audit compares the live pre-receiver implementation artifact against the
+receiver-capable `QuotaContract` build-info layouts and should report
+`"storageCompatible": true`.
 
 If the ProxyAdmin owner uses a browser wallet, download the prepared artifact,
 open `quota-testnet-wallet-upgrade.html`, load
