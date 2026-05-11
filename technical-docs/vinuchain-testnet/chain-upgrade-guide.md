@@ -75,7 +75,7 @@ The validated files are:
 * `quota-testnet-wallet-upgrade.html` sha256
   `d5dcff05bc9c332802838541d3dc75a01b60530dc972293abaf1250d4244ee51`
 * artifact `README.md` sha256
-  `935346aab740bf8e15e4f348d64d312959b0fcfe1c807b4108b412beba25004a`
+  `76a93f7bc4db355c261b905e24a3df69363907e31e5a8257ff192bcc97931145`
 * GitHub artifact zip sha256
   `e8b4d320ffc2b862be04da828ddba0948ff76752b61589f69d30b93d361f42a8`
 
