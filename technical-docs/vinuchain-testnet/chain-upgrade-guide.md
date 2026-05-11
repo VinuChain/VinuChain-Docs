@@ -63,29 +63,29 @@ validation command with:
 npm run handoff:testnet:quota-owner
 ```
 
-As of `2026-05-11T14:51:48Z`, the current owner handoff artifact is workflow
-run `25677545945`, artifact `6921695736`, prepared from
-`VinuChain/vinu-quotacontract@1790254fe14d234c066d5066bdafff372d6f4335`.
-The prepared request was generated at block `1453797` with owner nonce `73`.
+As of `2026-05-11T15:13:46Z`, the current owner handoff artifact is workflow
+run `25678790146`, artifact `6922236740`, prepared from
+`VinuChain/vinu-quotacontract@31bbdcca4a82a070cfc8476a274206204be13f4d`.
+The prepared request was generated at block `1453817` with owner nonce `73`.
 The validated files are:
 
 * `quota-prepared-upgrade-testnet.json` sha256
-  `8fb5fefe7e5bc1ed0b10c4702427258c6e7071dce359622730f03bb678b13a5f`
+  `aaeaca74d5b770db03ce04a7b1fa1ebd765616c86f2f378c66a534f3f5373d1d`
 * `quota-wallet-upgrade-testnet.json` sha256
-  `14f56e8b1389a1296cd03622292566a77008b11e43164583ed993842d78d6c99`
+  `962a6f6bdcb0bed4c1ed316476c2953e6576a642a2b6905a3b84386a897360d1`
 * `quota-testnet-wallet-upgrade.html` sha256
   `d5dcff05bc9c332802838541d3dc75a01b60530dc972293abaf1250d4244ee51`
 * artifact `README.md` sha256
-  `b628420220af2ffcaa7183da3bc8b5febaab544ebfb5d49fc8efda2b2eaad0ae`
+  `7a6a5c62e628fb2a564126e5102adb83d20d1c7ea109de137201575390a55fb7`
 * GitHub artifact zip sha256
-  `c0b8a463b877178d92e99c4aacbc07ecf6d9e31b3cfef29210697993c8341079`
+  `e1fa31a30d714cf51ae770e5ed5cf91b3760617a9ce7aeaad3bc0c23c0239012`
 * local owner bundle README sha256
-  `e46c2bb3d0be2419ba991e427b18dd1e849411245d704bdac64698781498895d`
+  `6ae446feb10ca718ab6826700a11be50a3f153adf5ee7e31ed016b08d69b873a`
 * local owner bundle tarball sha256
-  `181b715030903b7e7a6d14f96eb2363373c8cb93021f8815a633617b60503468`
+  `44f8d0aed6fb2f718e1cf245b4bee50fc898a42af9f06360af972a9dfc3a621b`
 
 The GitHub artifact API helper and a fresh `--live` validation checked this
-artifact against block `1453801`; the owner pending nonce was still `73`, the
+artifact against block `1453817`; the owner pending nonce was still `73`, the
 prepared gas price still had buffer over the observed RPC gas price, and the
 simulation returned `0x`.
 
@@ -101,7 +101,11 @@ and does not read secret values. If an operator explicitly approves an elevated
 local profile such as `default-root`, the helper requires
 `--ack-elevated-profile` and can scan matching values without printing them,
 reporting only lengths, target-address mentions, private-key-shaped candidate
-counts, and whether any candidate derives to a known owner address.
+counts, and whether any candidate derives to a known owner address. If list APIs
+are denied but an operator knows or wants to try likely exact names, pass
+`--scan-values --default-exact-names` or repeat `--exact-name <name>`; the
+helper still prints no values and also reports whether a candidate decodes as
+the expected signed ProxyAdmin upgrade transaction.
 
 The prepared request must target ProxyAdmin
 `0xcE154534e1E8F4Cc9Ab642Ad1816Ee1A237055F4`, owner nonce `73`, and receiver
