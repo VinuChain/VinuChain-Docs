@@ -25,6 +25,12 @@ The rewards percentage increases linearly with time, rewarding the most committe
 
 When a user stakes for Payback, they are staking VC to be able to have their gas fees refunded for a number of transactions.
 
+On the Elemont testnet Payback receiver rollout, VinuChain is adding support for
+staking VC from one funding wallet for another receiver wallet. After the testnet
+Quota proxy upgrade is complete, the receiver wallet owns that Payback stake and
+receives gas refunds for transactions it signs; the funding wallet does not gain
+refund eligibility from that delegated stake.
+
 The Payback quota is dynamic to counteract spam:
 
 * The more VC staked for Payback by a single user, the more gas fee refunds that user will be entitled to.

@@ -18,6 +18,10 @@ To stake, you do not need any dedicated special hardware or device. You can do i
 * Unbonding time (time between unstaking and funds becoming available): 1 day.
 * Delegation fee: The network has set a fixed fee of 15% on staking rewards paid from stakers to validators for running their nodes.
 * Payback: There is a separate staking option where you instead receive gas fee refunds on a number of transactions.
+* Payback receiver staking: On the Elemont testnet rollout, a funding wallet can
+  stake VC for another receiver wallet after the testnet Quota proxy upgrade is
+  complete. The receiver wallet owns the Payback stake and receives gas refunds
+  for transactions it signs.
 
 > Delegation fee example:&#x20;
 >
@@ -76,4 +80,3 @@ delegator_BaseReward = (epochDuration * baseRewardPerSecond) * [(delegatorStake 
 Delegator Reward per epoch (unlocked stake):
 delegator_BaseReward = (epochDuration * baseRewardPerSecond) * [(delegatorStake * (validatorEpochUptime/epochDuration)^2) / totalBaseRewardWeight] * 0.30 * (1 - 0.15)
 ```
-
