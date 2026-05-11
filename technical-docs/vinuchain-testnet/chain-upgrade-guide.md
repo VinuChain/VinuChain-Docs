@@ -221,11 +221,11 @@ printf '%s' "$SIGNED_TX" | npm run dispatch:testnet:quota-signed-broadcast -- --
    npm run dispatch:testnet:quota-upgrade -- --skip-secret-check
    ```
 
-   Current check: on `2026-05-11T10:25:39Z`, preflight-only run
-   `25664554399` tested this inherited-secret path from
-   `vinu-quotacontract` commit `e52facd` and failed at
-   `Check deployer secret` before checkout because Actions received
-   `PRIVATE_TEST` as empty. Do not retry `--skip-secret-check` for the current
+   Current check: on `2026-05-11T11:32:51Z`, preflight-only run
+   `25667555632` tested this inherited-secret path from
+   `vinu-quotacontract` commit `7da0966` and failed at
+   `Check deployer secret` before checkout because the workflow log showed
+   `PRIVATE_TEST:` empty. Do not retry `--skip-secret-check` for the current
    rollout unless an owner confirms the selected Actions secret scope has
    changed.
 
