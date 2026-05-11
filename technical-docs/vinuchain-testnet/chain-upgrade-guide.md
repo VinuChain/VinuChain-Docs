@@ -63,24 +63,24 @@ validation command with:
 npm run handoff:testnet:quota-owner
 ```
 
-As of `2026-05-11T04:55:43Z`, the current owner handoff artifact is workflow
-run `25651041429`, artifact `6910621558`, prepared from
-`VinuChain/vinu-quotacontract@60bb284847324ec3a62475f925914a3e643318e9`.
+As of `2026-05-11T05:22:43Z`, the current owner handoff artifact is workflow
+run `25651843166`, artifact `6910886279`, prepared from
+`VinuChain/vinu-quotacontract@388c14e6c348a2001b3248e9c7377e3ec0ec6147`.
 The validated files are:
 
 * `quota-prepared-upgrade-testnet.json` sha256
-  `44ba59eb51b18a78902352a9c240340f21b3909845605a2d2e4963bd5c423d4f`
+  `b7ecbbf0c3fadfe6af8d6d876204ef60e3b42c4e3ae50c21a5287dc696c202d4`
 * `quota-wallet-upgrade-testnet.json` sha256
-  `fb3fa9e6b1e8915077cc08e327c96bd2ee3180e6c7c4976119e18386cf2653c6`
+  `a3714bf7e0e33873e956fcf26d70fae8260cff8b589d4cecf756f3077b307c68`
 * `quota-testnet-wallet-upgrade.html` sha256
   `d5dcff05bc9c332802838541d3dc75a01b60530dc972293abaf1250d4244ee51`
 * artifact `README.md` sha256
-  `d4aa9640d75704e68cb6c746b4f1b1aef08b1f93161c95bb4395e5e50c635603`
+  `b26bdd267d3b5a2e8fc4166eaf4b3ce446f52ea3f9fd2d7e646d658cc3d9b1df`
 * GitHub artifact zip sha256
-  `8a47a96202daf58b0bd2c1761b9a3d043f27390c41c21df9b98d12b22a2d0798`
+  `04b99c4ca5247ab562b5a09ccda2410cc5dc8e16c529b915f65c58290f1c565a`
 
 The GitHub artifact API helper and a fresh `--live` validation checked this
-artifact against block `1453264`; the owner pending nonce was still `73`, the
+artifact against block `1453288`; the owner pending nonce was still `73`, the
 prepared gas price still had buffer over the observed RPC gas price, and the
 simulation returned `0x`.
 
