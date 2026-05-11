@@ -63,20 +63,20 @@ validation command with:
 npm run handoff:testnet:quota-owner
 ```
 
-As of `2026-05-11T01:12:25Z`, the current owner handoff artifact is workflow
-run `25644681412`, artifact `6908479467`, prepared from
-`VinuChain/vinu-quotacontract@24b533d3f9be18f8c4b48788440fd3d5664321e1`.
+As of `2026-05-11T01:47:26Z`, the current owner handoff artifact is workflow
+run `25646002141`, artifact `6908959207`, prepared from
+`VinuChain/vinu-quotacontract@7ad1129b491aa38269f81f52ec586d5d60f179af`.
 The validated files are:
 
 * `quota-prepared-upgrade-testnet.json` sha256
-  `6b414f76e4fe5e2fdd0496c5b801fe58b2836efaccca8b9936d1a6fa9654cc38`
+  `00ccaef4c264e3c127c6a7409ca29e49476367ab40cdcb7e6e09eaba748c7c97`
 * `quota-wallet-upgrade-testnet.json` sha256
-  `117d772c3388a49006a9139279627c15541d4482622dd82b1628bb4b9c6df354`
+  `fac56678d973cfab29f807fe749a719013a2bbf089c9d075b18f4c20fbf66a43`
 * `quota-testnet-wallet-upgrade.html` sha256
   `d5dcff05bc9c332802838541d3dc75a01b60530dc972293abaf1250d4244ee51`
 
 The GitHub artifact API helper and a fresh `--live` validation checked this
-artifact against block `1453065`; the owner pending nonce was still `73`, the
+artifact against block `1453098`; the owner pending nonce was still `73`, the
 prepared gas price still had buffer over the observed RPC gas price, and the
 simulation returned `0x`.
 
@@ -1040,4 +1040,4 @@ Operator-facing controls for managing chaindata size on long-lived nodes.
 
 ***
 
-_Last updated: 2026-05-10 · latest released VinuChain tag `v2.0.17-elemont` · receiver implementation fully verified with unchanged bytecode; Quota proxy upgrade pending · go-vinu `v1.20.14-quota` · lachesis-base `v0.1.6-elemont`_
+_Last updated: 2026-05-11 · latest released VinuChain tag `v2.0.17-elemont` · receiver implementation fully verified with unchanged bytecode; Quota proxy upgrade pending · go-vinu `v1.20.14-quota` · lachesis-base `v0.1.6-elemont`_
