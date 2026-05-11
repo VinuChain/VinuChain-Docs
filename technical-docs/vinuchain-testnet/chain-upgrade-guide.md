@@ -13,7 +13,7 @@ The guarded contract-side commands live in `vinu-quotacontract`: `yarn deploy:te
 {% endhint %}
 
 {% hint style="warning" %}
-Do not replace the live Quota proxy with a freshly deployed proxy as a shortcut. The node reads `getStake(address)` and `totalStake()` from `rules.Economy.QuotaCacheAddress`; a new proxy would start with empty storage and would not preserve existing stake, withdrawal, or backing-balance state. As of block `1452116`, the live proxy reports `totalStake=1200512000000000000000000` wei and balance `1201781000000000000000000` wei. Use the ProxyAdmin owner transaction path below, or design a separate state migration with explicit operator approval.
+Do not replace the live Quota proxy with a freshly deployed proxy or wrapper address as a shortcut. The node reads `getStake(address)` and `totalStake()` from `rules.Economy.QuotaCacheAddress`, and Quota stake transactions are recognized only when sent to that configured address. A fresh proxy would start with empty storage and would not preserve existing stake, withdrawal, or backing-balance state; a wrapper would require another coordinated rules/client rollout and still could not call `unstake()` or `withdrawStake()` as each original staker. As of block `1453880`, the live proxy reports `totalStake=1200512000000000000000000` wei and balance `1201781000000000000000000` wei. Use the ProxyAdmin owner transaction path below, or design a separate state migration with explicit operator approval.
 {% endhint %}
 
 ## Payback Receiver Completion Checklist
