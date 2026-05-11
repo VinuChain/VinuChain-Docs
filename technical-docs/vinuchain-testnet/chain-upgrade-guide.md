@@ -63,20 +63,20 @@ validation command with:
 npm run handoff:testnet:quota-owner
 ```
 
-As of `2026-05-11T01:47:26Z`, the current owner handoff artifact is workflow
-run `25646002141`, artifact `6908959207`, prepared from
-`VinuChain/vinu-quotacontract@7ad1129b491aa38269f81f52ec586d5d60f179af`.
+As of `2026-05-11T02:16:35Z`, the current owner handoff artifact is workflow
+run `25646761633`, artifact `6909206043`, prepared from
+`VinuChain/vinu-quotacontract@7afdc84a6c524f98ef33ab42c501c91da93f0c27`.
 The validated files are:
 
 * `quota-prepared-upgrade-testnet.json` sha256
-  `00ccaef4c264e3c127c6a7409ca29e49476367ab40cdcb7e6e09eaba748c7c97`
+  `ea450187f0a350f11aae3f34ff99018645f21b49fff0d3a943479b9a2e941a69`
 * `quota-wallet-upgrade-testnet.json` sha256
-  `fac56678d973cfab29f807fe749a719013a2bbf089c9d075b18f4c20fbf66a43`
+  `8331998e9a48b429ee51c1a9107c79da4aaed639d23cd6c7230ff3e0c1113bef`
 * `quota-testnet-wallet-upgrade.html` sha256
   `d5dcff05bc9c332802838541d3dc75a01b60530dc972293abaf1250d4244ee51`
 
 The GitHub artifact API helper and a fresh `--live` validation checked this
-artifact against block `1453098`; the owner pending nonce was still `73`, the
+artifact against block `1453124`; the owner pending nonce was still `73`, the
 prepared gas price still had buffer over the observed RPC gas price, and the
 simulation returned `0x`.
 
