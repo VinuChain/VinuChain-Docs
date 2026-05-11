@@ -63,22 +63,36 @@ validation command with:
 npm run handoff:testnet:quota-owner
 ```
 
-As of `2026-05-11T02:16:35Z`, the current owner handoff artifact is workflow
-run `25646761633`, artifact `6909206043`, prepared from
-`VinuChain/vinu-quotacontract@7afdc84a6c524f98ef33ab42c501c91da93f0c27`.
+As of `2026-05-11T03:45:09Z`, the current owner handoff artifact is workflow
+run `25649116225`, artifact `6909987723`, prepared from
+`VinuChain/vinu-quotacontract@b05ff60ff587cdccb700b0be2467c4ab439acb13`.
 The validated files are:
 
 * `quota-prepared-upgrade-testnet.json` sha256
-  `ea450187f0a350f11aae3f34ff99018645f21b49fff0d3a943479b9a2e941a69`
+  `ab0e5f1f07641acc58f57daabad865c1b16159fd4f123452335a5dca09a450cb`
 * `quota-wallet-upgrade-testnet.json` sha256
-  `8331998e9a48b429ee51c1a9107c79da4aaed639d23cd6c7230ff3e0c1113bef`
+  `7a2db3bc587dfba70a8b3978db1da7e080cc1dfb07bbbcb2332d1f4372ac38ce`
 * `quota-testnet-wallet-upgrade.html` sha256
   `d5dcff05bc9c332802838541d3dc75a01b60530dc972293abaf1250d4244ee51`
 
 The GitHub artifact API helper and a fresh `--live` validation checked this
-artifact against block `1453124`; the owner pending nonce was still `73`, the
+artifact against block `1453202`; the owner pending nonce was still `73`, the
 prepared gas price still had buffer over the observed RPC gas price, and the
 simulation returned `0x`.
+
+For local AWS secret/parameter metadata routing, `vinu-quotacontract` also has a
+guarded helper:
+
+```bash
+npm run audit:testnet:quota-aws-owner-route
+```
+
+By default it uses `AWS_PROFILE=vinuchain-ops`, reports only matching metadata,
+and does not read secret values. If an operator explicitly approves an elevated
+local profile such as `default-root`, the helper requires
+`--ack-elevated-profile` and can scan matching values without printing them,
+reporting only lengths, target-address mentions, private-key-shaped candidate
+counts, and whether any candidate derives to a known owner address.
 
 The prepared request must target ProxyAdmin
 `0xcE154534e1E8F4Cc9Ab642Ad1816Ee1A237055F4`, owner nonce `73`, and receiver
