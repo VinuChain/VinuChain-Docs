@@ -63,24 +63,24 @@ validation command with:
 npm run handoff:testnet:quota-owner
 ```
 
-As of `2026-05-11T11:37:12Z`, the current owner handoff artifact is workflow
-run `25667644218`, artifact `6917387978`, prepared from
-`VinuChain/vinu-quotacontract@136f36245b757d11a2ebb0ae71eba0bcf231bc97`.
+As of `2026-05-11T12:19:36Z`, the current owner handoff artifact is workflow
+run `25669596469`, artifact `6918212664`, prepared from
+`VinuChain/vinu-quotacontract@639f376668d820338517299cd7c6793f163d2987`.
 The validated files are:
 
 * `quota-prepared-upgrade-testnet.json` sha256
-  `c0656ea88e097b48ffbd1bb28eee4bc3da08c96299b736cf3431505f43044e19`
+  `b27034104d7dcdcd72821aa67b83d584ae34c8004d970594797288759d270016`
 * `quota-wallet-upgrade-testnet.json` sha256
-  `095fbd15fad0d5ee0183765360cad410b0afb719e76b2abf3985375be1191762`
+  `0fc80e1e7b4ef6356111d85ff7f1bd11ca61c8a8580fefb2659e7b13639527f9`
 * `quota-testnet-wallet-upgrade.html` sha256
   `d5dcff05bc9c332802838541d3dc75a01b60530dc972293abaf1250d4244ee51`
 * artifact `README.md` sha256
-  `0986434bb75f3b402dd08e3bd915781b4f3bf009f78a400dd1a80836cedafd69`
+  `889d7c3afa623123100cfd72525aea3c31fd8985a4253652b3df8814bd232b17`
 * GitHub artifact zip sha256
-  `10d9973f3c3b2188999045d77a910880ac24a02ab1b92bd89c936a7fcff266b6`
+  `33f44828e243ae5145500a5f49c64e55865761f0f732b5b3be58e43911ac9e70`
 
 The GitHub artifact API helper and a fresh `--live` validation checked this
-artifact against block `1453624`; the owner pending nonce was still `73`, the
+artifact against block `1453663`; the owner pending nonce was still `73`, the
 prepared gas price still had buffer over the observed RPC gas price, and the
 simulation returned `0x`.
 
@@ -221,9 +221,9 @@ printf '%s' "$SIGNED_TX" | npm run dispatch:testnet:quota-signed-broadcast -- --
    npm run dispatch:testnet:quota-upgrade -- --skip-secret-check
    ```
 
-   Current check: on `2026-05-11T11:32:51Z`, preflight-only run
-   `25667555632` tested this inherited-secret path from
-   `vinu-quotacontract` commit `7da0966` and failed at
+   Current check: on `2026-05-11T12:13:34Z`, preflight-only run
+   `25669417779` tested this inherited-secret path from
+   `vinu-quotacontract` commit `136f362` and failed at
    `Check deployer secret` before checkout because the workflow log showed
    `PRIVATE_TEST:` empty. Do not retry `--skip-secret-check` for the current
    rollout unless an owner confirms the selected Actions secret scope has
