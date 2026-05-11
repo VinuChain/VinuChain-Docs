@@ -74,6 +74,10 @@ The validated files are:
   `7a2db3bc587dfba70a8b3978db1da7e080cc1dfb07bbbcb2332d1f4372ac38ce`
 * `quota-testnet-wallet-upgrade.html` sha256
   `d5dcff05bc9c332802838541d3dc75a01b60530dc972293abaf1250d4244ee51`
+* artifact `README.md` sha256
+  `5523c0091f31ec0279343bc26436507152bfa69c0b66d49c3e8b1f2f70fe236b`
+* GitHub artifact zip sha256
+  `4213404d2def5a76c4db5a74525930de157c7384eed63d78e41622e8cbbf7d46`
 
 The GitHub artifact API helper and a fresh `--live` validation checked this
 artifact against block `1453202`; the owner pending nonce was still `73`, the
