@@ -63,29 +63,29 @@ validation command with:
 npm run handoff:testnet:quota-owner
 ```
 
-As of `2026-05-11T16:11:10Z`, the current owner handoff artifact is workflow
-run `25682008560`, artifact `6923632187`, prepared from
-`VinuChain/vinu-quotacontract@b820bd37352c02afdd0c79142cc76266e714c514`.
-The prepared request was generated at block `1453868` with owner nonce `73`.
+As of `2026-05-11T16:32:39Z`, the current owner handoff artifact is workflow
+run `25683151280`, artifact `6924128028`, prepared from
+`VinuChain/vinu-quotacontract@c3e1bfbab41fe96229afbf4b6a3387ffd346a365`.
+The prepared request was generated at block `1453883` with owner nonce `73`.
 The validated files are:
 
 * `quota-prepared-upgrade-testnet.json` sha256
-  `1ccbaf93b38c0159e4f96475cf101d31d6783c50cda39bf4f9516ca3db4a3a7c`
+  `2870693cd58bba6bfc5328adb6bb3dcf00473c1151b1a500cb1d02d4d857c8ff`
 * `quota-wallet-upgrade-testnet.json` sha256
-  `c1a3a1e9eb70d6494e9d45b58ffaee845c4b6bf0a34afc032ffabe3728605227`
+  `a31a9d693e03e4ceedd26b50e29eaa6c3b4259b907d9a5e3a21549d7a09d8b16`
 * `quota-testnet-wallet-upgrade.html` sha256
   `d5dcff05bc9c332802838541d3dc75a01b60530dc972293abaf1250d4244ee51`
 * artifact `README.md` sha256
-  `6c09c6da33f6528a342b9e45310ba7fbfab3df2aa3e7954602bda9f2c0579262`
+  `f9e3700da7339bb92caef45e1028b7682873cb3e1dece0da8f2f8948e6f1e060`
 * GitHub artifact zip sha256
-  `2360ac436568194db6e43ed0797ca2644637b3adf617bcc82c279729d6426025`
+  `f17f30e0f849a894728515ee961956256ee8ff546750f81d6ca2e9b6231bff2e`
 * local owner bundle README sha256
-  `0c74bbe84d647c383bd7ddcc02b3d13c8abb39c2ae3e4658fe4e7d94f6dd75cb`
+  `84601f84b05bf4ef06d70dc7fb5c831c6a72a25b59285bde4a9583a80a29d21d`
 * local owner bundle tarball sha256
-  `99268b2b44d009d000fb56b528c7094298c9f23c098cf720e701261a8c99c8ab`
+  `041a29e5b20f1aeffce606ae3fda0d44388559e5be0e4899878c6528b8906b26`
 
 The GitHub artifact API helper and a fresh `--live` validation checked this
-artifact against block `1453869`; the owner pending nonce was still `73`, the
+artifact against block `1453883`; the owner pending nonce was still `73`, the
 prepared gas price still had buffer over the observed RPC gas price, and the
 simulation returned `0x`.
 
