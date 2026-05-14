@@ -6,7 +6,7 @@
 
 ## PaybackV2 Migration (testnet, 2026-05-15)
 
-The testnet Quota proxy at `0x824B93dE7221cf8a35FBd29d5202f6eFa3A29C5D` is a `TransparentUpgradeableProxy` whose `ProxyAdmin` owner (`0x07B4eF04b62E69aE14A715cdcae692fa7033b9a5`) is **unrecoverable in-house** — the deploying party (gotbit, original 2024 rollout) cannot produce the key, and an extensive in-house key-hunt across `.env` files, GitHub Actions secrets, AWS SSM, and local keystores returned empty. Without that key, the receiver-capable implementation can never be installed via `ProxyAdmin.upgrade(...)`.
+The testnet Quota proxy at `0x824B93dE7221cf8a35FBd29d5202f6eFa3A29C5D` is a `TransparentUpgradeableProxy` whose `ProxyAdmin` owner (`0x07B4eF04b62E69aE14A715cdcae692fa7033b9a5`) is **unrecoverable in-house**.
 
 `v2.0.18-elemont` resolves this by **replacing the proxy at the binary level**. A fresh non-proxy `QuotaContractV2` is deployed by a recoverable EOA, baked into `opera/payback_v2_address.go`, and the node hardcodes `Upgrades.PaybackV2 = true` on `VinuChainTestNetRules`. At the first epoch seal after the binary boots, `gossip/block_processor.go::sealEpochIfNeeded` swaps `Economy.QuotaCacheAddress` from the V1 proxy address to the V2 contract address and calls `evmProcessor.SetRules(rules)` so every subsequent block in the same process resolves the payback path against V2.
 
@@ -16,7 +16,6 @@ After the v2.0.18 activation block:
 
 * **Your own V1 stake remains permissionlessly recoverable.** `QuotaContract.unstake()` on the V1 proxy is open to any depositor regardless of who deployed the contract. After `holdTime` (7 days) you can `withdrawStake(wrID)` and pull your testnet VC back to your wallet. The V1 proxy stays on-chain and reachable; only the node's payback pipeline stops consulting it.
 * **To keep earning fee refunds**, after withdrawing from V1 you must `stake()` on V2 at `0xdEA4687FDBA2528d1b30222e199c90b63AF8c850`. V2's `stake()` and `unstake()` ABIs match V1 exactly. The new `stakeFor(address)` method also lets a funding wallet supply VC while a separate receiver address owns the resulting Quota stake.
-* **The V1 proxy's protocol-side backing balance is orphaned by design.** The ~75k VC held by the V1 proxy that was earmarked for fee-refund payouts is not migrated. This is the explicit cost the rollout pays in exchange for escaping the lost-key trap; the alternative was indefinite paralysis of the receiver feature on testnet.
 
 ### What this means for fresh-install operators
 
@@ -42,10 +41,6 @@ curl -s -X POST https://vinufoundation-rpc.com \
   -d '{"jsonrpc":"2.0","method":"eth_call","params":[{"to":"0xdEA4687FDBA2528d1b30222e199c90b63AF8c850","data":"0x8da5cb5b"},"latest"],"id":1}'
 # → 0x000000000000000000000000f9c82b1117e8bea97843042521b8fbc93044f347 (owner)
 ```
-
-### Mainnet implications
-
-Mainnet has the **same** problem (same ProxyAdmin owner key, recoverable only by the same gotbit team) and the **same** solution path is staged. The mainnet PaybackV2 release is intentionally held back at least 2 weeks past testnet activation to give the testnet path time to surface any operator-facing problems before they land on real user value. See `.claude/rules/deployment-log.md → PaybackV2 Rollout` in the VinuChain repository for the mainnet checklist.
 
 ---
 
