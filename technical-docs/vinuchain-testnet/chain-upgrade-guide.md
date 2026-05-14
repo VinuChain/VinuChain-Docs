@@ -1,11 +1,15 @@
 # Chain Upgrade Guide (v2-elemont)
 
 {% hint style="info" %}
-**Latest node release:** v2.0.17-elemont (tagged and deployed to the testnet trace RPC + 4 validators on 2026-05-10). This release adds Payback receiver accounting for `QuotaContract.stakeFor(address)` and aligns fresh testnet defaults with the live Quota proxy address. The v2.0.14 release notes below still describe the consensus state of the chain (`SfcV2Patch5` + `ElemontPubkeyValidation` activated at the v2.0.14 epoch seal).
+**Latest node release:** v2.0.18-elemont (tagged and deployed to the testnet trace RPC + 4 validators on 2026-05-15). This release activates `Upgrades.PaybackV2 = true` on `VinuChainTestNetRules`, which at the first epoch seal post-boot swaps `Economy.QuotaCacheAddress` from the original Quota proxy (`0x824B93dE7221cf8a35FBd29d5202f6eFa3A29C5D`, whose `ProxyAdmin` owner key is unrecoverable) to a freshly-deployed non-proxy `QuotaContractV2` at `0xdEA4687FDBA2528d1b30222e199c90b63AF8c850` whose owner is the recoverable EOA `0xf9c82B1117e8BeA97843042521B8FBC93044f347`. V2's ABI is a superset of V1 (`feeRefundBlockCount`, `minStake`, `quotaFactor`, `holdTime`, `getStake`, `totalStake`, `stake`, `unstake`, `withdrawStake`) plus the new `stakeFor(address)` receiver method. The Payback Receiver Completion Checklist below is **obsolete for testnet** as of this release — see the "PaybackV2 Migration" section.
+{% endhint %}
+
+{% hint style="warning" %}
+**Payback Receiver Completion Checklist is OBSOLETE on testnet (2026-05-15).** The v2.0.18-elemont release replaces the V1 Quota proxy with a brand-new non-proxy `QuotaContractV2` whose owner is a recoverable EOA, sidestepping the lost-ProxyAdmin-key problem entirely. The historical checklist text below is kept verbatim only for archival reference and **must not** be executed against the V1 proxy on testnet — the V1 proxy is no longer consulted by the node after the PaybackV2 activation block. Mainnet still follows the V1-proxy receiver rollout path described below until its own PaybackV2 release ships (≥2 weeks after testnet bake-in).
 {% endhint %}
 
 {% hint style="info" %}
-**Payback receiver rollout status:** The v2.0.17 node binary is deployed on testnet. The current testnet Quota proxy is `0x824B93dE7221cf8a35FBd29d5202f6eFa3A29C5D`; it still points at the verified pre-receiver implementation `0x0c8735bD6b3E90eaD4cdAB917474Cc6e8E58ce82`. The receiver-capable implementation `0x80DA5f5e78c94EE5125Be515Ad4cd248469B57ba` is deployed and fully verified on VinuExplorer with unchanged bytecode, and the quota audit confirms VinuExplorer's deployed bytecode and payable `stakeFor(address)` ABI match the local `QuotaContract` artifact. VinuExplorer currently reports that implementation as `is_verified=true`, `is_fully_verified=true`, and `is_partially_verified=false`. The remaining mutating step is the ProxyAdmin upgrade to point the proxy at that implementation before the frontend receiver selector is deployed. After that proxy upgrade, `QuotaContract.stakeFor(address)` lets a funding wallet supply VC while the receiver address owns the Quota stake and receives refunds for transactions it signs.
+**Historical context (kept for reference; no action required on testnet):** The v2.0.17 node binary is deployed on testnet. The current testnet Quota proxy is `0x824B93dE7221cf8a35FBd29d5202f6eFa3A29C5D`; it still points at the verified pre-receiver implementation `0x0c8735bD6b3E90eaD4cdAB917474Cc6e8E58ce82`. The receiver-capable implementation `0x80DA5f5e78c94EE5125Be515Ad4cd248469B57ba` is deployed and fully verified on VinuExplorer with unchanged bytecode, and the quota audit confirms VinuExplorer's deployed bytecode and payable `stakeFor(address)` ABI match the local `QuotaContract` artifact. VinuExplorer currently reports that implementation as `is_verified=true`, `is_fully_verified=true`, and `is_partially_verified=false`. The remaining mutating step is the ProxyAdmin upgrade to point the proxy at that implementation before the frontend receiver selector is deployed. After that proxy upgrade, `QuotaContract.stakeFor(address)` lets a funding wallet supply VC while the receiver address owns the Quota stake and receives refunds for transactions it signs.
 
 `v2.0.16-elemont` was tagged but superseded before deployment; use `v2.0.17-elemont` for Payback receiver rollout because it also aligns fresh testnet defaults with the live Quota proxy address.
 
@@ -15,6 +19,51 @@ The guarded contract-side commands live in `vinu-quotacontract`: `yarn deploy:te
 {% hint style="warning" %}
 Do not replace the live Quota proxy with a freshly deployed proxy or wrapper address as a shortcut. The node reads `getStake(address)` and `totalStake()` from `rules.Economy.QuotaCacheAddress`, and Quota stake transactions are recognized only when sent to that configured address. A fresh proxy would start with empty storage and would not preserve existing stake, withdrawal, or backing-balance state; a wrapper would require another coordinated rules/client rollout and still could not call `unstake()` or `withdrawStake()` as each original staker. As of block `1453880`, the live proxy reports `totalStake=1200512000000000000000000` wei and balance `1201781000000000000000000` wei. Use the ProxyAdmin owner transaction path below, or design a separate state migration with explicit operator approval.
 {% endhint %}
+
+## PaybackV2 Migration (testnet, 2026-05-15)
+
+The testnet Quota proxy at `0x824B93dE7221cf8a35FBd29d5202f6eFa3A29C5D` is a `TransparentUpgradeableProxy` whose `ProxyAdmin` owner (`0x07B4eF04b62E69aE14A715cdcae692fa7033b9a5`) is **unrecoverable in-house** — the deploying party (gotbit, original 2024 rollout) cannot produce the key, and an extensive in-house key-hunt across `.env` files, GitHub Actions secrets, AWS SSM, and local keystores returned empty. Without that key, the receiver-capable implementation can never be installed via `ProxyAdmin.upgrade(...)`.
+
+`v2.0.18-elemont` resolves this by **replacing the proxy at the binary level**. A fresh non-proxy `QuotaContractV2` is deployed by a recoverable EOA, baked into `opera/payback_v2_address.go`, and the node hardcodes `Upgrades.PaybackV2 = true` on `VinuChainTestNetRules`. At the first epoch seal after the binary boots, `gossip/block_processor.go::sealEpochIfNeeded` swaps `Economy.QuotaCacheAddress` from the V1 proxy address to the V2 contract address and calls `evmProcessor.SetRules(rules)` so every subsequent block in the same process resolves the payback path against V2.
+
+### What this means for testnet stakers
+
+After the v2.0.18 activation block:
+
+* **Your own V1 stake remains permissionlessly recoverable.** `QuotaContract.unstake()` on the V1 proxy is open to any depositor regardless of who deployed the contract. After `holdTime` (7 days) you can `withdrawStake(wrID)` and pull your testnet VC back to your wallet. The V1 proxy stays on-chain and reachable; only the node's payback pipeline stops consulting it.
+* **To keep earning fee refunds**, after withdrawing from V1 you must `stake()` on V2 at `0xdEA4687FDBA2528d1b30222e199c90b63AF8c850`. V2's `stake()` and `unstake()` ABIs match V1 exactly. The new `stakeFor(address)` method also lets a funding wallet supply VC while a separate receiver address owns the resulting Quota stake.
+* **The V1 proxy's protocol-side backing balance is orphaned by design.** The ~75k VC held by the V1 proxy that was earmarked for fee-refund payouts is not migrated. This is the explicit cost the rollout pays in exchange for escaping the lost-key trap; the alternative was indefinite paralysis of the receiver feature on testnet.
+
+### What this means for fresh-install operators
+
+* The new V2 address `0xdEA4687FDBA2528d1b30222e199c90b63AF8c850` is hardcoded in the v2.0.18 binary and sealed into chaindata at the activation block. Running a fresh-install node from genesis with the v2.0.18 binary will reach the same final `Economy.QuotaCacheAddress` because the seal-time activation fires at the first PaybackV2 transition the chain encounters.
+* A post-activation chaindata snapshot will be published to `s3://vinu-blockchain-genesis/chaindata-snapshots/testnet-chaindata-v2.0.18-<ts>-clean.tar.gz` (per the `SNAPSHOT_INFO.txt` convention). Fresh-install operators are recommended to restore from that snapshot rather than replaying from genesis to avoid the ~3-4h activation wait.
+
+### Verification after activation
+
+```bash
+# Expect QuotaCacheAddress == 0xdEA4687FDBA2528d1b30222e199c90b63AF8c850 and PaybackV2: true
+curl -s -X POST https://vinufoundation-rpc.com \
+  -H 'content-type: application/json' \
+  -d '{"jsonrpc":"2.0","method":"vc_getRules","params":["latest"],"id":1}' | jq '.result.Economy.QuotaCacheAddress, .result.Upgrades.PaybackV2'
+
+# Smoke-test V2 view methods
+curl -s -X POST https://vinufoundation-rpc.com \
+  -H 'content-type: application/json' \
+  -d '{"jsonrpc":"2.0","method":"eth_call","params":[{"to":"0xdEA4687FDBA2528d1b30222e199c90b63AF8c850","data":"0x0fe34e68"},"latest"],"id":1}'
+# → 0x...0064 (feeRefundBlockCount = 100)
+
+curl -s -X POST https://vinufoundation-rpc.com \
+  -H 'content-type: application/json' \
+  -d '{"jsonrpc":"2.0","method":"eth_call","params":[{"to":"0xdEA4687FDBA2528d1b30222e199c90b63AF8c850","data":"0x8da5cb5b"},"latest"],"id":1}'
+# → 0x000000000000000000000000f9c82b1117e8bea97843042521b8fbc93044f347 (owner)
+```
+
+### Mainnet implications
+
+Mainnet has the **same** problem (same ProxyAdmin owner key, recoverable only by the same gotbit team) and the **same** solution path is staged. The mainnet PaybackV2 release is intentionally held back at least 2 weeks past testnet activation to give the testnet path time to surface any operator-facing problems before they land on real user value. See `.claude/rules/deployment-log.md → PaybackV2 Rollout` in the VinuChain repository for the mainnet checklist.
+
+---
 
 ## Payback Receiver Completion Checklist
 
@@ -941,6 +990,7 @@ Testnet has all three plus the trailing `SfcV2Patch2` / `SfcV2Patch3` / `SfcV2Pa
 
 | Version             | Type                                          | What changed                                                                                                        |
 | ------------------- | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| **v2.0.18-elemont** | **Testnet PaybackV2 activation (binary-level Quota proxy replacement)** | Tagged and deployed to testnet RPC + V1–V4 on 2026-05-15. Flips `Upgrades.PaybackV2 = true` on `VinuChainTestNetRules`. At the first epoch seal after binary boot, the seal-time activation branch in `gossip/block_processor.go::sealEpochIfNeeded` swaps `Economy.QuotaCacheAddress` from the V1 proxy `0x824B93dE7221cf8a35FBd29d5202f6eFa3A29C5D` (lost-ProxyAdmin-key) to the freshly-deployed `QuotaContractV2` at `0xdEA4687FDBA2528d1b30222e199c90b63AF8c850` (deploy tx `0x3ed6fc5e1f0b6c14aaf74f9cfbc611ee5eae7973f4aa10f608d4605020bb505a`, owner = recoverable EOA `0xf9c82B1117e8BeA97843042521B8FBC93044f347`). Existing testnet stakers retain access to their own V1 stake (permissionless `unstake` + `withdrawStake`) but must re-stake on V2 to receive fee refunds after activation. |
 | v2.0.17-elemont | Payback/Quota receiver staking          | Deployed to testnet RPC + validators on 2026-05-10. The node PaybackCache recognizes `stakeFor(address)` as stake owned by the receiver, preserving same-epoch duration accounting for the refunding address. Receiver implementation `0x80DA5f5e78c94EE5125Be515Ad4cd248469B57ba` is deployed and fully verified with unchanged bytecode; the live Quota proxy upgrade is still pending. |
 | **v2.0.14-elemont** | Testnet consensus flags (Patch5 + ElemontPubkeyValidation) | Cycle-161 SFC bytecode. Adds canonical-pubkey validation (`length == 66 && pubkey[0] == 0xc0`) at `createValidator`, `_rawCreateValidator`, and `NodeDriverAuth.updateValidatorPubkey`. Off-chain sealer guard ejects validators with malformed stored pubkeys (testnet validator 16) at the next epoch seal. Also: real `gasUsedRatio` in `eth_feeHistory`. |
 | v2.0.13-elemont     | Same-day scaffolding (no live activation)     | Defines flags + ships the deadbeef-placeholder Cycle-161 bytecode; flipped to v2.0.14 same day with the real bytecode and activation. Don't deploy v2.0.13 standalone. |
