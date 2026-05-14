@@ -947,6 +947,19 @@ This almost always means your enode record is advertising `127.0.0.1` (no peers 
 
 If the peer count stays stuck at 1 after fixing `--nat`, check your host firewall / cloud security group: TCP and UDP on your `--port` (default 3000) must be open to `0.0.0.0/0`.
 
+### Receipt `feeRefund` field is `0x0` after v2.0.18-elemont
+
+After the PaybackV2 activation block, all subsequent `feeRefund` calculations resolve against the new `QuotaContractV2` at `0xdEA4687FDBA2528d1b30222e199c90b63AF8c850`. Existing depositors on the OLD V1 proxy at `0x824B93dE7221cf8a35FBd29d5202f6eFa3A29C5D` keep their stake balance there but no longer earn fee refunds — the node stops consulting that contract once `Economy.QuotaCacheAddress` is swapped. To resume earning refunds, withdraw from V1 (`unstake()` then wait `holdTime` then `withdrawStake(wrID)`) and `stake()` on V2 with the same wallet. The same wallet can also receive third-party-funded stakes via `QuotaContractV2.stakeFor(yourAddress)`.
+
+Verify activation:
+
+```bash
+curl -s -X POST https://vinufoundation-rpc.com \
+  -H 'content-type: application/json' \
+  -d '{"jsonrpc":"2.0","method":"vc_getRules","params":["latest"],"id":1}' | jq '{quotaCache: .result.Economy.QuotaCacheAddress, paybackV2: .result.Upgrades.PaybackV2}'
+# Expect: {"quotaCache":"0xdea4687fdba2528d1b30222e199c90b63af8c850","paybackV2":true}
+```
+
 ### `vc_getPaybackBalance` returns `-32005`
 
 The RPC-safe payback accessor is gated by a process-wide semaphore (8 in-flight, 2 s acquire timeout). Error code `-32005` is the rate-limit rejection. Clients should retry with exponential backoff; operators running high-volume scanners should either spread load across multiple RPC endpoints or reduce concurrent caller count. See [Changelog → Payback Fee Refunds](#payback-fee-refunds).
@@ -983,8 +996,9 @@ The codebase uses three internal upgrade names. They activate at the same epoch 
 | **SfcV2**   | Replaces the on-chain SFC contract bytecode at `0xFC00FACE...` and turns on the 30% base fee burn.          |
 | **Podgorica** | Payback fee refund mechanism. Source of the optional `feeRefund` field on receipts and transactions.       |
 | **Elemont** | Cheater fee zeroing at `SealEpoch` plus the broader v2.0+ release-series naming used in version strings.   |
+| **PaybackV2** | Binary-level swap of `Economy.QuotaCacheAddress` from the original `TransparentUpgradeableProxy`-based Quota proxy to a freshly-deployed non-proxy `QuotaContractV2` whose owner is a recoverable EOA. Activates at the first epoch seal after the v2.0.18+ binary boots. Designed to escape the lost-ProxyAdmin-key state on the original proxy without losing access to existing depositor stake (V1 `unstake`/`withdrawStake` remain permissionless after activation; only the protocol-side backing balance is orphaned). |
 
-Testnet has all three plus the trailing `SfcV2Patch2` / `SfcV2Patch3` / `SfcV2Patch4` / `SfcV2Patch5` bytecode re-flashes and the `ElemontPubkeyValidation` sealer guard sealed. Mainnet has none active yet — when it activates `SfcV2`, the latest Cycle-161 bytecode is installed directly without separate `Patch*` events.
+Testnet has all four plus the trailing `SfcV2Patch2` / `SfcV2Patch3` / `SfcV2Patch4` / `SfcV2Patch5` bytecode re-flashes and the `ElemontPubkeyValidation` sealer guard sealed. Mainnet has none active yet — when it activates `SfcV2`, the latest Cycle-161 bytecode is installed directly without separate `Patch*` events. Mainnet `PaybackV2` is staged for a separate release ≥2 weeks after testnet bake-in completes.
 
 ### Release overview
 
