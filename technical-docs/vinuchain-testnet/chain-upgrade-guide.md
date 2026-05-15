@@ -16,6 +16,7 @@ After the v2.0.18 activation block:
 
 * **Your own V1 stake remains permissionlessly recoverable.** `QuotaContract.unstake()` on the V1 proxy is open to any depositor regardless of who deployed the contract. After `holdTime` (7 days) you can `withdrawStake(wrID)` and pull your testnet VC back to your wallet. The V1 proxy stays on-chain and reachable; only the node's payback pipeline stops consulting it.
 * **To keep earning fee refunds**, after withdrawing from V1 you must `stake()` on V2 at `0xdEA4687FDBA2528d1b30222e199c90b63AF8c850`. V2's `stake()` and `unstake()` ABIs match V1 exactly. The new `stakeFor(address)` method also lets a funding wallet supply VC while a separate receiver address owns the resulting Quota stake.
+* **The refunding wallet must meet V2 `minStake()`.** In the v2.0.18 testnet rollout, the deployed `minStake()` value is `1000 VC`. The Quota owner can update this contract parameter with `setMinStake(uint256)`, so use `minStake()` as the current source of truth. For `stakeFor(receiver)`, this threshold applies to the receiver wallet's total V2 Quota stake, not to the funding wallet. A below-minimum receiver can hold V2 Quota stake, but its transactions will still show `feeRefund: 0x0` until its total V2 Quota stake reaches the contract minimum.
 
 ### What this means for fresh-install operators
 
@@ -35,6 +36,11 @@ curl -s -X POST https://vinufoundation-rpc.com \
   -H 'content-type: application/json' \
   -d '{"jsonrpc":"2.0","method":"eth_call","params":[{"to":"0xdEA4687FDBA2528d1b30222e199c90b63AF8c850","data":"0x0fe34e68"},"latest"],"id":1}'
 # → 0x...0064 (feeRefundBlockCount = 100)
+
+curl -s -X POST https://vinufoundation-rpc.com \
+  -H 'content-type: application/json' \
+  -d '{"jsonrpc":"2.0","method":"eth_call","params":[{"to":"0xdEA4687FDBA2528d1b30222e199c90b63AF8c850","data":"0x70c5e53f"},"latest"],"id":1}'
+# → 0x...3635c9adc5dea00000 (current minStake = 1000 VC in the v2.0.18 rollout)
 
 curl -s -X POST https://vinufoundation-rpc.com \
   -H 'content-type: application/json' \
@@ -514,6 +520,8 @@ If the peer count stays stuck at 1 after fixing `--nat`, check your host firewal
 
 After the PaybackV2 activation block, all subsequent `feeRefund` calculations resolve against the new `QuotaContractV2` at `0xdEA4687FDBA2528d1b30222e199c90b63AF8c850`. Existing depositors on the OLD V1 proxy at `0x824B93dE7221cf8a35FBd29d5202f6eFa3A29C5D` keep their stake balance there but no longer earn fee refunds — the node stops consulting that contract once `Economy.QuotaCacheAddress` is swapped. To resume earning refunds, withdraw from V1 (`unstake()` then wait `holdTime` then `withdrawStake(wrID)`) and `stake()` on V2 with the same wallet. The same wallet can also receive third-party-funded stakes via `QuotaContractV2.stakeFor(yourAddress)`.
 
+If the transaction is already using V2 and `feeRefund` is still `0x0`, check the sender's V2 Quota stake against `minStake()`. The sender must meet the contract minimum before any refund is available. In the v2.0.18 testnet rollout, the deployed `minStake()` value is `1000 VC`, but the Quota owner can update it with `setMinStake(uint256)`; for `stakeFor(receiver)`, the receiver must meet the current minimum because the receiver is the refunding sender.
+
 Verify activation:
 
 ```bash
@@ -641,14 +649,16 @@ When Elemont is active, validators flagged as cheaters in an epoch lose **all** 
 
 ### Payback fee refunds
 
-Stakers meeting the minimum stake threshold automatically receive gas refunds. **No new VC is created** — refunds redistribute fees from validator earnings to eligible stakers.
+Stakers meeting the minimum V2 Quota stake threshold automatically receive gas refunds. **No new VC is created** — refunds redistribute fees from validator earnings to eligible stakers. In the v2.0.18 testnet rollout, the deployed `QuotaContractV2.minStake()` value is `1000 VC`; the Quota owner can update this parameter later if protocol economics change.
 
 1. User submits a transaction; full `gasUsed × gasPrice` is debited as before.
 2. Full fee is credited to the validator pre-refund.
 3. After epoch seal, the payback system queries the sender's stake. If eligible, a refund is returned from the validator's earned fees.
 4. Validator earnings decrease by the refund; sender balance increases by it.
 
-In the pending proxy-upgrade Payback receiver flow, a funding wallet may call `QuotaContract.stakeFor(receiver)` instead of `stake()`. The receiver owns that Quota stake, so refunds still follow the transaction sender: the receiver gets refunds for transactions the receiver signs, while the funding wallet does not gain refund eligibility from that delegated stake.
+With PaybackV2, a funding wallet may call `QuotaContractV2.stakeFor(receiver)` instead of `stake()`. The receiver owns that Quota stake, so refunds still follow the transaction sender: the receiver gets refunds for transactions the receiver signs, while the funding wallet does not gain refund eligibility from that delegated stake. The receiver's total V2 Quota stake must be at least `minStake()` before those signed transactions can receive refunds.
+
+The minimum stake is only an eligibility floor, not a spam throttle that grows automatically. Each refund is capped by the sender's available Payback quota, and every refunded transaction consumes quota for that epoch. If an eligible wallet sends enough transactions to exhaust its quota, later transactions receive smaller refunds or `feeRefund: 0x0`; they still pay normal gas. When network congestion pushes the base fee above the chain-configured floor, Payback refunds are suppressed so fee escalation can still deter spam.
 
 The `feeRefund` receipt field reports the refund amount. dApps showing "gas spent" should subtract `feeRefund` from `gasUsed × effectiveGasPrice`.
 
