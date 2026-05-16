@@ -61,19 +61,16 @@ You can turn on and off **http** and **ws** options, use your ports and addresse
 
 ## Testnet
 
-### **Download genesis file**
+### **Restore latest snapshot**
 
-```
-# Download Testnet genesis file (2026-04-19, with history through epoch ~5637)
-(validator)$ curl -LO https://vinu-blockchain-genesis.s3.amazonaws.com/vitainu-genesis-testnet-20260419.g
-(validator)$ curl -LO https://vinu-blockchain-genesis.s3.amazonaws.com/vitainu-genesis-testnet-20260419.g.sha256
-(validator)$ sha256sum -c vitainu-genesis-testnet-20260419.g.sha256
+Current testnet API nodes must restore the latest chaindata snapshot before first start:
+
+```text
+https://vinu-blockchain-genesis.s3.amazonaws.com/chaindata-snapshots/testnet-chaindata-v2.0.21-elemont-20260516T164445Z-clean.tar.gz
 ```
 
 {% hint style="warning" %}
-**Use only the 2026-04-19 testnet genesis under v2.0.8+ binary.** The legacy 2024-06-21 file pre-dates `SfcV2` / `SfcV2Patch` / `SfcV2Patch2` and produces a `wrong event epoch hash` divergence on replay. v2.0.9+ recognizes the 2026-04-19 genesis as a trusted preset, so no `--genesis.allowExperimental` is required.
-
-**Under v2.0.10-elemont, fresh-install operators must also restore from the post-seal chaindata snapshot** at `s3://vinu-blockchain-genesis/chaindata-snapshots/testnet-chaindata-v2.0.10-*.tar.gz`. Replaying from genesis alone under v2.0.10 seals `SfcV2Patch3` at a different block than the live chain did, producing an identical `wrong event epoch hash` divergence. The snapshot bypasses the replay entirely and joins at tip. The older v2.0.8 snapshot is stale under v2.0.10 rules and must not be used.
+**Do not bootstrap current testnet from older genesis files or pre-v2.0.21 snapshots.** Nodes that missed a seal-time upgrade such as `PaybackV2Patch` or `SfcV2Patch6` compute a different epoch-state hash and reject current-tip events with `err="wrong event epoch hash"`. The v2.0.21 snapshot above includes `PaybackV2Patch: active` and `SfcV2Patch6: active`.
 {% endhint %}
 
 ### **Run node**
@@ -85,7 +82,6 @@ You can turn on and off **http** and **ws** options, use your ports and addresse
 (validator)$ cd build
 
 (validator)$ nohup ./opera \
-    --genesis ../vitainu-genesis-testnet-20260419.g \
     --datadir ./datadir \
     --http \
     --http.addr=your_hostname \

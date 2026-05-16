@@ -6,14 +6,14 @@
 **Testnet operators running or installing v2.x-elemont**: see the [Chain Upgrade Guide](../vinuchain-testnet/chain-upgrade-guide.md) first. Two failure modes need dedicated recovery steps that the legacy procedures on this page do not cover:
 
 - **Validator offline >1,000 epochs cannot rejoin** → upgrade to v2.0.8-elemont (removes the `validatePeerProgress` drift cap). See [Chain Upgrade Guide → stuck peercount](../vinuchain-testnet/chain-upgrade-guide.md#stuck-at-net-peercount-1-with-one-stale-peer).
-- **`WARN Incoming event rejected ... err="wrong event epoch hash"`** → fresh resync from the 2024-06-21 genesis **does not work** on current binary rules. Use the chaindata snapshot at `s3://vinu-blockchain-genesis/chaindata-snapshots/` — see [Chain Upgrade Guide → wrong event epoch hash](../vinuchain-testnet/chain-upgrade-guide.md#warn-incoming-event-rejected-err-wrong-event-epoch-hash) for the recovery procedure.
+- **`WARN Incoming event rejected ... err="wrong event epoch hash"`** → fresh resync from genesis **does not work** on current binary rules. Use the latest post-Patch6 chaindata snapshot at `s3://vinu-blockchain-genesis/chaindata-snapshots/` — see [Chain Upgrade Guide → wrong event epoch hash](../vinuchain-testnet/chain-upgrade-guide.md#warn-incoming-event-rejected-err-wrong-event-epoch-hash) for the recovery procedure.
 
-Latest testnet snapshot: `https://vinu-blockchain-genesis.s3.amazonaws.com/chaindata-snapshots/testnet-chaindata-v2.0.8-20260419-053442.tar.gz` (~1.1 GiB compressed, published 2026-04-19, tip ≈ epoch 5637 / block 1.42M). SHA256 `7d1ec36699c450a820f0b42e3b113bd2d09345e44abb0c39d38d262464f91823`. Excludes `nodekey` / `keystore/` / `static-nodes.json` so your validator identity is preserved during extraction.
+Latest testnet snapshot: `https://vinu-blockchain-genesis.s3.amazonaws.com/chaindata-snapshots/testnet-chaindata-v2.0.21-elemont-20260516T164445Z-clean.tar.gz` (~1.3 GiB compressed, published 2026-05-16, tip epoch 5802 / block 1,460,330). SHA256 `62d4e56c350f775ec4dcd881c8088224ffc90e3c29f60bfa450cc27e2e572763`. Excludes `nodekey` / `keystore/` / `static-nodes.json` so your validator identity is preserved during extraction. Its `SNAPSHOT_INFO.txt` lists `PaybackV2Patch: active` and `SfcV2Patch6: active`; older snapshots that lack either flag are stale.
 {% endhint %}
 
 ## 1. Supported go-opera version <a href="#id-1.-current-version-of-go-opera" id="id-1.-current-version-of-go-opera"></a>
 
-The current supported version is **go-opera 2.0.8-elemont** for testnet. Mainnet is still on `v2.0.0-rc.1` pending the next coordinated upgrade window. The legacy "1.1.2-rc.3" line that previously appeared here referred to the pre-elemont fork and is no longer current.
+The current supported version is **go-opera 2.0.21-elemont** for testnet. Mainnet is still on `v2.0.0-rc.1` pending the next coordinated upgrade window. The legacy "1.1.2-rc.3" line that previously appeared here referred to the pre-elemont fork and is no longer current.
 
 ### **1.0 Pre-flight checklist** <a href="#id-1.0-pre-flight-checklist" id="id-1.0-pre-flight-checklist"></a>
 
@@ -47,8 +47,8 @@ Context: the 2026-04-23 mainnet RPC recovery required exactly this sequence afte
 Chaindata snapshots from `s3://vinu-blockchain-genesis/chaindata-snapshots/` are typically ~1 GiB compressed. Long-running downloads over SSM can be cut short by an SSM session timeout (20 min default), CloudFlare connection drop, or a transient instance networking blip. To make the download resumable, always pass `curl -C - -o <file> <url>`:
 
 ```
-curl -C - -o testnet-chaindata-v2.0.8-20260419-053442.tar.gz \
-  https://vinu-blockchain-genesis.s3.amazonaws.com/chaindata-snapshots/testnet-chaindata-v2.0.8-20260419-053442.tar.gz
+curl -C - -o testnet-chaindata-v2.0.21-elemont-20260516T164445Z-clean.tar.gz \
+  https://vinu-blockchain-genesis.s3.amazonaws.com/chaindata-snapshots/testnet-chaindata-v2.0.21-elemont-20260516T164445Z-clean.tar.gz
 ```
 
 The `-C -` flag auto-resumes from the byte offset already on disk if the file exists, or starts from zero if it doesn't. Without it, an interrupted `curl` forces a full redownload and wastes the partial bytes.

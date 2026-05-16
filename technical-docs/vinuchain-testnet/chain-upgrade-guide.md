@@ -464,11 +464,11 @@ Your locally-computed epoch state hash does not match the network's. The check r
    find go-opera -mindepth 1 -not -name nodekey -not -name 'static-nodes.json' -not -name 'trusted-nodes.json' -exec rm -rf {} +
    ```
 
-4. Download the latest testnet snapshot and extract it in-place over the datadir (the tar is written with relative paths, so extract at the datadir root; the tar excludes `nodekey`, `keystore/`, `opera.ipc`, `static-nodes.json`, `trusted-nodes.json` so your identity files are preserved). Use the newest `-clean` snapshot whose `SNAPSHOT_INFO.txt` shows both `SfcV2Patch6: active` and `PaybackV2Patch: active`:
+4. Download the latest testnet snapshot and extract it in-place over the datadir (the tar is written with relative paths, so extract at the datadir root; the tar excludes `nodekey`, `keystore/`, `opera.ipc`, `static-nodes.json`, `trusted-nodes.json` so your identity files are preserved). Use the exact post-Patch6 snapshot below; its `SNAPSHOT_INFO.txt` shows both `SfcV2Patch6: active` and `PaybackV2Patch: active`:
 
    ```bash
    cd <datadir>
-   SNAPSHOT_URL="https://vinu-blockchain-genesis.s3.amazonaws.com/chaindata-snapshots/<latest-post-paybackv2patch-clean-snapshot>.tar.gz"
+   SNAPSHOT_URL="https://vinu-blockchain-genesis.s3.amazonaws.com/chaindata-snapshots/testnet-chaindata-v2.0.21-elemont-20260516T164445Z-clean.tar.gz"
    curl -LO "$SNAPSHOT_URL"
    # verify integrity
    curl -L "$SNAPSHOT_URL.sha256" | sha256sum -c -
@@ -484,16 +484,16 @@ Your locally-computed epoch state hash does not match the network's. The check r
 
    The file lists the network, snapshot timestamp, binary version, tip block, tip epoch, and the full set of sealed upgrade flags. The tip block listed there is the minimum block number your first `New block` log line should show after restart. If `cat` returns nothing, the tarball did not extract correctly — do not start opera; re-extract at the datadir root.
 
-   Current snapshot listing (public, no AWS credentials required):
+   Current snapshot listing (public, no AWS credentials required). If the listing still contains older objects, treat them as archival and use the exact v2.0.21 URL above:
 
    ```text
    https://vinu-blockchain-genesis.s3.amazonaws.com/?list-type=2&prefix=chaindata-snapshots/
    ```
 
-   The tarball is flat (top-level is `chaindata/`, `go-opera/`, and `SNAPSHOT_INFO.txt` — no `datadir/` prefix to nest) and excludes `nodekey`, `keystore/`, `opera.ipc`, `static-nodes.json`, `trusted-nodes.json`, archived `chaindata.bak.*/`, and shell `history` files. New snapshots are published under `s3://vinu-blockchain-genesis/chaindata-snapshots/`; pick the most recent `-clean` snapshot for the shortest catch-up.
+   The tarball is flat (top-level is `chaindata/`, `go-opera/`, and `SNAPSHOT_INFO.txt` — no `datadir/` prefix to nest) and excludes `nodekey`, `keystore/`, `opera.ipc`, `static-nodes.json`, `trusted-nodes.json`, archived `chaindata.bak.*/`, and shell `history` files. New snapshots are published under `s3://vinu-blockchain-genesis/chaindata-snapshots/`; for this release, use `testnet-chaindata-v2.0.21-elemont-20260516T164445Z-clean`.
 
 5. Ensure `--nat extip:<your_public_ip>` is set and `<datadir>/go-opera/static-nodes.json` contains the canonical bootnode list from the [Start your node](#start-your-node) section.
-6. Restart opera. The node resumes from the snapshot's tip (epoch 5741 / block 1,446,860 at snapshot time) and syncs forward. Expect `New DAG summary age=<few seconds>` within 1-2 minutes of restart.
+6. Restart opera. The node resumes from the snapshot's tip (epoch 5802 / block 1,460,330 at snapshot time) and syncs forward. Expect `New DAG summary age=<few seconds>` within 1-2 minutes of restart.
 
 ### Stuck at `net.peerCount == 1` with one stale peer
 
@@ -537,7 +537,7 @@ The recommended rollout:
 3. During the window, each operator performs the binary swap.
 4. Confirm in the coordination channel that block production resumed and `opera version` reports `2.0.21-elemont`.
 
-**Missed the window?** If your node has not yet processed the Patch6 seal, stop it, install v2.0.21, and let it catch up so the false-to-true `SfcV2Patch6` edge runs with the automatic backfill. If your node already processed the Patch6 seal on v2.0.20 or earlier, a later binary swap will not replay that edge and will not apply the backfill; restore from a post-v2.0.21 Patch6 chaindata snapshot in [Troubleshooting](#warn-incoming-event-rejected-err-wrong-event-epoch-hash) or perform a coordinated forward repair before rejoining.
+**Missed the window?** Patch6 sealed on testnet at block 1,460,329 in epoch 5801 on 2026-05-16. If your node was not already running v2.0.21 before that seal, a later binary swap will not replay the `SfcV2Patch6` edge and will not apply the automatic backfill. Stop the node, preserve `keystore/` and `go-opera/nodekey`, and restore from the post-v2.0.21 Patch6 chaindata snapshot in [Troubleshooting](#warn-incoming-event-rejected-err-wrong-event-epoch-hash) before rejoining.
 
 ***
 

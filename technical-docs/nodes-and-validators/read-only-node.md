@@ -175,18 +175,14 @@ You can download a genesis file from the Drive above, or from the following comm
 
 **Testnet:**
 
-```
-# Download Testnet genesis file (2026-04-19, with history through epoch ~5637 / block ~1.42M)
-(validator)$ curl -LO https://vinu-blockchain-genesis.s3.amazonaws.com/vitainu-genesis-testnet-20260419.g
-(validator)$ curl -LO https://vinu-blockchain-genesis.s3.amazonaws.com/vitainu-genesis-testnet-20260419.g.sha256
-(validator)$ sha256sum -c vitainu-genesis-testnet-20260419.g.sha256
-(validator)$ mv vitainu-genesis-testnet-20260419.g vinuchain-genesis-testnet.g
+Current testnet installs must restore the latest chaindata snapshot instead of replaying from a genesis file. Follow [Troubleshooting](troubleshooting.md) and use:
+
+```text
+https://vinu-blockchain-genesis.s3.amazonaws.com/chaindata-snapshots/testnet-chaindata-v2.0.21-elemont-20260516T164445Z-clean.tar.gz
 ```
 
 {% hint style="warning" %}
-**Do not use the 2024-06-21 testnet genesis (`vitainu-genesis-testnet-20240621.g`) under v2.0.8+ binary.** It pre-dates `SfcV2` / `SfcV2Patch` / `SfcV2Patch2`, and a fresh replay under current binary rules produces a state hash that does not match live testnet history — the first inbound event from any current-tip peer rejects with `err="wrong event epoch hash"`. The 2026-04-19 genesis above has history baked post-all-patches and is recognized as a trusted preset by v2.0.9+ (no `--genesis.allowExperimental` required). Older testnet genesis files (2023-08-31 and 2024-06-21) remain in the bucket for archival only; do not use them for new installs.
-
-**Under v2.0.10-elemont, fresh-install operators must also restore from the post-seal chaindata snapshot** at `s3://vinu-blockchain-genesis/chaindata-snapshots/testnet-chaindata-v2.0.10-*.tar.gz`. Replaying from genesis alone under v2.0.10 seals `SfcV2Patch3` at a different block than the live chain did, producing an identical `wrong event epoch hash` divergence. The snapshot bypasses the replay and joins at tip. The older v2.0.8 chaindata snapshot is stale under v2.0.10 rules and must not be used.
+**Do not bootstrap current testnet from older genesis files or pre-v2.0.21 snapshots.** Nodes that missed a seal-time upgrade such as `PaybackV2Patch` or `SfcV2Patch6` compute a different epoch-state hash and reject current-tip events with `err="wrong event epoch hash"`. The v2.0.21 snapshot above includes `PaybackV2Patch: active` and `SfcV2Patch6: active`; older testnet genesis files remain archival only.
 {% endhint %}
 
 ### Start Opera Read-Only Node
@@ -207,13 +203,10 @@ First, start the **Opera read-only node** to interact with it and to create a va
 **Testnet:**
 
 ```
-# Start opera node (Testnet) — v2.0.9-elemont or later recognizes the 2026-04-19
-# genesis as a trusted preset, so --genesis.allowExperimental is no longer required.
-# On older binaries, add --genesis.allowExperimental; also replace --nat any with
-# --nat extip:<your_public_ipv4> in any production setup (see Chain Upgrade Guide).
+# Start opera node (Testnet) after extracting the latest snapshot into ./datadir.
 (validator)$ cd build/
 (validator)$ nohup ./opera --port 3000 --nat extip:<YOUR_PUBLIC_IPV4> \
-    --genesis ../vinuchain-genesis-testnet.g \
+    --datadir ./datadir \
     --bootnodes enode://e2a95c1b8d85b018b8e88133bec342801b42e19b59a52e030462d04a5549f02fc57215b4ca97771ec6b3a0d30a78603fdccd2b5091c44f6ac439d6c8be8bc539@44.239.129.39:3000 \
     > opera.log &
 ```
