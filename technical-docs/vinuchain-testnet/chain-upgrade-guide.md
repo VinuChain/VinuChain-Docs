@@ -292,16 +292,21 @@ What to expect:
 INFO Staged SfcV2Patch6 upgrade from binary rules; will activate at next epoch seal
 ```
 
-This confirms the Cycle-162 SFC bytecode re-flash and automatic testnet delegation backfill are pending. If you do not see it, you are likely running a pre-v2.0.21 binary (`opera version` check) or the flag has already sealed on this datadir. Mainnet nodes never show this line because SfcV2Patch6 is testnet-only. Nodes upgrading directly from v2.0.18 or earlier may also see the older `Staged PaybackV2Patch ...` line if that edge has not yet sealed on their datadir.
+This confirms the Cycle-162 SFC bytecode re-flash and automatic testnet delegation backfill are pending. If you do not see it, you may be running a pre-v2.0.21 binary (`opera version` check), the flag may already be pending in `DirtyRules` from an earlier v2.0.21 boot, or the flag may already be sealed on this datadir. Absence of the staging line by itself is not proof that Patch6 has sealed; confirm with `vc_getRules`. Mainnet nodes never show this line because SfcV2Patch6 is testnet-only. Nodes upgrading directly from v2.0.18 or earlier may also see the older `Staged PaybackV2Patch ...` line if that edge has not yet sealed on their datadir.
 
 **Seal-time activation (testnet only).** At the next epoch seal after the staging log appears, you will see the SFC Patch6 re-flash:
 
 ```text
 INFO Re-applying SFC V2 bytecode upgrade (patch 6) block=<N>
+```
+
+If the node writes SFC storage, you will also see the backfill log:
+
+```text
 INFO Backfilled SFC Patch6 testnet delegations block=<N> appended=3 repaired=0
 ```
 
-After it fires, `vc_getRules` must report `Upgrades.SfcV2Patch6 = true`, and `eth_call` to SFC `version()` must return `0x333035` (`"305"`). The `Backfilled ...` counts are lower if a listed pair already became visible or dropped to zero stake before the seal; `repaired` may be non-zero if a pair is present in `stakes[]` but its `stakePosition` points at a stale row. `Economy.QuotaCacheAddress` remains the corrected PaybackV2 address `0x89D1cBD9DEAaB4dFf6f800a336FBDd9A5c6829e4`.
+If every listed pair is already visible in `stakes[]` or has dropped to zero stake, the re-flash log can appear without a `Backfilled ...` line. After it fires, `vc_getRules` must report `Upgrades.SfcV2Patch6 = true`, and `eth_call` to SFC `version()` must return `0x333035` (`"305"`). The `Backfilled ...` counts are lower if a listed pair already became visible or dropped to zero stake before the seal; `repaired` may be non-zero if a pair is present in `stakes[]` but its `stakePosition` points at a stale row. `Economy.QuotaCacheAddress` remains the corrected PaybackV2 address `0x89D1cBD9DEAaB4dFf6f800a336FBDd9A5c6829e4`.
 
 **Future mainnet SfcV2 activation.** When mainnet activation is explicitly scheduled, the first v2.0.21+ boot on a pre-SfcV2 mainnet datadir stages `SfcV2`, not `SfcV2Patch6`:
 
@@ -311,7 +316,7 @@ INFO Applying SFC V2 bytecode upgrade block=<N>
 INFO Backfilled SFC V2 mainnet delegations block=<N> appended=82 repaired=0
 ```
 
-After the mainnet seal, `vc_getRules` must report `Upgrades.SfcV2 = true`, SFC `version()` must return `0x333035` (`"305"`), and the `Backfilled ...` counts should be reconciled against the refreshed mainnet missing-delegation audit taken immediately before the release. Counts can be lower if a listed pair became visible or dropped to zero stake; `repaired` can be non-zero for stale `stakePosition` rows.
+After the mainnet seal, `vc_getRules` must report `Upgrades.SfcV2 = true`, SFC `version()` must return `0x333035` (`"305"`), and the `Backfilled ...` counts should be reconciled against the refreshed mainnet missing-delegation audit taken immediately before the release. Counts can be lower if a listed pair became visible or dropped to zero stake; `repaired` can be non-zero for stale `stakePosition` rows. The staging network (`NetworkID = 205`) inherits mainnet rules and uses this same `SfcV2` activation/backfill path for rehearsal; it does not use the testnet `SfcV2Patch6` edge.
 
 #### Verification checklist
 
@@ -324,6 +329,7 @@ After the mainnet seal, `vc_getRules` must report `Upgrades.SfcV2 = true`, SFC `
 | SfcV2Patch6 staging logs (testnet, first v2.0.21 boot)    | 1× `Staged SfcV2Patch6 …`                                                            |
 | SfcV2Patch6 staging log — all other cases                 | None                                                                                 |
 | Mainnet staging logs (future coordinated SfcV2 release)   | 1× `Staged SfcV2 upgrade …` on a pre-SfcV2 mainnet datadir                           |
+| Staging-network SfcV2 rehearsal                           | Same SfcV2 logs as mainnet; no `SfcV2Patch6` staging line                            |
 | Seal-time logs (testnet, first epoch seal after staging)  | 1× `Re-applying SFC V2 bytecode upgrade (patch 6) …`; normally 1× `Backfilled SFC Patch6 testnet delegations … appended=3 repaired=0` |
 | Mainnet seal-time logs (future coordinated SfcV2 release) | 1× `Applying SFC V2 bytecode upgrade …`; normally 1× `Backfilled SFC V2 mainnet delegations … appended=82 repaired=0` after refreshing the audit list |
 | SFC version after seal                                    | `version()` returns `0x333035` (`"305"`)                                              |
@@ -531,7 +537,7 @@ The recommended rollout:
 3. During the window, each operator performs the binary swap.
 4. Confirm in the coordination channel that block production resumed and `opera version` reports `2.0.21-elemont`.
 
-**Missed the window?** No fork — upgrading later is a plain binary swap (rerun Upgrade Steps). On testnet, a node still on v2.0.20 or earlier can miss the automatic SfcV2Patch6 delegation backfill if it participates in the Patch6 seal with the older binary; if the node also fell behind tip, restore from a post-SfcV2Patch6 chaindata snapshot in [Troubleshooting](#warn-incoming-event-rejected-err-wrong-event-epoch-hash) before restarting on v2.0.21.
+**Missed the window?** If your node has not yet processed the Patch6 seal, stop it, install v2.0.21, and let it catch up so the false-to-true `SfcV2Patch6` edge runs with the automatic backfill. If your node already processed the Patch6 seal on v2.0.20 or earlier, a later binary swap will not replay that edge and will not apply the backfill; restore from a post-v2.0.21 Patch6 chaindata snapshot in [Troubleshooting](#warn-incoming-event-rejected-err-wrong-event-epoch-hash) or perform a coordinated forward repair before rejoining.
 
 ***
 
@@ -585,7 +591,7 @@ Testnet has the earlier SFC re-flashes (`SfcV2Patch2` / `SfcV2Patch3` / `SfcV2Pa
 Mainnet has not yet activated any `SfcV2*` flag — when it does, the latest bytecode (Cycle-162) installs directly and the mainnet-only node hook backfills the audited missing delegation rows; the testnet patch flags do not fire on mainnet.
 
 {% hint style="info" %}
-**Activation timing.** Consensus flags (`SfcV2Patch2/3/4/5/6`, `ElemontPubkeyValidation`, and v2.0.2 rules) activate at the **next epoch seal** after the binary is first installed (up to `MaxEpochDuration = 4h`). All other changes — RPC caps, RPC additions, peer-quota resize, drift-cap removal, `eth_feeHistory.gasUsedRatio` fix, lachesis-base internals — are **immediate on restart**, no epoch-seal wait.
+**Activation timing.** Consensus flags and seal-bound rebinding (`SfcV2`, `Podgorica`, `Elemont`, `SfcV2Patch2/3/4/5/6`, `ElemontPubkeyValidation`, `PaybackV2`, `PaybackV2Patch`, and v2.0.2 rules) activate at the **next epoch seal** after the binary is first installed or the pending `DirtyRules` edge is staged (up to `MaxEpochDuration = 4h`). All other changes — RPC caps, RPC additions, peer-quota resize, drift-cap removal, `eth_feeHistory.gasUsedRatio` fix, lachesis-base internals — are **immediate on restart**, no epoch-seal wait.
 {% endhint %}
 
 ### `feeRefund` receipt field
