@@ -1,58 +1,17 @@
 # Chain Upgrade Guide (v2-elemont)
 
-{% hint style="info" %}
-**Latest PaybackV2 state:** testnet resolves Payback against corrected non-proxy `QuotaContractV2` `0x89D1cBD9DEAaB4dFf6f800a336FBDd9A5c6829e4` (deploy tx `0xd99e4111a87dee6b9a16802f9696f5e6663d953ff7de54e43572ab75f8241ce4`). `Upgrades.PaybackV2 = true` and `Upgrades.PaybackV2Patch = true` on `VinuChainTestNetRules`; after the PaybackV2Patch epoch seal, `Economy.QuotaCacheAddress` points at this corrected V2 contract instead of the original Quota proxy (`0x824B93dE7221cf8a35FBd29d5202f6eFa3A29C5D`, whose `ProxyAdmin` owner key is unrecoverable). The corrected V2 flow lets one funding wallet call `stakeFor(receiver)` so the receiver earns Payback quota/refunds while the funding wallet keeps withdrawal ownership.
-{% endhint %}
+## Latest release
 
-## PaybackV2 Migration (testnet, 2026-05-16)
+| Version | Network | Status |
+| ------- | ------- | ------ |
+| `v2.0.19-elemont` | Testnet | PaybackV2Patch release |
 
-The testnet Quota proxy at `0x824B93dE7221cf8a35FBd29d5202f6eFa3A29C5D` is a `TransparentUpgradeableProxy` whose `ProxyAdmin` owner (`0x07B4eF04b62E69aE14A715cdcae692fa7033b9a5`) is **unrecoverable in-house**.
+## What's new
 
-PaybackV2 resolves the lost proxy-admin problem by **replacing the proxy at the binary level**. A fresh non-proxy `QuotaContractV2` is deployed by a recoverable EOA and baked into `opera/payback_v2_address.go`; the node hardcodes `Upgrades.PaybackV2 = true` on `VinuChainTestNetRules`. At the first epoch seal after the binary boots, `gossip/block_processor.go::sealEpochIfNeeded` swaps `Economy.QuotaCacheAddress` from the V1 proxy address to the V2 contract address and calls `evmProcessor.SetRules(rules)` so every subsequent block in that process resolves the payback path against V2.
-
-The first v2.0.18 V2 deployment (`0xdEA4687FDBA2528d1b30222e199c90b63AF8c850`) was superseded after post-release testing found receiver-owned withdrawal semantics for third-party `stakeFor(receiver)` deposits. The 2026-05-16 PaybackV2Patch release adds a second one-shot epoch edge because testnet had already crossed the original `PaybackV2` edge. That patch rebinds `Economy.QuotaCacheAddress` to the corrected V2 contract `0x89D1cBD9DEAaB4dFf6f800a336FBDd9A5c6829e4`, which keeps withdrawal ownership with the funding wallet.
-
-### What this means for testnet stakers
-
-After PaybackV2 activation:
-
-* **Your own V1 stake remains permissionlessly recoverable.** `QuotaContract.unstake()` on the V1 proxy is open to any depositor regardless of who deployed the contract. After `holdTime` (7 days) you can `withdrawStake(wrID)` and pull your testnet VC back to your wallet. The V1 proxy stays on-chain and reachable; only the node's payback pipeline stops consulting it.
-* **To keep earning fee refunds**, after withdrawing from V1 you must `stake()` on the active V2 contract. V2's `stake()` and `unstake()` ABIs match V1 exactly. The corrected `stakeFor(address)` method lets a funding wallet supply VC while a separate receiver address receives Payback quota credit; the funding wallet keeps withdrawal ownership and must use `unstakeFor(receiver, amount)` for third-party-funded stake.
-* **The refunding wallet must meet V2 `minStake()`.** The Quota owner can update this contract parameter with `setMinStake(uint256)`, so use `minStake()` as the current source of truth. For `stakeFor(receiver)`, this threshold applies to the receiver wallet's total V2 Quota stake, not to the funding wallet. A below-minimum receiver can hold V2 Quota stake, but its transactions will still show `feeRefund: 0x0` until its total V2 Quota stake reaches the contract minimum.
-
-### What this means for fresh-install operators
-
-* Fresh-install operators should restore from the latest post-PaybackV2Patch chaindata snapshot rather than replaying from genesis. A fresh replay from stale genesis can fire staged upgrade flags at the wrong historical block and diverge by epoch state hash.
-* Once the PaybackV2Patch seal has occurred, snapshots taken before that seal are historical only. Use the latest published `-clean` snapshot whose `SNAPSHOT_INFO.txt` shows both `PaybackV2: active` and `PaybackV2Patch: active`.
-
-### Verification after activation
-
-```bash
-QUOTA_V2="$(curl -s -X POST https://vinufoundation-rpc.com \
-  -H 'content-type: application/json' \
-  -d '{"jsonrpc":"2.0","method":"vc_getRules","params":["latest"],"id":1}' | jq -r '.result.Economy.QuotaCacheAddress')"
-
-curl -s -X POST https://vinufoundation-rpc.com \
-  -H 'content-type: application/json' \
-  -d '{"jsonrpc":"2.0","method":"vc_getRules","params":["latest"],"id":1}' | jq '{quotaCache: .result.Economy.QuotaCacheAddress, paybackV2: .result.Upgrades.PaybackV2, paybackV2Patch: .result.Upgrades.PaybackV2Patch}'
-# Expect quotaCache: 0x89D1cBD9DEAaB4dFf6f800a336FBDd9A5c6829e4, paybackV2: true, paybackV2Patch: true
-
-# Smoke-test the active V2 view methods.
-curl -s -X POST https://vinufoundation-rpc.com \
-  -H 'content-type: application/json' \
-  -d "{\"jsonrpc\":\"2.0\",\"method\":\"eth_call\",\"params\":[{\"to\":\"$QUOTA_V2\",\"data\":\"0x0fe34e68\"},\"latest\"],\"id\":1}"
-# feeRefundBlockCount()
-
-curl -s -X POST https://vinufoundation-rpc.com \
-  -H 'content-type: application/json' \
-  -d "{\"jsonrpc\":\"2.0\",\"method\":\"eth_call\",\"params\":[{\"to\":\"$QUOTA_V2\",\"data\":\"0x70c5e53f\"},\"latest\"],\"id\":1}"
-# minStake()
-
-curl -s -X POST https://vinufoundation-rpc.com \
-  -H 'content-type: application/json' \
-  -d "{\"jsonrpc\":\"2.0\",\"method\":\"eth_call\",\"params\":[{\"to\":\"$QUOTA_V2\",\"data\":\"0x8da5cb5b\"},\"latest\"],\"id\":1}"
-# owner()
-```
+* Rebinds PaybackV2 to the corrected non-proxy `QuotaContractV2` at `0x89D1cBD9DEAaB4dFf6f800a336FBDd9A5c6829e4`.
+* Adds the testnet-only `PaybackV2Patch` epoch edge that moves `Economy.QuotaCacheAddress` from the superseded V2 address to the corrected contract at the patch seal.
+* Corrects third-party Payback staking: `stakeFor(receiver)` gives the receiver Payback quota/refunds, while the funding wallet owns and withdraws that stake with `unstakeFor(receiver, amount)`.
+* Keeps V1 Quota proxy stake withdrawable, but active Payback refund accounting moves to corrected V2 after the patch seal.
 
 ---
 
