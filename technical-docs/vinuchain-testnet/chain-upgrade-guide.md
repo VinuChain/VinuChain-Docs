@@ -4,14 +4,15 @@
 
 | Version | Network | Status |
 | ------- | ------- | ------ |
-| `v2.0.19-elemont` | Testnet | PaybackV2Patch release |
+| `v2.0.20-elemont` | Testnet | SfcV2Patch6 / Cycle-162 backfill release |
 
 ## What's new
 
-* Rebinds PaybackV2 to the corrected non-proxy `QuotaContractV2` at `0x89D1cBD9DEAaB4dFf6f800a336FBDd9A5c6829e4`.
-* Adds the testnet-only `PaybackV2Patch` epoch edge that moves `Economy.QuotaCacheAddress` from the superseded V2 address to the corrected contract at the patch seal.
-* Corrects third-party Payback staking: `stakeFor(receiver)` gives the receiver Payback quota/refunds, while the funding wallet owns and withdraws that stake with `unstakeFor(receiver, amount)`.
-* Keeps V1 Quota proxy stake withdrawable, but active Payback refund accounting moves to corrected V2 after the patch seal.
+* Re-flashes the SFC V2 contract with Cycle-162 bytecode through the testnet-only `SfcV2Patch6` epoch edge.
+* Adds `registerStake(uint256)` so an affected delegator can self-register a legacy orphaned `(delegator, validator)` pair into SFC's `stakes[]` enumeration.
+* Adds owner-only `backfillStakes(address[],uint256[])` for bounded batch backfill of known orphaned delegations.
+* Allows full undelegate-to-zero for orphaned delegations whose `getStake` is non-zero but `stakePosition` is zero.
+* Keeps the corrected PaybackV2 address from v2.0.19: `QuotaContractV2` at `0x89D1cBD9DEAaB4dFf6f800a336FBDd9A5c6829e4`.
 
 ---
 
@@ -48,7 +49,7 @@ Ensure these remain open in your firewall:
 ## Upgrade Steps
 
 {% hint style="info" %}
-**Fresh install?** This guide covers binary swaps on existing validator nodes. If you're bootstrapping a brand-new testnet node, replay from genesis is **not supported under v2.0.19** — follow the snapshot-restore procedure in [Troubleshooting → Wrong event epoch hash](#warn-incoming-event-rejected-err-wrong-event-epoch-hash) instead. Mainnet operators bootstrapping fresh can replay from the standard mainnet genesis as no `SfcV2*` flag has activated there yet.
+**Fresh install?** This guide covers binary swaps on existing validator nodes. If you're bootstrapping a brand-new testnet node, replay from genesis is **not supported under v2.0.20** — follow the snapshot-restore procedure in [Troubleshooting → Wrong event epoch hash](#warn-incoming-event-rejected-err-wrong-event-epoch-hash) instead. Mainnet operators bootstrapping fresh can replay from the standard mainnet genesis as no `SfcV2*` flag has activated there yet.
 {% endhint %}
 
 {% stepper %}
@@ -112,7 +113,7 @@ The build directory is independent of your node's `--datadir`. The build process
 ```bash
 git clone https://github.com/VinuChain/VinuChain.git $HOME/vinuchain-upgrade
 cd $HOME/vinuchain-upgrade
-git checkout v2.0.19-elemont
+git checkout v2.0.20-elemont
 make opera
 # Binary is at $HOME/vinuchain-upgrade/build/opera
 ```
@@ -122,7 +123,7 @@ make opera
 Substitute `/opt/vinuchain-upgrade` (or any other path) if `$HOME` is not the right partition for your setup — every later command in this guide that references `$HOME/vinuchain-upgrade` should be adjusted to match.
 
 {% hint style="info" %}
-**`go.mod` pins unchanged across the elemont series.** `v2.0.19-elemont` uses the same go-vinu `v1.20.14-quota` and lachesis-base `v0.1.6-elemont` pins as earlier elemont releases. `make opera` fetches dependencies on first build.
+**`go.mod` pins unchanged across the elemont series.** `v2.0.20-elemont` uses the same go-vinu `v1.20.14-quota` and lachesis-base `v0.1.6-elemont` pins as earlier elemont releases. `make opera` fetches dependencies on first build.
 {% endhint %}
 {% endstep %}
 
@@ -135,11 +136,11 @@ The newly-built binary is at `vinuchain-upgrade/build/opera`. Move into that dir
 ```bash
 cd $HOME/vinuchain-upgrade/build
 ./opera version
-# Expected: Version: 2.0.19-elemont
+# Expected: Version: 2.0.20-elemont
 ```
 
 {% hint style="info" %}
-`opera version` prints `2.0.19-elemont` — this matches the git tag `v2.0.19-elemont`. See the note at the top of this page.
+`opera version` prints `2.0.20-elemont` — this matches the git tag `v2.0.20-elemont`. See the note at the top of this page.
 {% endhint %}
 {% endstep %}
 
@@ -268,7 +269,7 @@ For testing or development, you can run in the foreground:
 
 What to expect:
 
-**Startup banner.** Every v2.x build prints the VinuChain banner. This is the first visual confirmation that you are running v2.0.19-elemont and not the previous binary:
+**Startup banner.** Every v2.x build prints the VinuChain banner. This is the first visual confirmation that you are running v2.0.20-elemont and not the previous binary:
 
 ```text
  ██╗   ██╗██╗███╗   ██╗██╗   ██╗ ██████╗██╗  ██╗ █████╗ ██╗███╗   ██╗
@@ -280,36 +281,37 @@ What to expect:
 
                         v2.0  -  ELEMONT
 
-  Version: 2.0.19-elemont
+  Version: 2.0.20-elemont
 ```
 
-**Staging logs (testnet only, first-time PaybackV2Patch install).** On the first v2.0.19 boot of a node that has not yet sealed PaybackV2Patch, you will see this staging line:
+**Staging logs (testnet only, first-time SfcV2Patch6 install).** On the first v2.0.20 boot of a node that has not yet sealed SfcV2Patch6, you will see this staging line:
 
 ```text
-INFO Staged PaybackV2Patch upgrade from binary rules; will activate at next epoch seal
+INFO Staged SfcV2Patch6 upgrade from binary rules; will activate at next epoch seal
 ```
 
-This confirms the corrected PaybackV2 address rebind is pending. If you do not see it, you are likely running a pre-v2.0.19 binary (`opera version` check) or the flag has already sealed on this datadir. Mainnet nodes never show this line because PaybackV2Patch is testnet-only.
+This confirms the Cycle-162 SFC bytecode re-flash is pending. If you do not see it, you are likely running a pre-v2.0.20 binary (`opera version` check) or the flag has already sealed on this datadir. Mainnet nodes never show this line because SfcV2Patch6 is testnet-only. Nodes upgrading directly from v2.0.18 or earlier may also see the older `Staged PaybackV2Patch ...` line if that edge has not yet sealed on their datadir.
 
-**Seal-time activation (testnet only).** At the next epoch seal after the staging log appears, you will see the PaybackV2Patch rebind:
+**Seal-time activation (testnet only).** At the next epoch seal after the staging log appears, you will see the SFC Patch6 re-flash:
 
 ```text
-INFO Activating PaybackV2Patch: switching QuotaCacheAddress block=<N> from=0xdEA4687FDBA2528d1b30222e199c90b63AF8c850 to=0x89D1cBD9DEAaB4dFf6f800a336FBDd9A5c6829e4
+INFO Re-applying SFC V2 bytecode upgrade (patch 6) block=<N>
 ```
 
-After it fires, `vc_getRules` must report `Economy.QuotaCacheAddress = 0x89D1cBD9DEAaB4dFf6f800a336FBDd9A5c6829e4` and `Upgrades.PaybackV2Patch = true`.
+After it fires, `vc_getRules` must report `Upgrades.SfcV2Patch6 = true`, and `eth_call` to SFC `version()` must return `0x333035` (`"305"`). `Economy.QuotaCacheAddress` remains the corrected PaybackV2 address `0x89D1cBD9DEAaB4dFf6f800a336FBDd9A5c6829e4`.
 
 #### Verification checklist
 
 | Check                                                     | Expected                                                                             |
 | --------------------------------------------------------- | ------------------------------------------------------------------------------------ |
 | Startup banner                                            | `VINUCHAIN v2.0 - ELEMONT` ASCII art printed to stderr                               |
-| `opera version`                                           | `Version: 2.0.19-elemont`                                                            |
+| `opera version`                                           | `Version: 2.0.20-elemont`                                                            |
 | Block production                                          | Resumes within seconds of startup; block numbers advance                             |
 | Peer count                                                | Returns to prior steady-state within minutes                                         |
-| Staging logs (testnet, first v2.0.19 boot)                | 1× `Staged PaybackV2Patch …`                                                         |
+| Staging logs (testnet, first v2.0.20 boot)                | 1× `Staged SfcV2Patch6 …`                                                            |
 | Staging log — all other cases (mainnet or sealed testnet) | None                                                                                 |
-| Seal-time logs (testnet, first epoch seal after staging)  | 1× `Activating PaybackV2Patch: switching QuotaCacheAddress …`                        |
+| Seal-time logs (testnet, first epoch seal after staging)  | 1× `Re-applying SFC V2 bytecode upgrade (patch 6) …`                                 |
+| SFC version after seal                                    | `version()` returns `0x333035` (`"305"`)                                              |
 | PaybackV2 address after seal                              | `0x89D1cBD9DEAaB4dFf6f800a336FBDd9A5c6829e4`                                         |
 | Block hash vs peer                                        | Identical                                                                            |
 | `rpc_modules` returns                                     | Includes `"vc":"1.0"` (`vc_getPaybackBalance`)                                       |
@@ -362,7 +364,7 @@ That guide uses the correct `opera validator new` command for generating a valid
 
 ## Rollback
 
-Before PaybackV2Patch seals, rollback is a normal binary swap back to the previous testnet binary. After PaybackV2Patch seals, do not roll back below v2.0.19 without operator coordination: stored rules will point at the corrected V2 contract, and older binaries do not contain the `unstakeFor(address,uint256)` Payback classification path or the PaybackV2Patch rule bit.
+Before SfcV2Patch6 seals, rollback is a normal binary swap back to the previous testnet binary. After SfcV2Patch6 seals, do not roll back below v2.0.20 without operator coordination: the Cycle-162 bytecode persists at `0xFC00FACE...`, and older binaries do not contain the `SfcV2Patch6` rule bit, Patch6 startup guard, or Patch6 staging logic. The corrected PaybackV2 v2.0.19 rollback constraints still apply if PaybackV2Patch was also part of the node's upgrade path.
 
 1. Stop the node (clean shutdown).
 2. Replace `opera` with a prior elemont release binary (e.g., v2.0.10-elemont, v2.0.9-elemont, or earlier).
@@ -373,6 +375,7 @@ No datadir changes are needed for a pre-seal rollback. A post-seal rollback must
 {% hint style="info" %}
 **Per-version rollback deltas.** Each bullet describes the only functional difference between the two versions.
 
+- **v2.0.20 → v2.0.19 rollback:** Safe only before `SfcV2Patch6` seals. After the seal, Cycle-162 SFC bytecode persists in chain state, but v2.0.19 lacks the `SfcV2Patch6` rule bit, startup guard, and staging logic; downgrade only as coordinated incident response.
 - **v2.0.19 → v2.0.18 rollback:** Safe only before `PaybackV2Patch` seals. After the seal, stored rules point at the corrected V2 contract and v2.0.18 lacks the patch flag plus `unstakeFor(address,uint256)` Payback classification, so downgrade would make Payback accounting observability incomplete.
 - **v2.0.14 → v2.0.13 rollback:** v2.0.13 was a same-day scaffolding release with the deadbeef-placeholder Cycle-161 bytecode and both flags defaulted off; the v2.0.13 binary refuses to start with `SfcV2Patch5: true` set against the placeholder, so this rollback path is **not safe** if `SfcV2Patch5` has already sealed on testnet. Rollback further to v2.0.12 instead.
 - **v2.0.14 → v2.0.12 rollback:** Loses both `SfcV2Patch5` staging and the `ElemontPubkeyValidation` sealer guard. If `SfcV2Patch5` has already sealed on testnet, the Cycle-161 bytecode at `0xFC00FACE...` persists in chain state (see Testnet note below); the v2.0.12 binary continues to dispatch against it unchanged. If `ElemontPubkeyValidation` has already sealed, validator 16 stays ejected from the active set in stored epoch state regardless of the binary running. `eth_feeHistory` reverts to the hardcoded `gasUsedRatio: 0.99` (the rollback target restores that pre-v2.0.13 behaviour).
@@ -393,6 +396,7 @@ No datadir changes are needed for a pre-seal rollback. A post-seal rollback must
 | `SfcV2Patch3` | v2.0.10       | 2026-04-19 · block 1,424,440 | Cycle-159 SFC — inline reentrancy guard fix       |
 | `SfcV2Patch4` | v2.0.11       | 2026-04-23 · block 1,430,436 | Cycle-160 SFC — `_lockStake` / `relockStake` fix  |
 | `SfcV2Patch5` | v2.0.14       | 2026-05-03 · pending seal    | Cycle-161 SFC — canonical-pubkey validation       |
+| `SfcV2Patch6` | v2.0.20       | Pending v2.0.20 seal         | Cycle-162 SFC — orphan-delegation backfill        |
 
 This is expected behavior — the bytecode update is the intended outcome of each upgrade and cannot be undone by swapping binaries. Reverting installed bytecode would require shipping another epoch-sealed upgrade flag, which is a forward-moving change rather than a rollback.
 
@@ -406,7 +410,7 @@ Mainnet is currently unaffected — no `SfcV2*` flag has sealed on mainnet, so m
 ### Node won't start after upgrade
 
 1. Check logs: `journalctl -u opera -f` (systemd) or your terminal / Docker output.
-2. Verify the binary: `opera version` must print `2.0.19-elemont`.
+2. Verify the binary: `opera version` must print `2.0.20-elemont`.
 3. If the database is reported as corrupted, restore from the chaindata snapshot below.
 
 ### Node starts but doesn't produce events
@@ -420,7 +424,7 @@ Mainnet is currently unaffected — no `SfcV2*` flag has sealed on mainnet, so m
 Your locally-computed epoch state hash does not match the network's. The check rejects any event whose `PrevEpochHash` differs from the local store's `EpochState.Hash()`. There is no protocol-level recovery; chaindata must be replaced with a snapshot.
 
 {% hint style="danger" %}
-**Do not resync from genesis on testnet.** A fresh replay stages every not-yet-sealed upgrade flag and fires them at the first replay seal — at a different block from the live chain's historical activations — so the epoch state hash diverges immediately. Use the latest published post-seal snapshot below instead. Snapshots taken before the PaybackV2Patch seal are stale for fresh installs after this upgrade because they can re-fire `PaybackV2Patch` at the wrong replay seal.
+**Do not resync from genesis on testnet.** A fresh replay stages every not-yet-sealed upgrade flag and fires them at the first replay seal — at a different block from the live chain's historical activations — so the epoch state hash diverges immediately. Use the latest published post-seal snapshot below instead. Snapshots taken before the SfcV2Patch6 or PaybackV2Patch seals are stale for fresh installs after this upgrade because they can re-fire patch edges at the wrong replay seal.
 {% endhint %}
 
 **Recovery procedure (testnet) — chaindata snapshot:**
@@ -436,7 +440,7 @@ Your locally-computed epoch state hash does not match the network's. The check r
    find go-opera -mindepth 1 -not -name nodekey -not -name 'static-nodes.json' -not -name 'trusted-nodes.json' -exec rm -rf {} +
    ```
 
-4. Download the latest testnet snapshot and extract it in-place over the datadir (the tar is written with relative paths, so extract at the datadir root; the tar excludes `nodekey`, `keystore/`, `opera.ipc`, `static-nodes.json`, `trusted-nodes.json` so your identity files are preserved). Use the newest `-clean` snapshot whose `SNAPSHOT_INFO.txt` shows `PaybackV2Patch: active`:
+4. Download the latest testnet snapshot and extract it in-place over the datadir (the tar is written with relative paths, so extract at the datadir root; the tar excludes `nodekey`, `keystore/`, `opera.ipc`, `static-nodes.json`, `trusted-nodes.json` so your identity files are preserved). Use the newest `-clean` snapshot whose `SNAPSHOT_INFO.txt` shows both `SfcV2Patch6: active` and `PaybackV2Patch: active`:
 
    ```bash
    cd <datadir>
@@ -490,8 +494,8 @@ Verify activation:
 ```bash
 curl -s -X POST https://vinufoundation-rpc.com \
   -H 'content-type: application/json' \
-  -d '{"jsonrpc":"2.0","method":"vc_getRules","params":["latest"],"id":1}' | jq '{quotaCache: .result.Economy.QuotaCacheAddress, paybackV2: .result.Upgrades.PaybackV2, paybackV2Patch: .result.Upgrades.PaybackV2Patch}'
-# Expect: {"quotaCache":"0x89d1cbd9deaab4dff6f800a336fbdd9a5c6829e4","paybackV2":true,"paybackV2Patch":true}
+  -d '{"jsonrpc":"2.0","method":"vc_getRules","params":["latest"],"id":1}' | jq '{quotaCache: .result.Economy.QuotaCacheAddress, paybackV2: .result.Upgrades.PaybackV2, paybackV2Patch: .result.Upgrades.PaybackV2Patch, sfcV2Patch6: .result.Upgrades.SfcV2Patch6}'
+# Expect: {"quotaCache":"0x89d1cbd9deaab4dff6f800a336fbdd9a5c6829e4","paybackV2":true,"paybackV2Patch":true,"sfcV2Patch6":true}
 ```
 
 ### `vc_getPaybackBalance` returns `-32005`
@@ -507,9 +511,9 @@ The recommended rollout:
 1. VinuChain team announces the patch window. Date: TBD.
 2. Pre-stage the binary on every validator before the window (Upgrade Steps step 2).
 3. During the window, each operator performs the binary swap.
-4. Confirm in the coordination channel that block production resumed and `opera version` reports `2.0.19-elemont`.
+4. Confirm in the coordination channel that block production resumed and `opera version` reports `2.0.20-elemont`.
 
-**Missed the window?** No fork — upgrading later is a plain binary swap (rerun Upgrade Steps). On testnet, a node still on v2.0.18 or earlier can miss the corrected PaybackV2Patch staging path; if the node also fell behind tip, restore from a post-PaybackV2Patch chaindata snapshot in [Troubleshooting](#warn-incoming-event-rejected-err-wrong-event-epoch-hash) before restarting on v2.0.19.
+**Missed the window?** No fork — upgrading later is a plain binary swap (rerun Upgrade Steps). On testnet, a node still on v2.0.19 or earlier can miss the SfcV2Patch6 staging path; if the node also fell behind tip, restore from a post-SfcV2Patch6 chaindata snapshot in [Troubleshooting](#warn-incoming-event-rejected-err-wrong-event-epoch-hash) before restarting on v2.0.20.
 
 ***
 
@@ -523,7 +527,7 @@ If you encounter issues during the upgrade, reach out to the VinuChain team thro
 
 ### Network upgrades
 
-The codebase uses three internal upgrade names. They activate at the same epoch seal when SfcV2 first fires, so consumers usually treat them as one event.
+The codebase uses several internal upgrade names. The base SfcV2, Podgorica, and Elemont flags activate together when SfcV2 first fires; later testnet-only patch flags re-flash specific bytecode or operational state at their own epoch seals.
 
 | Name        | What it covers                                                                                              |
 | ----------- | ----------------------------------------------------------------------------------------------------------- |
@@ -532,13 +536,15 @@ The codebase uses three internal upgrade names. They activate at the same epoch 
 | **Elemont** | Cheater fee zeroing at `SealEpoch` plus the broader v2.0+ release-series naming used in version strings.   |
 | **PaybackV2** | Binary-level swap of `Economy.QuotaCacheAddress` from the original `TransparentUpgradeableProxy`-based Quota proxy to a freshly-deployed non-proxy `QuotaContractV2` whose owner is a recoverable EOA. Activates at the first epoch seal after the v2.0.18+ binary boots. Designed to escape the lost-ProxyAdmin-key state on the original proxy without losing access to existing depositor stake (V1 `unstake`/`withdrawStake` remain permissionless after activation; only the protocol-side backing balance is orphaned). |
 | **PaybackV2Patch** | One-shot testnet repair edge that rebinds an already-active PaybackV2 chain from the superseded V2 address to corrected `QuotaContractV2` `0x89D1cBD9DEAaB4dFf6f800a336FBDd9A5c6829e4`. |
+| **SfcV2Patch6** | One-shot testnet SFC bytecode re-flash to Cycle-162, adding orphan-delegation registration/backfill and an undelegate-to-zero fix for legacy orphaned stake pairs. |
 
-Testnet has all five plus the trailing `SfcV2Patch2` / `SfcV2Patch3` / `SfcV2Patch4` / `SfcV2Patch5` bytecode re-flashes and the `ElemontPubkeyValidation` sealer guard sealed. Mainnet has none active yet — when it activates `SfcV2`, the latest Cycle-161 bytecode is installed directly without separate `Patch*` events. Mainnet `PaybackV2` is staged for a separate release after testnet bake-in completes.
+Testnet has the earlier SFC re-flashes (`SfcV2Patch2` / `SfcV2Patch3` / `SfcV2Patch4` / `SfcV2Patch5`), the `ElemontPubkeyValidation` sealer guard, PaybackV2, PaybackV2Patch, and the new `SfcV2Patch6` edge. Mainnet has no `SfcV2*` patch flags active yet — when it activates `SfcV2`, the latest Cycle-162 bytecode is installed directly without separate `Patch*` events. Mainnet `PaybackV2` is staged for a separate release after testnet bake-in completes.
 
 ### Release overview
 
 | Version             | Type                                          | What changed                                                                                                        |
 | ------------------- | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| **v2.0.20-elemont** | **Testnet SfcV2Patch6 orphan-delegation backfill** | Adds the `SfcV2Patch6` testnet epoch edge and Cycle-162 SFC bytecode. New SFC version `3.0.5` adds `registerStake(uint256)` for delegator self-registration, owner-only `backfillStakes(address[],uint256[])` for bounded batch remediation, and an orphan-tolerant full undelegate-to-zero path for legacy pairs where `getStake > 0` but `stakePosition == 0`. Fresh mainnet SfcV2 activation now installs Cycle-162 directly. |
 | **v2.0.19-elemont** | **Testnet PaybackV2Patch corrected contract rebind** | Deployed corrected `QuotaContractV2` `0x89D1cBD9DEAaB4dFf6f800a336FBDd9A5c6829e4` on 2026-05-16 (tx `0xd99e4111a87dee6b9a16802f9696f5e6663d953ff7de54e43572ab75f8241ce4`, owner = recoverable EOA `0xf9c82B1117e8BeA97843042521B8FBC93044f347`). Adds `Upgrades.PaybackV2Patch = true` on testnet so the next epoch seal rebinds `Economy.QuotaCacheAddress` from the superseded V2 address to the corrected staker-owned withdrawal contract. |
 | **v2.0.18-elemont** | **Testnet PaybackV2 activation (binary-level Quota proxy replacement)** | Tagged and deployed to testnet RPC + V1–V4 on 2026-05-15. Flips `Upgrades.PaybackV2 = true` on `VinuChainTestNetRules`. At the first epoch seal after binary boot, the seal-time activation branch in `gossip/block_processor.go::sealEpochIfNeeded` swaps `Economy.QuotaCacheAddress` from the V1 proxy `0x824B93dE7221cf8a35FBd29d5202f6eFa3A29C5D` (lost-ProxyAdmin-key) to `QuotaContractV2` at `0xdEA4687FDBA2528d1b30222e199c90b63AF8c850` (deploy tx `0x3ed6fc5e1f0b6c14aaf74f9cfbc611ee5eae7973f4aa10f608d4605020bb505a`, owner = recoverable EOA `0xf9c82B1117e8BeA97843042521B8FBC93044f347`). Post-release testing on 2026-05-16 found that this deployed V2 address assigns third-party `stakeFor(receiver)` withdrawal ownership to the receiver; v2.0.19 supersedes it. |
 | v2.0.17-elemont | Payback/Quota receiver staking          | Deployed to testnet RPC + validators on 2026-05-10. The node PaybackCache recognizes `stakeFor(address)` as Payback quota credit for the receiver, preserving same-epoch duration accounting for the refunding address. The V1 receiver-implementation rollout was **superseded** by v2.0.18-elemont's PaybackV2 binary-level Quota proxy replacement and v2.0.19-elemont's corrected V2 rebind. |
@@ -556,10 +562,10 @@ Testnet has all five plus the trailing `SfcV2Patch2` / `SfcV2Patch3` / `SfcV2Pat
 | v2.0.3-elemont      | RPC defensive caps              | go-vinu fork `v1.20.14-quota`: batch-size cap (100), in-flight cap (50, configurable), state-override caps.          |
 | v2.0.2-elemont      | Consensus rules                 | `feeRefund` receipt field, 30% base fee burn, cheater fee zeroing, payback fee refunds.                              |
 
-Mainnet has not yet activated any `SfcV2*` flag — when it does, the latest bytecode (Cycle-161) installs directly; the testnet patch flags do not fire on mainnet.
+Mainnet has not yet activated any `SfcV2*` flag — when it does, the latest bytecode (Cycle-162) installs directly; the testnet patch flags do not fire on mainnet.
 
 {% hint style="info" %}
-**Activation timing.** Consensus flags (`SfcV2Patch2/3/4/5`, `ElemontPubkeyValidation`, and v2.0.2 rules) activate at the **next epoch seal** after the binary is first installed (up to `MaxEpochDuration = 4h`). All other changes — RPC caps, RPC additions, peer-quota resize, drift-cap removal, `eth_feeHistory.gasUsedRatio` fix, lachesis-base internals — are **immediate on restart**, no epoch-seal wait.
+**Activation timing.** Consensus flags (`SfcV2Patch2/3/4/5/6`, `ElemontPubkeyValidation`, and v2.0.2 rules) activate at the **next epoch seal** after the binary is first installed (up to `MaxEpochDuration = 4h`). All other changes — RPC caps, RPC additions, peer-quota resize, drift-cap removal, `eth_feeHistory.gasUsedRatio` fix, lachesis-base internals — are **immediate on restart**, no epoch-seal wait.
 {% endhint %}
 
 ### `feeRefund` receipt field
@@ -580,7 +586,7 @@ The same field also appears on the transaction object returned by `eth_getTransa
 
 ### SFC V2 contract upgrade
 
-When `SfcV2` activates, the on-chain SFC contract at `0xfc00face00000000000000000000000000000000` is rewritten with V2 bytecode. Function selectors and ABI are unchanged — dApps and on-chain contracts calling SFC continue to work without modification. All existing delegations, stakes, and validator registrations remain valid.
+When `SfcV2` activates, the on-chain SFC contract at `0xfc00face00000000000000000000000000000000` is rewritten with V2 bytecode. Existing function selectors remain stable — dApps and on-chain contracts calling pre-existing SFC methods continue to work without modification. Cycle-162 only extends the ABI with new orphan-delegation recovery helpers. All existing delegations, stakes, and validator registrations remain valid.
 
 Subsequent testnet patches re-flash the same address with newer bytecode at additional epoch seals:
 
@@ -589,8 +595,10 @@ Subsequent testnet patches re-flash the same address with newer bytecode at addi
 | `SfcV2Patch2` | v2.0.5     | Mid-v2.0.5 boot               | Cycle-158 (45,240 bytes)                       |
 | `SfcV2Patch3` | v2.0.10    | 2026-04-19, block 1,424,440   | Cycle-159 — inline reentrancy guard fix         |
 | `SfcV2Patch4` | v2.0.11    | 2026-04-23, block 1,430,436   | Cycle-160 — `_lockStake` / `relockStake` fix    |
+| `SfcV2Patch5` | v2.0.14    | 2026-05-03, pending seal      | Cycle-161 — canonical-pubkey validation         |
+| `SfcV2Patch6` | v2.0.20    | Pending v2.0.20 seal          | Cycle-162 — orphan-delegation backfill          |
 
-ABI is byte-identical across Cycle-158/159/160 (123 functions + 39 events; no selector changes). A binary startup guard (`sfc.EnforcePatch4StartupCheck`) refuses to start a v2.0.11 build with an invalid Patch4 asset.
+Cycle-162 extends the ABI with `RegisteredStake`, `registerStake(uint256)`, and `backfillStakes(address[],uint256[])`; earlier Cycle-158/159/160/161 selectors remain stable. Binary startup guards (`sfc.EnforcePatch4StartupCheck`, `sfc.EnforcePatch5StartupCheck`, and `sfc.EnforcePatch6StartupCheck`) refuse to start a build with invalid embedded SFC patch bytecode.
 
 **Blockscout verification.** Bytecode swaps via the evmwriter precompile bypass Blockscout's normal contract-discovery path. After each seal, re-verify with: `DELETE` the stale `smart_contracts` row, `UPDATE addresses.contract_code` with fresh `eth_getCode`, then `POST /api/v2/smart-contracts/.../verification/via/flattened-code`. Solc settings: `0.5.17+commit.d19bba13`, `--optimize --optimize-runs=10000 --evm-version=istanbul`. Source: [`vinuchain-lists/contracts/vinuchain/SFC.sol`](https://github.com/VinuChain/vinuchain-lists/blob/main/contracts/vinuchain/SFC.sol).
 
@@ -681,4 +689,4 @@ Operator-facing controls for managing chaindata size on long-lived nodes.
 
 ***
 
-_Last updated: 2026-05-16 · latest deployed VinuChain tag `v2.0.19-elemont` · corrected PaybackV2 address `0x89D1cBD9DEAaB4dFf6f800a336FBDd9A5c6829e4` · go-vinu `v1.20.14-quota` · lachesis-base `v0.1.6-elemont`_
+_Last updated: 2026-05-16 · latest guide target `v2.0.20-elemont` · corrected PaybackV2 address `0x89D1cBD9DEAaB4dFf6f800a336FBDd9A5c6829e4` · SFC Cycle-162 `version() = 3.0.5` · go-vinu `v1.20.14-quota` · lachesis-base `v0.1.6-elemont`_
