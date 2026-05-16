@@ -1,51 +1,57 @@
 # Chain Upgrade Guide (v2-elemont)
 
 {% hint style="info" %}
-**Latest node release:** v2.0.18-elemont (tagged and deployed to the testnet trace RPC + 4 validators on 2026-05-15). This release activates `Upgrades.PaybackV2 = true` on `VinuChainTestNetRules`. At the first epoch seal post-boot, the node swaps `Economy.QuotaCacheAddress` from the original Quota proxy (`0x824B93dE7221cf8a35FBd29d5202f6eFa3A29C5D`, whose `ProxyAdmin` owner key is unrecoverable) to a freshly-deployed non-proxy `QuotaContractV2` at `0xdEA4687FDBA2528d1b30222e199c90b63AF8c850` whose owner is the recoverable EOA `0xf9c82B1117e8BeA97843042521B8FBC93044f347`. V2's ABI is a superset of V1 (`feeRefundBlockCount`, `minStake`, `quotaFactor`, `holdTime`, `getStake`, `totalStake`, `stake`, `unstake`, `withdrawStake`) plus the new `stakeFor(address)` receiver method. See the "PaybackV2 Migration" section below for the depositor-facing transition.
+**Latest PaybackV2 state:** testnet resolves Payback against corrected non-proxy `QuotaContractV2` `0x89D1cBD9DEAaB4dFf6f800a336FBDd9A5c6829e4` (deploy tx `0xd99e4111a87dee6b9a16802f9696f5e6663d953ff7de54e43572ab75f8241ce4`). `Upgrades.PaybackV2 = true` and `Upgrades.PaybackV2Patch = true` on `VinuChainTestNetRules`; after the PaybackV2Patch epoch seal, `Economy.QuotaCacheAddress` points at this corrected V2 contract instead of the original Quota proxy (`0x824B93dE7221cf8a35FBd29d5202f6eFa3A29C5D`, whose `ProxyAdmin` owner key is unrecoverable). The corrected V2 flow lets one funding wallet call `stakeFor(receiver)` so the receiver earns Payback quota/refunds while the funding wallet keeps withdrawal ownership.
 {% endhint %}
 
-## PaybackV2 Migration (testnet, 2026-05-15)
+## PaybackV2 Migration (testnet, 2026-05-16)
 
 The testnet Quota proxy at `0x824B93dE7221cf8a35FBd29d5202f6eFa3A29C5D` is a `TransparentUpgradeableProxy` whose `ProxyAdmin` owner (`0x07B4eF04b62E69aE14A715cdcae692fa7033b9a5`) is **unrecoverable in-house**.
 
-`v2.0.18-elemont` resolves this by **replacing the proxy at the binary level**. A fresh non-proxy `QuotaContractV2` is deployed by a recoverable EOA, baked into `opera/payback_v2_address.go`, and the node hardcodes `Upgrades.PaybackV2 = true` on `VinuChainTestNetRules`. At the first epoch seal after the binary boots, `gossip/block_processor.go::sealEpochIfNeeded` swaps `Economy.QuotaCacheAddress` from the V1 proxy address to the V2 contract address and calls `evmProcessor.SetRules(rules)` so every subsequent block in the same process resolves the payback path against V2.
+PaybackV2 resolves the lost proxy-admin problem by **replacing the proxy at the binary level**. A fresh non-proxy `QuotaContractV2` is deployed by a recoverable EOA and baked into `opera/payback_v2_address.go`; the node hardcodes `Upgrades.PaybackV2 = true` on `VinuChainTestNetRules`. At the first epoch seal after the binary boots, `gossip/block_processor.go::sealEpochIfNeeded` swaps `Economy.QuotaCacheAddress` from the V1 proxy address to the V2 contract address and calls `evmProcessor.SetRules(rules)` so every subsequent block in that process resolves the payback path against V2.
+
+The first v2.0.18 V2 deployment (`0xdEA4687FDBA2528d1b30222e199c90b63AF8c850`) was superseded after post-release testing found receiver-owned withdrawal semantics for third-party `stakeFor(receiver)` deposits. The 2026-05-16 PaybackV2Patch release adds a second one-shot epoch edge because testnet had already crossed the original `PaybackV2` edge. That patch rebinds `Economy.QuotaCacheAddress` to the corrected V2 contract `0x89D1cBD9DEAaB4dFf6f800a336FBDd9A5c6829e4`, which keeps withdrawal ownership with the funding wallet.
 
 ### What this means for testnet stakers
 
-After the v2.0.18 activation block:
+After PaybackV2 activation:
 
 * **Your own V1 stake remains permissionlessly recoverable.** `QuotaContract.unstake()` on the V1 proxy is open to any depositor regardless of who deployed the contract. After `holdTime` (7 days) you can `withdrawStake(wrID)` and pull your testnet VC back to your wallet. The V1 proxy stays on-chain and reachable; only the node's payback pipeline stops consulting it.
-* **To keep earning fee refunds**, after withdrawing from V1 you must `stake()` on V2 at `0xdEA4687FDBA2528d1b30222e199c90b63AF8c850`. V2's `stake()` and `unstake()` ABIs match V1 exactly. The new `stakeFor(address)` method also lets a funding wallet supply VC while a separate receiver address owns the resulting Quota stake.
-* **The refunding wallet must meet V2 `minStake()`.** In the v2.0.18 testnet rollout, the deployed `minStake()` value is `1000 VC`. The Quota owner can update this contract parameter with `setMinStake(uint256)`, so use `minStake()` as the current source of truth. For `stakeFor(receiver)`, this threshold applies to the receiver wallet's total V2 Quota stake, not to the funding wallet. A below-minimum receiver can hold V2 Quota stake, but its transactions will still show `feeRefund: 0x0` until its total V2 Quota stake reaches the contract minimum.
+* **To keep earning fee refunds**, after withdrawing from V1 you must `stake()` on the active V2 contract. V2's `stake()` and `unstake()` ABIs match V1 exactly. The corrected `stakeFor(address)` method lets a funding wallet supply VC while a separate receiver address receives Payback quota credit; the funding wallet keeps withdrawal ownership and must use `unstakeFor(receiver, amount)` for third-party-funded stake.
+* **The refunding wallet must meet V2 `minStake()`.** The Quota owner can update this contract parameter with `setMinStake(uint256)`, so use `minStake()` as the current source of truth. For `stakeFor(receiver)`, this threshold applies to the receiver wallet's total V2 Quota stake, not to the funding wallet. A below-minimum receiver can hold V2 Quota stake, but its transactions will still show `feeRefund: 0x0` until its total V2 Quota stake reaches the contract minimum.
 
 ### What this means for fresh-install operators
 
-* The new V2 address `0xdEA4687FDBA2528d1b30222e199c90b63AF8c850` is hardcoded in the v2.0.18 binary and sealed into chaindata at the activation block. Running a fresh-install node from genesis with the v2.0.18 binary will reach the same final `Economy.QuotaCacheAddress` because the seal-time activation fires at the first PaybackV2 transition the chain encounters.
-* A post-activation chaindata snapshot is published at https://vinu-blockchain-genesis.s3.amazonaws.com/chaindata-snapshots/testnet-chaindata-v2.0.18-elemont-20260514T163428Z-clean.tar.gz (sha256 `bcaf6fbe2fe850e53d2a70480ad4e60f66279bf55919891016f38636dd465100`, 1.2 GiB; tip block 1,457,730 / epoch 5790, all 13 flags sealed including `PaybackV2: active`). Fresh-install operators are recommended to restore from that snapshot rather than replaying from genesis.
+* Fresh-install operators should restore from the latest post-PaybackV2Patch chaindata snapshot rather than replaying from genesis. A fresh replay from stale genesis can fire staged upgrade flags at the wrong historical block and diverge by epoch state hash.
+* Once the PaybackV2Patch seal has occurred, snapshots taken before that seal are historical only. Use the latest published `-clean` snapshot whose `SNAPSHOT_INFO.txt` shows both `PaybackV2: active` and `PaybackV2Patch: active`.
 
 ### Verification after activation
 
 ```bash
-# Expect QuotaCacheAddress == 0xdEA4687FDBA2528d1b30222e199c90b63AF8c850 and PaybackV2: true
-curl -s -X POST https://vinufoundation-rpc.com \
+QUOTA_V2="$(curl -s -X POST https://vinufoundation-rpc.com \
   -H 'content-type: application/json' \
-  -d '{"jsonrpc":"2.0","method":"vc_getRules","params":["latest"],"id":1}' | jq '.result.Economy.QuotaCacheAddress, .result.Upgrades.PaybackV2'
-
-# Smoke-test V2 view methods
-curl -s -X POST https://vinufoundation-rpc.com \
-  -H 'content-type: application/json' \
-  -d '{"jsonrpc":"2.0","method":"eth_call","params":[{"to":"0xdEA4687FDBA2528d1b30222e199c90b63AF8c850","data":"0x0fe34e68"},"latest"],"id":1}'
-# → 0x...0064 (feeRefundBlockCount = 100)
+  -d '{"jsonrpc":"2.0","method":"vc_getRules","params":["latest"],"id":1}' | jq -r '.result.Economy.QuotaCacheAddress')"
 
 curl -s -X POST https://vinufoundation-rpc.com \
   -H 'content-type: application/json' \
-  -d '{"jsonrpc":"2.0","method":"eth_call","params":[{"to":"0xdEA4687FDBA2528d1b30222e199c90b63AF8c850","data":"0x70c5e53f"},"latest"],"id":1}'
-# → 0x...3635c9adc5dea00000 (current minStake = 1000 VC in the v2.0.18 rollout)
+  -d '{"jsonrpc":"2.0","method":"vc_getRules","params":["latest"],"id":1}' | jq '{quotaCache: .result.Economy.QuotaCacheAddress, paybackV2: .result.Upgrades.PaybackV2, paybackV2Patch: .result.Upgrades.PaybackV2Patch}'
+# Expect quotaCache: 0x89D1cBD9DEAaB4dFf6f800a336FBDd9A5c6829e4, paybackV2: true, paybackV2Patch: true
+
+# Smoke-test the active V2 view methods.
+curl -s -X POST https://vinufoundation-rpc.com \
+  -H 'content-type: application/json' \
+  -d "{\"jsonrpc\":\"2.0\",\"method\":\"eth_call\",\"params\":[{\"to\":\"$QUOTA_V2\",\"data\":\"0x0fe34e68\"},\"latest\"],\"id\":1}"
+# feeRefundBlockCount()
 
 curl -s -X POST https://vinufoundation-rpc.com \
   -H 'content-type: application/json' \
-  -d '{"jsonrpc":"2.0","method":"eth_call","params":[{"to":"0xdEA4687FDBA2528d1b30222e199c90b63AF8c850","data":"0x8da5cb5b"},"latest"],"id":1}'
-# → 0x000000000000000000000000f9c82b1117e8bea97843042521b8fbc93044f347 (owner)
+  -d "{\"jsonrpc\":\"2.0\",\"method\":\"eth_call\",\"params\":[{\"to\":\"$QUOTA_V2\",\"data\":\"0x70c5e53f\"},\"latest\"],\"id\":1}"
+# minStake()
+
+curl -s -X POST https://vinufoundation-rpc.com \
+  -H 'content-type: application/json' \
+  -d "{\"jsonrpc\":\"2.0\",\"method\":\"eth_call\",\"params\":[{\"to\":\"$QUOTA_V2\",\"data\":\"0x8da5cb5b\"},\"latest\"],\"id\":1}"
+# owner()
 ```
 
 ---
@@ -83,7 +89,7 @@ Ensure these remain open in your firewall:
 ## Upgrade Steps
 
 {% hint style="info" %}
-**Fresh install?** This guide covers binary swaps on existing validator nodes. If you're bootstrapping a brand-new testnet node, replay from genesis is **not supported under v2.0.14** — follow the snapshot-restore procedure in [Troubleshooting → Wrong event epoch hash](#warn-incoming-event-rejected-err-wrong-event-epoch-hash) instead. Mainnet operators bootstrapping fresh can replay from the standard mainnet genesis as no `SfcV2*` flag has activated there yet.
+**Fresh install?** This guide covers binary swaps on existing validator nodes. If you're bootstrapping a brand-new testnet node, replay from genesis is **not supported under v2.0.19** — follow the snapshot-restore procedure in [Troubleshooting → Wrong event epoch hash](#warn-incoming-event-rejected-err-wrong-event-epoch-hash) instead. Mainnet operators bootstrapping fresh can replay from the standard mainnet genesis as no `SfcV2*` flag has activated there yet.
 {% endhint %}
 
 {% stepper %}
@@ -147,7 +153,7 @@ The build directory is independent of your node's `--datadir`. The build process
 ```bash
 git clone https://github.com/VinuChain/VinuChain.git $HOME/vinuchain-upgrade
 cd $HOME/vinuchain-upgrade
-git checkout v2.0.14-elemont
+git checkout v2.0.19-elemont
 make opera
 # Binary is at $HOME/vinuchain-upgrade/build/opera
 ```
@@ -157,7 +163,7 @@ make opera
 Substitute `/opt/vinuchain-upgrade` (or any other path) if `$HOME` is not the right partition for your setup — every later command in this guide that references `$HOME/vinuchain-upgrade` should be adjusted to match.
 
 {% hint style="info" %}
-**`go.mod` pins unchanged across the elemont series.** `v2.0.14-elemont` uses the same go-vinu `v1.20.14-quota` and lachesis-base `v0.1.6-elemont` pins as earlier elemont releases. `make opera` fetches dependencies on first build.
+**`go.mod` pins unchanged across the elemont series.** `v2.0.19-elemont` uses the same go-vinu `v1.20.14-quota` and lachesis-base `v0.1.6-elemont` pins as earlier elemont releases. `make opera` fetches dependencies on first build.
 {% endhint %}
 {% endstep %}
 
@@ -170,11 +176,11 @@ The newly-built binary is at `vinuchain-upgrade/build/opera`. Move into that dir
 ```bash
 cd $HOME/vinuchain-upgrade/build
 ./opera version
-# Expected: Version: 2.0.14-elemont
+# Expected: Version: 2.0.19-elemont
 ```
 
 {% hint style="info" %}
-`opera version` prints `2.0.14-elemont` — this matches the git tag `v2.0.14-elemont`. See the note at the top of this page.
+`opera version` prints `2.0.19-elemont` — this matches the git tag `v2.0.19-elemont`. See the note at the top of this page.
 {% endhint %}
 {% endstep %}
 
@@ -303,7 +309,7 @@ For testing or development, you can run in the foreground:
 
 What to expect:
 
-**Startup banner.** Every v2.x build prints the VinuChain banner. This is the first visual confirmation that you are running v2.0.14-elemont and not the previous binary:
+**Startup banner.** Every v2.x build prints the VinuChain banner. This is the first visual confirmation that you are running v2.0.19-elemont and not the previous binary:
 
 ```text
  ██╗   ██╗██╗███╗   ██╗██╗   ██╗ ██████╗██╗  ██╗ █████╗ ██╗███╗   ██╗
@@ -315,41 +321,37 @@ What to expect:
 
                         v2.0  -  ELEMONT
 
-  Version: 2.0.14-elemont
+  Version: 2.0.19-elemont
 ```
 
-**Staging logs (testnet only, first-time `SfcV2Patch5` + `ElemontPubkeyValidation` install).** On the first v2.0.14 boot of a node that hasn't yet sealed both flags, you will see TWO staging lines (one per flag):
+**Staging logs (testnet only, first-time PaybackV2Patch install).** On the first v2.0.19 boot of a node that has not yet sealed PaybackV2Patch, you will see this staging line:
 
 ```text
-INFO Staged SfcV2Patch5 upgrade from binary rules; will activate at next epoch seal
-INFO Staged ElemontPubkeyValidation upgrade from binary rules; will activate at next epoch seal
+INFO Staged PaybackV2Patch upgrade from binary rules; will activate at next epoch seal
 ```
 
-These confirm both flags are pending. If you do not see either line, you are likely running a pre-v2.0.14 binary (`opera version` check) or both flags have already sealed on this datadir from a prior v2.0.14 boot. Mainnet nodes never show these lines — both flags are testnet-only.
+This confirms the corrected PaybackV2 address rebind is pending. If you do not see it, you are likely running a pre-v2.0.19 binary (`opera version` check) or the flag has already sealed on this datadir. Mainnet nodes never show this line because PaybackV2Patch is testnet-only.
 
-**Seal-time activation (testnet only).** At the next epoch seal after the staging logs appear, you will see the bytecode re-flash and the validator-set ejection:
+**Seal-time activation (testnet only).** At the next epoch seal after the staging log appears, you will see the PaybackV2Patch rebind:
 
 ```text
-INFO Re-applying SFC V2 bytecode upgrade (patch 5)              block=<N>
-WARN Skipping validator with malformed pubkey at epoch seal     id=16  err="malformed pubkey"
+INFO Activating PaybackV2Patch: switching QuotaCacheAddress block=<N> from=0xdEA4687FDBA2528d1b30222e199c90b63AF8c850 to=0x89D1cBD9DEAaB4dFf6f800a336FBDd9A5c6829e4
 ```
 
-The first line is the one-time bytecode installation. After it fires, the SFC contract at `0xFC00FACE00000000000000000000000000000000` contains the Cycle-161 bytecode and can be verified on the testnet explorer using the current SFC source at [`vinuchain-lists/contracts/vinuchain/SFC.sol`](https://github.com/VinuChain/vinuchain-lists/blob/main/contracts/vinuchain/SFC.sol) (ABI alongside at `SFC_abi.json`).
-
-The second line is the **expected** ejection of testnet validator 16 (admitted at epoch 5682 with a malformed 65-byte 0x04-prefixed pubkey lacking the canonical `0xc0` Secp256k1 type-byte). The validator-set hash will change at this block; do **not** investigate it as a divergence — the line is the on-the-wire signal that `ElemontPubkeyValidation` activated correctly.
+After it fires, `vc_getRules` must report `Economy.QuotaCacheAddress = 0x89D1cBD9DEAaB4dFf6f800a336FBDd9A5c6829e4` and `Upgrades.PaybackV2Patch = true`.
 
 #### Verification checklist
 
 | Check                                                     | Expected                                                                             |
 | --------------------------------------------------------- | ------------------------------------------------------------------------------------ |
 | Startup banner                                            | `VINUCHAIN v2.0 - ELEMONT` ASCII art printed to stderr                               |
-| `opera version`                                           | `Version: 2.0.14-elemont`                                                            |
+| `opera version`                                           | `Version: 2.0.19-elemont`                                                            |
 | Block production                                          | Resumes within seconds of startup; block numbers advance                             |
 | Peer count                                                | Returns to prior steady-state within minutes                                         |
-| Staging logs (testnet, first v2.0.14 boot)                | 1× `Staged SfcV2Patch5 …` AND 1× `Staged ElemontPubkeyValidation …`                  |
+| Staging logs (testnet, first v2.0.19 boot)                | 1× `Staged PaybackV2Patch …`                                                         |
 | Staging log — all other cases (mainnet or sealed testnet) | None                                                                                 |
-| Seal-time logs (testnet, first epoch seal after staging)  | 1× `Re-applying SFC V2 bytecode upgrade (patch 5) block=<N>` AND 1× `Skipping validator with malformed pubkey at epoch seal id=16` |
-| SFC verification on testnet explorer (after seal)         | `vinuchain-lists/contracts/vinuchain/SFC.sol` with solc 0.5.17 verifies successfully |
+| Seal-time logs (testnet, first epoch seal after staging)  | 1× `Activating PaybackV2Patch: switching QuotaCacheAddress …`                        |
+| PaybackV2 address after seal                              | `0x89D1cBD9DEAaB4dFf6f800a336FBDd9A5c6829e4`                                         |
 | Block hash vs peer                                        | Identical                                                                            |
 | `rpc_modules` returns                                     | Includes `"vc":"1.0"` (`vc_getPaybackBalance`)                                       |
 | `vc_getPaybackBalance` call                               | Returns hex-encoded wei (or `0x0` for ineligible addresses / Podgorica inactive)     |
@@ -401,17 +403,18 @@ That guide uses the correct `opera validator new` command for generating a valid
 
 ## Rollback
 
-Because v2.0.14-elemont is a patch release and not a hard fork, rollback is straightforward:
+Before PaybackV2Patch seals, rollback is a normal binary swap back to the previous testnet binary. After PaybackV2Patch seals, do not roll back below v2.0.19 without operator coordination: stored rules will point at the corrected V2 contract, and older binaries do not contain the `unstakeFor(address,uint256)` Payback classification path or the PaybackV2Patch rule bit.
 
 1. Stop the node (clean shutdown).
 2. Replace `opera` with a prior elemont release binary (e.g., v2.0.10-elemont, v2.0.9-elemont, or earlier).
 3. Start the node.
 
-No datadir changes are needed. Consensus state, receipts, and block hashes are identical across every adjacent pair of elemont releases listed below.
+No datadir changes are needed for a pre-seal rollback. A post-seal rollback must be treated as a coordinated incident response, not a routine downgrade.
 
 {% hint style="info" %}
 **Per-version rollback deltas.** Each bullet describes the only functional difference between the two versions.
 
+- **v2.0.19 → v2.0.18 rollback:** Safe only before `PaybackV2Patch` seals. After the seal, stored rules point at the corrected V2 contract and v2.0.18 lacks the patch flag plus `unstakeFor(address,uint256)` Payback classification, so downgrade would make Payback accounting observability incomplete.
 - **v2.0.14 → v2.0.13 rollback:** v2.0.13 was a same-day scaffolding release with the deadbeef-placeholder Cycle-161 bytecode and both flags defaulted off; the v2.0.13 binary refuses to start with `SfcV2Patch5: true` set against the placeholder, so this rollback path is **not safe** if `SfcV2Patch5` has already sealed on testnet. Rollback further to v2.0.12 instead.
 - **v2.0.14 → v2.0.12 rollback:** Loses both `SfcV2Patch5` staging and the `ElemontPubkeyValidation` sealer guard. If `SfcV2Patch5` has already sealed on testnet, the Cycle-161 bytecode at `0xFC00FACE...` persists in chain state (see Testnet note below); the v2.0.12 binary continues to dispatch against it unchanged. If `ElemontPubkeyValidation` has already sealed, validator 16 stays ejected from the active set in stored epoch state regardless of the binary running. `eth_feeHistory` reverts to the hardcoded `gasUsedRatio: 0.99` (the rollback target restores that pre-v2.0.13 behaviour).
 - **v2.0.11 → v2.0.10 rollback:** Loses the `SfcV2Patch4` staging logic in binary rules and the `sfc.EnforcePatch4StartupCheck` build guard. If `SfcV2Patch4` has already sealed on testnet, the Cycle-160 bytecode at `0xFC00FACE...` persists in chain state (see Testnet note below); the v2.0.10 binary continues to dispatch against it unchanged. The relock invariant remains `endTime >= ld.endTime` because that logic lives in the deployed bytecode, not the binary.
@@ -444,7 +447,7 @@ Mainnet is currently unaffected — no `SfcV2*` flag has sealed on mainnet, so m
 ### Node won't start after upgrade
 
 1. Check logs: `journalctl -u opera -f` (systemd) or your terminal / Docker output.
-2. Verify the binary: `opera version` must print `2.0.14-elemont`.
+2. Verify the binary: `opera version` must print `2.0.19-elemont`.
 3. If the database is reported as corrupted, restore from the chaindata snapshot below.
 
 ### Node starts but doesn't produce events
@@ -458,7 +461,7 @@ Mainnet is currently unaffected — no `SfcV2*` flag has sealed on mainnet, so m
 Your locally-computed epoch state hash does not match the network's. The check rejects any event whose `PrevEpochHash` differs from the local store's `EpochState.Hash()`. There is no protocol-level recovery; chaindata must be replaced with a snapshot.
 
 {% hint style="danger" %}
-**Do not resync from genesis on testnet.** A fresh replay stages every not-yet-sealed upgrade flag (including `PaybackV2`) and fires them at the first replay seal — at a different block from the live chain's historical activations — so the epoch state hash diverges immediately. Use the latest published post-seal snapshot below instead. The prior v2.0.10, v2.0.11, and v2.0.15 snapshots are stale under v2.0.18 rules and **must not be used**: they pre-date `PaybackV2` activation and will re-fire that flag at first restore seal, reproducing the same `wrong event epoch hash` divergence. The current canonical snapshot is `testnet-chaindata-v2.0.18-elemont-20260514T163428Z-clean.tar.gz` (post-PaybackV2).
+**Do not resync from genesis on testnet.** A fresh replay stages every not-yet-sealed upgrade flag and fires them at the first replay seal — at a different block from the live chain's historical activations — so the epoch state hash diverges immediately. Use the latest published post-seal snapshot below instead. Snapshots taken before the PaybackV2Patch seal are stale for fresh installs after this upgrade because they can re-fire `PaybackV2Patch` at the wrong replay seal.
 {% endhint %}
 
 **Recovery procedure (testnet) — chaindata snapshot:**
@@ -474,15 +477,16 @@ Your locally-computed epoch state hash does not match the network's. The check r
    find go-opera -mindepth 1 -not -name nodekey -not -name 'static-nodes.json' -not -name 'trusted-nodes.json' -exec rm -rf {} +
    ```
 
-4. Download the latest testnet snapshot and extract it in-place over the datadir (the tar is written with relative paths, so extract at the datadir root; the tar excludes `nodekey`, `keystore/`, `opera.ipc`, `static-nodes.json`, `trusted-nodes.json` so your identity files are preserved):
+4. Download the latest testnet snapshot and extract it in-place over the datadir (the tar is written with relative paths, so extract at the datadir root; the tar excludes `nodekey`, `keystore/`, `opera.ipc`, `static-nodes.json`, `trusted-nodes.json` so your identity files are preserved). Use the newest `-clean` snapshot whose `SNAPSHOT_INFO.txt` shows `PaybackV2Patch: active`:
 
    ```bash
    cd <datadir>
-   curl -LO https://vinu-blockchain-genesis.s3.amazonaws.com/chaindata-snapshots/testnet-chaindata-v2.0.18-elemont-20260514T163428Z-clean.tar.gz
+   SNAPSHOT_URL="https://vinu-blockchain-genesis.s3.amazonaws.com/chaindata-snapshots/<latest-post-paybackv2patch-clean-snapshot>.tar.gz"
+   curl -LO "$SNAPSHOT_URL"
    # verify integrity
-   curl -L https://vinu-blockchain-genesis.s3.amazonaws.com/chaindata-snapshots/testnet-chaindata-v2.0.18-elemont-20260514T163428Z-clean.tar.gz.sha256 | sha256sum -c -
-   tar -xzf testnet-chaindata-v2.0.18-elemont-20260514T163428Z-clean.tar.gz
-   rm testnet-chaindata-v2.0.18-elemont-20260514T163428Z-clean.tar.gz
+   curl -L "$SNAPSHOT_URL.sha256" | sha256sum -c -
+   tar -xzf "${SNAPSHOT_URL##*/}"
+   rm "${SNAPSHOT_URL##*/}"
    ```
 
    **Sanity-check the extraction before restarting opera.** Every snapshot published from 2026-04-24 onwards (including this one) includes a `SNAPSHOT_INFO.txt` at the tarball root, so it lands in your datadir automatically on extraction. Read it before starting opera:
@@ -493,13 +497,13 @@ Your locally-computed epoch state hash does not match the network's. The check r
 
    The file lists the network, snapshot timestamp, binary version, tip block, tip epoch, and the full set of sealed upgrade flags. The tip block listed there is the minimum block number your first `New block` log line should show after restart. If `cat` returns nothing, the tarball did not extract correctly — do not start opera; re-extract at the datadir root.
 
-   Direct HTTPS URL (public, no AWS credentials required):
+   Current snapshot listing (public, no AWS credentials required):
 
    ```text
-   https://vinu-blockchain-genesis.s3.amazonaws.com/chaindata-snapshots/testnet-chaindata-v2.0.18-elemont-20260514T163428Z-clean.tar.gz
+   https://vinu-blockchain-genesis.s3.amazonaws.com/?list-type=2&prefix=chaindata-snapshots/
    ```
 
-   SHA256: `f4bd1abe02b216695c100a3271ea245e4a8b96b8dcb94dc3201ab9be91376870`. Size: 1.18 GiB compressed (1,265,663,855 bytes). Published 2026-05-06 from the canonical testnet trace node at block 1,446,860 / epoch 5741, taken **after** `SfcV2Patch5` + `ElemontPubkeyValidation` sealed so it is the correct bootstrap for v2.0.15 binaries. The tarball is flat (top-level is `chaindata/`, `go-opera/`, and `SNAPSHOT_INFO.txt` — no `datadir/` prefix to nest) and excludes `nodekey`, `keystore/`, `opera.ipc`, `static-nodes.json`, `trusted-nodes.json`, the archived `chaindata.bak.*/` from the pre-LevelDB-FSH migration, and any shell `history` file. New snapshots are published under `s3://vinu-blockchain-genesis/chaindata-snapshots/` — pick the most recent `-clean` snapshot for the shortest catch-up. The bucket is public-read; `aws s3 ls s3://vinu-blockchain-genesis/chaindata-snapshots/` works with any AWS credentials or via `curl https://vinu-blockchain-genesis.s3.amazonaws.com/?list-type=2&prefix=chaindata-snapshots/` with none.
+   The tarball is flat (top-level is `chaindata/`, `go-opera/`, and `SNAPSHOT_INFO.txt` — no `datadir/` prefix to nest) and excludes `nodekey`, `keystore/`, `opera.ipc`, `static-nodes.json`, `trusted-nodes.json`, archived `chaindata.bak.*/`, and shell `history` files. New snapshots are published under `s3://vinu-blockchain-genesis/chaindata-snapshots/`; pick the most recent `-clean` snapshot for the shortest catch-up.
 
 5. Ensure `--nat extip:<your_public_ip>` is set and `<datadir>/go-opera/static-nodes.json` contains the canonical bootnode list from the [Start your node](#start-your-node) section.
 6. Restart opera. The node resumes from the snapshot's tip (epoch 5741 / block 1,446,860 at snapshot time) and syncs forward. Expect `New DAG summary age=<few seconds>` within 1-2 minutes of restart.
@@ -516,19 +520,19 @@ This almost always means your enode record is advertising `127.0.0.1` (no peers 
 
 If the peer count stays stuck at 1 after fixing `--nat`, check your host firewall / cloud security group: TCP and UDP on your `--port` (default 3000) must be open to `0.0.0.0/0`.
 
-### Receipt `feeRefund` field is `0x0` after v2.0.18-elemont
+### Receipt `feeRefund` field is `0x0` after PaybackV2Patch
 
-After the PaybackV2 activation block, all subsequent `feeRefund` calculations resolve against the new `QuotaContractV2` at `0xdEA4687FDBA2528d1b30222e199c90b63AF8c850`. Existing depositors on the OLD V1 proxy at `0x824B93dE7221cf8a35FBd29d5202f6eFa3A29C5D` keep their stake balance there but no longer earn fee refunds — the node stops consulting that contract once `Economy.QuotaCacheAddress` is swapped. To resume earning refunds, withdraw from V1 (`unstake()` then wait `holdTime` then `withdrawStake(wrID)`) and `stake()` on V2 with the same wallet. The same wallet can also receive third-party-funded stakes via `QuotaContractV2.stakeFor(yourAddress)`.
+After the PaybackV2Patch seal, all `feeRefund` calculations resolve against corrected `QuotaContractV2` at `0x89D1cBD9DEAaB4dFf6f800a336FBDd9A5c6829e4`. Existing depositors on the old V1 proxy at `0x824B93dE7221cf8a35FBd29d5202f6eFa3A29C5D` keep their stake balance there but no longer earn fee refunds, because the node stops consulting that contract once `Economy.QuotaCacheAddress` is swapped. To resume earning refunds, withdraw from V1 (`unstake()` then wait `holdTime` then `withdrawStake(wrID)`) and `stake()` on the corrected V2 with the same wallet.
 
-If the transaction is already using V2 and `feeRefund` is still `0x0`, check the sender's V2 Quota stake against `minStake()`. The sender must meet the contract minimum before any refund is available. In the v2.0.18 testnet rollout, the deployed `minStake()` value is `1000 VC`, but the Quota owner can update it with `setMinStake(uint256)`; for `stakeFor(receiver)`, the receiver must meet the current minimum because the receiver is the refunding sender.
+If the transaction is already using corrected V2 and `feeRefund` is still `0x0`, check the sender's V2 Quota stake against `minStake()`. The sender must meet the contract minimum before any refund is available. On the corrected testnet deployment, the initial `minStake()` value is `1000 VC`, but the Quota owner can update it with `setMinStake(uint256)`; for `stakeFor(receiver)`, the receiver must meet the current minimum because the receiver is the refunding sender.
 
 Verify activation:
 
 ```bash
 curl -s -X POST https://vinufoundation-rpc.com \
   -H 'content-type: application/json' \
-  -d '{"jsonrpc":"2.0","method":"vc_getRules","params":["latest"],"id":1}' | jq '{quotaCache: .result.Economy.QuotaCacheAddress, paybackV2: .result.Upgrades.PaybackV2}'
-# Expect: {"quotaCache":"0xdea4687fdba2528d1b30222e199c90b63af8c850","paybackV2":true}
+  -d '{"jsonrpc":"2.0","method":"vc_getRules","params":["latest"],"id":1}' | jq '{quotaCache: .result.Economy.QuotaCacheAddress, paybackV2: .result.Upgrades.PaybackV2, paybackV2Patch: .result.Upgrades.PaybackV2Patch}'
+# Expect: {"quotaCache":"0x89d1cbd9deaab4dff6f800a336fbdd9a5c6829e4","paybackV2":true,"paybackV2Patch":true}
 ```
 
 ### `vc_getPaybackBalance` returns `-32005`
@@ -544,9 +548,9 @@ The recommended rollout:
 1. VinuChain team announces the patch window. Date: TBD.
 2. Pre-stage the binary on every validator before the window (Upgrade Steps step 2).
 3. During the window, each operator performs the binary swap.
-4. Confirm in the coordination channel that block production resumed and `opera version` reports `2.0.14-elemont`.
+4. Confirm in the coordination channel that block production resumed and `opera version` reports `2.0.19-elemont`.
 
-**Missed the window?** No fork — upgrading later is a plain binary swap (rerun Upgrade Steps). On testnet, a node still on v2.0.13 or earlier cannot validate post-`SfcV2Patch5`-seal or post-`ElemontPubkeyValidation`-seal events (validator-set hash mismatches); if the node also fell behind tip, restore from the chaindata snapshot in [Troubleshooting](#warn-incoming-event-rejected-err-wrong-event-epoch-hash) before restarting on v2.0.14.
+**Missed the window?** No fork — upgrading later is a plain binary swap (rerun Upgrade Steps). On testnet, a node still on v2.0.18 or earlier can miss the corrected PaybackV2Patch staging path; if the node also fell behind tip, restore from a post-PaybackV2Patch chaindata snapshot in [Troubleshooting](#warn-incoming-event-rejected-err-wrong-event-epoch-hash) before restarting on v2.0.19.
 
 ***
 
@@ -568,15 +572,17 @@ The codebase uses three internal upgrade names. They activate at the same epoch 
 | **Podgorica** | Payback fee refund mechanism. Source of the optional `feeRefund` field on receipts and transactions.       |
 | **Elemont** | Cheater fee zeroing at `SealEpoch` plus the broader v2.0+ release-series naming used in version strings.   |
 | **PaybackV2** | Binary-level swap of `Economy.QuotaCacheAddress` from the original `TransparentUpgradeableProxy`-based Quota proxy to a freshly-deployed non-proxy `QuotaContractV2` whose owner is a recoverable EOA. Activates at the first epoch seal after the v2.0.18+ binary boots. Designed to escape the lost-ProxyAdmin-key state on the original proxy without losing access to existing depositor stake (V1 `unstake`/`withdrawStake` remain permissionless after activation; only the protocol-side backing balance is orphaned). |
+| **PaybackV2Patch** | One-shot testnet repair edge that rebinds an already-active PaybackV2 chain from the superseded V2 address to corrected `QuotaContractV2` `0x89D1cBD9DEAaB4dFf6f800a336FBDd9A5c6829e4`. |
 
-Testnet has all four plus the trailing `SfcV2Patch2` / `SfcV2Patch3` / `SfcV2Patch4` / `SfcV2Patch5` bytecode re-flashes and the `ElemontPubkeyValidation` sealer guard sealed. Mainnet has none active yet — when it activates `SfcV2`, the latest Cycle-161 bytecode is installed directly without separate `Patch*` events. Mainnet `PaybackV2` is staged for a separate release ≥2 weeks after testnet bake-in completes.
+Testnet has all five plus the trailing `SfcV2Patch2` / `SfcV2Patch3` / `SfcV2Patch4` / `SfcV2Patch5` bytecode re-flashes and the `ElemontPubkeyValidation` sealer guard sealed. Mainnet has none active yet — when it activates `SfcV2`, the latest Cycle-161 bytecode is installed directly without separate `Patch*` events. Mainnet `PaybackV2` is staged for a separate release after testnet bake-in completes.
 
 ### Release overview
 
 | Version             | Type                                          | What changed                                                                                                        |
 | ------------------- | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| **v2.0.18-elemont** | **Testnet PaybackV2 activation (binary-level Quota proxy replacement)** | Tagged and deployed to testnet RPC + V1–V4 on 2026-05-15. Flips `Upgrades.PaybackV2 = true` on `VinuChainTestNetRules`. At the first epoch seal after binary boot, the seal-time activation branch in `gossip/block_processor.go::sealEpochIfNeeded` swaps `Economy.QuotaCacheAddress` from the V1 proxy `0x824B93dE7221cf8a35FBd29d5202f6eFa3A29C5D` (lost-ProxyAdmin-key) to the freshly-deployed `QuotaContractV2` at `0xdEA4687FDBA2528d1b30222e199c90b63AF8c850` (deploy tx `0x3ed6fc5e1f0b6c14aaf74f9cfbc611ee5eae7973f4aa10f608d4605020bb505a`, owner = recoverable EOA `0xf9c82B1117e8BeA97843042521B8FBC93044f347`). Existing testnet stakers retain access to their own V1 stake (permissionless `unstake` + `withdrawStake`) but must re-stake on V2 to receive fee refunds after activation. |
-| v2.0.17-elemont | Payback/Quota receiver staking          | Deployed to testnet RPC + validators on 2026-05-10. The node PaybackCache recognizes `stakeFor(address)` as stake owned by the receiver, preserving same-epoch duration accounting for the refunding address. The V1 receiver-implementation rollout was **superseded** by v2.0.18-elemont's PaybackV2 binary-level Quota proxy replacement on 2026-05-15; receiver semantics now ship via `QuotaContractV2.stakeFor(address)` at `0xdEA4687FDBA2528d1b30222e199c90b63AF8c850`. |
+| **v2.0.19-elemont** | **Testnet PaybackV2Patch corrected contract rebind** | Deployed corrected `QuotaContractV2` `0x89D1cBD9DEAaB4dFf6f800a336FBDd9A5c6829e4` on 2026-05-16 (tx `0xd99e4111a87dee6b9a16802f9696f5e6663d953ff7de54e43572ab75f8241ce4`, owner = recoverable EOA `0xf9c82B1117e8BeA97843042521B8FBC93044f347`). Adds `Upgrades.PaybackV2Patch = true` on testnet so the next epoch seal rebinds `Economy.QuotaCacheAddress` from the superseded V2 address to the corrected staker-owned withdrawal contract. |
+| **v2.0.18-elemont** | **Testnet PaybackV2 activation (binary-level Quota proxy replacement)** | Tagged and deployed to testnet RPC + V1–V4 on 2026-05-15. Flips `Upgrades.PaybackV2 = true` on `VinuChainTestNetRules`. At the first epoch seal after binary boot, the seal-time activation branch in `gossip/block_processor.go::sealEpochIfNeeded` swaps `Economy.QuotaCacheAddress` from the V1 proxy `0x824B93dE7221cf8a35FBd29d5202f6eFa3A29C5D` (lost-ProxyAdmin-key) to `QuotaContractV2` at `0xdEA4687FDBA2528d1b30222e199c90b63AF8c850` (deploy tx `0x3ed6fc5e1f0b6c14aaf74f9cfbc611ee5eae7973f4aa10f608d4605020bb505a`, owner = recoverable EOA `0xf9c82B1117e8BeA97843042521B8FBC93044f347`). Post-release testing on 2026-05-16 found that this deployed V2 address assigns third-party `stakeFor(receiver)` withdrawal ownership to the receiver; v2.0.19 supersedes it. |
+| v2.0.17-elemont | Payback/Quota receiver staking          | Deployed to testnet RPC + validators on 2026-05-10. The node PaybackCache recognizes `stakeFor(address)` as Payback quota credit for the receiver, preserving same-epoch duration accounting for the refunding address. The V1 receiver-implementation rollout was **superseded** by v2.0.18-elemont's PaybackV2 binary-level Quota proxy replacement and v2.0.19-elemont's corrected V2 rebind. |
 | **v2.0.14-elemont** | Testnet consensus flags (Patch5 + ElemontPubkeyValidation) | Cycle-161 SFC bytecode. Adds canonical-pubkey validation (`length == 66 && pubkey[0] == 0xc0`) at `createValidator`, `_rawCreateValidator`, and `NodeDriverAuth.updateValidatorPubkey`. Off-chain sealer guard ejects validators with malformed stored pubkeys (testnet validator 16) at the next epoch seal. Also: real `gasUsedRatio` in `eth_feeHistory`. |
 | v2.0.13-elemont     | Same-day scaffolding (no live activation)     | Defines flags + ships the deadbeef-placeholder Cycle-161 bytecode; flipped to v2.0.14 same day with the real bytecode and activation. Don't deploy v2.0.13 standalone. |
 | v2.0.12-elemont     | Diagnostic + tooling                          | Multi-`SfcV2Patch*` divergence warn at single seal; chaindata snapshot producer (`scripts/create-chaindata-snapshot.sh` with `SNAPSHOT_INFO.txt`). Non-consensus. |
@@ -649,14 +655,14 @@ When Elemont is active, validators flagged as cheaters in an epoch lose **all** 
 
 ### Payback fee refunds
 
-Stakers meeting the minimum V2 Quota stake threshold automatically receive gas refunds. **No new VC is created** — refunds redistribute fees from validator earnings to eligible stakers. In the v2.0.18 testnet rollout, the deployed `QuotaContractV2.minStake()` value is `1000 VC`; the Quota owner can update this parameter later if protocol economics change.
+Stakers meeting the minimum V2 Quota stake threshold automatically receive gas refunds. **No new VC is created** — refunds redistribute fees from validator earnings to eligible stakers. On the corrected 2026-05-16 testnet deployment, the initial `QuotaContractV2.minStake()` value is `1000 VC`; the Quota owner can update this parameter later if protocol economics change.
 
 1. User submits a transaction; full `gasUsed × gasPrice` is debited as before.
 2. Full fee is credited to the validator pre-refund.
 3. After epoch seal, the payback system queries the sender's stake. If eligible, a refund is returned from the validator's earned fees.
 4. Validator earnings decrease by the refund; sender balance increases by it.
 
-With PaybackV2, a funding wallet may call `QuotaContractV2.stakeFor(receiver)` instead of `stake()`. The receiver owns that Quota stake, so refunds still follow the transaction sender: the receiver gets refunds for transactions the receiver signs, while the funding wallet does not gain refund eligibility from that delegated stake. The receiver's total V2 Quota stake must be at least `minStake()` before those signed transactions can receive refunds.
+With PaybackV2, a funding wallet may call `QuotaContractV2.stakeFor(receiver)` instead of `stake()`. The receiver receives Payback quota credit, so refunds still follow the transaction sender: the receiver gets refunds for transactions the receiver signs, while the funding wallet does not gain refund eligibility from that delegated stake. The funding wallet keeps ownership of the VC it funded and must use `unstakeFor(receiver, amount)` to begin withdrawing that stake back to itself. The receiver's total V2 Quota stake must be at least `minStake()` before those signed transactions can receive refunds.
 
 The minimum stake is only an eligibility floor, not a spam throttle that grows automatically. Each refund is capped by the sender's available Payback quota, and every refunded transaction consumes quota for that epoch. If an eligible wallet sends enough transactions to exhaust its quota, later transactions receive smaller refunds or `feeRefund: 0x0`; they still pay normal gas. When network congestion pushes the base fee above the chain-configured floor, Payback refunds are suppressed so fee escalation can still deter spam.
 
@@ -716,4 +722,4 @@ Operator-facing controls for managing chaindata size on long-lived nodes.
 
 ***
 
-_Last updated: 2026-05-11 · latest released VinuChain tag `v2.0.17-elemont` · receiver implementation fully verified with unchanged bytecode; Quota proxy upgrade pending · go-vinu `v1.20.14-quota` · lachesis-base `v0.1.6-elemont`_
+_Last updated: 2026-05-16 · latest deployed VinuChain tag `v2.0.19-elemont` · corrected PaybackV2 address `0x89D1cBD9DEAaB4dFf6f800a336FBDd9A5c6829e4` · go-vinu `v1.20.14-quota` · lachesis-base `v0.1.6-elemont`_

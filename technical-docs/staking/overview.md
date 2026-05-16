@@ -23,13 +23,14 @@ The rewards percentage increases linearly with time, rewarding the most committe
 
 ### Stake for Payback (zero gas fee transactions)
 
-When a user stakes for Payback, they are staking VC to be able to have their gas fees refunded for a number of transactions. The refunding wallet must meet the Payback contract's current `minStake()` before refunds are available. In the v2.0.18 testnet rollout, PaybackV2 was deployed with `minStake()` set to `1000 VC`; the Quota owner can update this parameter with `setMinStake(uint256)`. Below the current minimum, transactions still pay normal gas and show `feeRefund: 0x0`.
+When a user stakes for Payback, they are staking VC to be able to have their gas fees refunded for a number of transactions. The refunding wallet must meet the Payback contract's current `minStake()` before refunds are available. On the corrected testnet PaybackV2 deployment, `minStake()` starts at `1000 VC`; the Quota owner can update this parameter with `setMinStake(uint256)`. Below the current minimum, transactions still pay normal gas and show `feeRefund: 0x0`.
 
 On testnet PaybackV2, VinuChain supports staking VC from one funding wallet for
-another receiver wallet. The receiver wallet owns that Payback stake and receives
+another receiver wallet. The receiver wallet receives Payback quota credit and
 gas refunds for transactions it signs once the receiver wallet's total Payback
-stake reaches `minStake()`; the funding wallet does not gain refund eligibility
-from that delegated stake.
+stake reaches `minStake()`. The funding wallet keeps ownership of the VC it
+funded and must use `unstakeFor(receiver, amount)` to begin withdrawing that
+stake back to itself; the receiver has no claim to third-party-funded stake.
 
 The Payback quota is dynamic to counteract spam:
 
