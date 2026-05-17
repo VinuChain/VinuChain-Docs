@@ -1,20 +1,22 @@
+<!-- markdownlint-disable MD013 -->
+
 # Chain Upgrade Guide (v2-elemont)
 
 ## Latest release
 
-| Version | Network | Status |
-| ------- | ------- | ------ |
+| Version           | Network | Status                                             |
+| ----------------- | ------- | -------------------------------------------------- |
 | `v2.0.21-elemont` | Testnet | SfcV2Patch6 / Cycle-162 automatic backfill release |
 
 ## What's new
 
-* Re-flashes the SFC V2 contract with Cycle-162 bytecode through the testnet-only `SfcV2Patch6` epoch edge.
-* Adds `registerStake(uint256)` so an affected delegator can self-register a legacy orphaned `(delegator, validator)` pair into SFC's `stakes[]` enumeration.
-* Adds owner-only `backfillStakes(address[],uint256[])` for bounded batch backfill of known orphaned delegations.
-* Automatically backfills the three known live testnet validator-1 delegation rows at the Patch6 seal if their `getStake` remains non-zero and they are still missing from `stakes[]`.
-* Pre-wires the future mainnet `SfcV2` activation path to backfill the currently audited 82 live mainnet delegation rows missing from `stakes[]`; refresh the audit list immediately before any mainnet activation release.
-* Allows full undelegate-to-zero for orphaned delegations whose `getStake` is non-zero but `stakePosition` is zero.
-* Keeps the corrected PaybackV2 address from v2.0.19: `QuotaContractV2` at `0x89D1cBD9DEAaB4dFf6f800a336FBDd9A5c6829e4`.
+- Re-flashes the SFC V2 contract with Cycle-162 bytecode through the testnet-only `SfcV2Patch6` epoch edge.
+- Adds `registerStake(uint256)` so an affected delegator can self-register a legacy orphaned `(delegator, validator)` pair into SFC's `stakes[]` enumeration.
+- Adds owner-only `backfillStakes(address[],uint256[])` for bounded batch backfill of known orphaned delegations.
+- Automatically backfills the three known live testnet validator-1 delegation rows at the Patch6 seal if their `getStake` remains non-zero and they are still missing from `stakes[]`.
+- Pre-wires the future mainnet `SfcV2` activation path to backfill the currently audited 82 live mainnet delegation rows missing from `stakes[]`; refresh the audit list immediately before any mainnet activation release.
+- Allows full undelegate-to-zero for orphaned delegations whose `getStake` is non-zero but `stakePosition` is zero.
+- Keeps the corrected PaybackV2 address from v2.0.19: `QuotaContractV2` at `0x89D1cBD9DEAaB4dFf6f800a336FBDd9A5c6829e4`.
 
 ---
 
@@ -25,16 +27,16 @@
 | Mainnet | 207 (0xcf) | `https://vinuchain-rpc.com`      | Upgrade pending |
 | Testnet | 206 (0xce) | `https://vinufoundation-rpc.com` | Upgrade first   |
 
-***
+---
 
 ## Prerequisites
 
 ### Build requirements
 
-* **Go 1.25+** (check with `go version`)
-* **gcc (or clang)** and standard C library headers — required for building go-vinu's crypto and LevelDB C bindings.
-* **git**
-* At least **50 GB** free disk space
+- **Go 1.25+** (check with `go version`)
+- **gcc (or clang)** and standard C library headers — required for building go-vinu's crypto and LevelDB C bindings.
+- **git**
+- At least **50 GB** free disk space
 
 ### Required Ports
 
@@ -46,7 +48,7 @@ Ensure these remain open in your firewall:
 | 18545 | TCP      | HTTP JSON-RPC (if exposing RPC)     |
 | 18546 | TCP      | WebSocket JSON-RPC (if exposing WS) |
 
-***
+---
 
 ## Upgrade Steps
 
@@ -172,8 +174,8 @@ The `--bootnodes` value above lists all four live testnet validators at `44.239.
 
 Examples:
 
-* Password file in your home secrets directory: `--validator.password /home/ubuntu/secrets/pw.txt`
-* **Even if the password file is inside the build folder**, write the full absolute path: `--validator.password $HOME/vinuchain-upgrade/build/pw.txt`
+- Password file in your home secrets directory: `--validator.password /home/ubuntu/secrets/pw.txt`
+- **Even if the password file is inside the build folder**, write the full absolute path: `--validator.password $HOME/vinuchain-upgrade/build/pw.txt`
 
 Never rely on `./pw.txt` or a bare `pw.txt` — it's the easiest way to end up with `Failed to unlock validator key: open pw.txt: no such file or directory` and waste an upgrade window debugging path resolution.
 
@@ -188,18 +190,18 @@ tail -f validator.log
 
 **Optional flags** (add only if you were using them before):
 
-* `--datadir /custom/path` — if chain data is not in the default `~/.opera` location
+- `--datadir /custom/path` — if chain data is not in the default `~/.opera` location
 
 {% hint style="danger" %}
 **`--nat extip:YOUR_PUBLIC_IP` is effectively required, not optional.**
 
 Without `--nat`, opera advertises its enode at `ip=127.0.0.1` in the peer discovery table. The symptom is almost indistinguishable from a successful start:
 
-* Process runs fine, logs scroll normally
-* `New local node record` line shows `ip=127.0.0.1 udp=… tcp=…`
-* `admin.peers` returns one or zero entries
-* `net.peerCount == 1`, and that peer is usually an unrelated node stuck on an old epoch
-* `New DAG summary` reports `age=15h…` or older — your node has caught up to the single stale peer and halted, because no other peer can dial you back
+- Process runs fine, logs scroll normally
+- `New local node record` line shows `ip=127.0.0.1 udp=… tcp=…`
+- `admin.peers` returns one or zero entries
+- `net.peerCount == 1`, and that peer is usually an unrelated node stuck on an old epoch
+- `New DAG summary` reports `age=15h…` or older — your node has caught up to the single stale peer and halted, because no other peer can dial you back
 
 The fix is to pass `--nat extip:<your_public_ipv4>` on every launch. After restart, verify the startup log shows your real public IP:
 
@@ -260,7 +262,8 @@ For testing or development, you can run in the foreground:
 
 **Optional flags:**
 
-* `--datadir /path/to/chaindata` — if chain data is in a custom location (default: `~/.opera`)
+- `--datadir /path/to/chaindata` — if chain data is in a custom location (default: `~/.opera`)
+
 {% endtab %}
 {% endtabs %}
 {% endstep %}
@@ -320,23 +323,23 @@ After the mainnet seal, `vc_getRules` must report `Upgrades.SfcV2 = true`, SFC `
 
 #### Verification checklist
 
-| Check                                                     | Expected                                                                             |
-| --------------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| Startup banner                                            | `VINUCHAIN v2.0 - ELEMONT` ASCII art printed to stderr                               |
-| `opera version`                                           | `Version: 2.0.21-elemont`                                                            |
-| Block production                                          | Resumes within seconds of startup; block numbers advance                             |
-| Peer count                                                | Returns to prior steady-state within minutes                                         |
-| SfcV2Patch6 staging logs (testnet, first v2.0.21 boot)    | 1× `Staged SfcV2Patch6 …`                                                            |
-| SfcV2Patch6 staging log — all other cases                 | None                                                                                 |
-| Mainnet staging logs (future coordinated SfcV2 release)   | 1× `Staged SfcV2 upgrade …` on a pre-SfcV2 mainnet datadir                           |
-| Staging-network SfcV2 rehearsal                           | Same SfcV2 logs as mainnet; no `SfcV2Patch6` staging line                            |
-| Seal-time logs (testnet, first epoch seal after staging)  | 1× `Re-applying SFC V2 bytecode upgrade (patch 6) …`; normally 1× `Backfilled SFC Patch6 testnet delegations … appended=3 repaired=0` |
+| Check                                                     | Expected                                                                                                                                              |
+| --------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Startup banner                                            | `VINUCHAIN v2.0 - ELEMONT` ASCII art printed to stderr                                                                                                |
+| `opera version`                                           | `Version: 2.0.21-elemont`                                                                                                                             |
+| Block production                                          | Resumes within seconds of startup; block numbers advance                                                                                              |
+| Peer count                                                | Returns to prior steady-state within minutes                                                                                                          |
+| SfcV2Patch6 staging logs (testnet, first v2.0.21 boot)    | 1× `Staged SfcV2Patch6 …`                                                                                                                             |
+| SfcV2Patch6 staging log — all other cases                 | None                                                                                                                                                  |
+| Mainnet staging logs (future coordinated SfcV2 release)   | 1× `Staged SfcV2 upgrade …` on a pre-SfcV2 mainnet datadir                                                                                            |
+| Staging-network SfcV2 rehearsal                           | Same SfcV2 logs as mainnet; no `SfcV2Patch6` staging line                                                                                             |
+| Seal-time logs (testnet, first epoch seal after staging)  | 1× `Re-applying SFC V2 bytecode upgrade (patch 6) …`; normally 1× `Backfilled SFC Patch6 testnet delegations … appended=3 repaired=0`                 |
 | Mainnet seal-time logs (future coordinated SfcV2 release) | 1× `Applying SFC V2 bytecode upgrade …`; normally 1× `Backfilled SFC V2 mainnet delegations … appended=82 repaired=0` after refreshing the audit list |
-| SFC version after seal                                    | `version()` returns `0x333035` (`"305"`)                                              |
-| PaybackV2 address after seal                              | `0x89D1cBD9DEAaB4dFf6f800a336FBDd9A5c6829e4`                                         |
-| Block hash vs peer                                        | Identical                                                                            |
-| `rpc_modules` returns                                     | Includes `"vc":"1.0"` (`vc_getPaybackBalance`)                                       |
-| `vc_getPaybackBalance` call                               | Returns hex-encoded wei (or `0x0` for ineligible addresses / Podgorica inactive)     |
+| SFC version after seal                                    | `version()` returns `0x333035` (`"305"`)                                                                                                              |
+| PaybackV2 address after seal                              | `0x89D1cBD9DEAaB4dFf6f800a336FBDd9A5c6829e4`                                                                                                          |
+| Block hash vs peer                                        | Identical                                                                                                                                             |
+| `rpc_modules` returns                                     | Includes `"vc":"1.0"` (`vc_getPaybackBalance`)                                                                                                        |
+| `vc_getPaybackBalance` call                               | Returns hex-encoded wei (or `0x0` for ineligible addresses / Podgorica inactive)                                                                      |
 
 {% endstep %}
 
@@ -371,7 +374,7 @@ The build directory under `$HOME/vinuchain-upgrade` can also be removed if you d
 {% endstep %}
 {% endstepper %}
 
-***
+---
 
 ## Setting Up a New Validator
 
@@ -381,7 +384,7 @@ New validator setup is **not** covered on this page. If you are installing a fre
 That guide uses the correct `opera validator new` command for generating a validator key. A plain `opera account new` creates a regular externally-owned account, not a validator key.
 {% endhint %}
 
-***
+---
 
 ## Rollback
 
@@ -409,25 +412,26 @@ No datadir changes are needed for a pre-seal rollback. A post-seal rollback must
 - **v2.0.8 → v2.0.7 rollback:** `validatePeerProgress` re-applies its drift caps (`maxPeerEpochDrift=1000`, `maxPeerBlockDrift=5000`). Safe as long as the node is not offline long enough to fall past those caps; an offline stretch beyond ~1,000 epochs on v2.0.7 will lock the node out of re-peering (the bug v2.0.8 fixes).
 - **v2.0.7 → v2.0.6 rollback:** The per-peer event-processing quota reverts to its smaller value (200 DAG events / 100 stream items), so the `Peer exceeded event processing quota` warning storm returns during sync.
 - **v2.0.6 → v2.0.5 rollback:** The `vc_getPaybackBalance` JSON-RPC method disappears. Clients calling it receive `method not found`.
+
 {% endhint %}
 
 {% hint style="warning" %}
 **Testnet note — sealed bytecode persists across rollbacks.** Once an `SfcV2Patch*` upgrade flag has sealed on testnet, the bytecode it flashed at `0xFC00FACE00000000000000000000000000000000` is permanent in chain state. Rolling back the binary does **not** revert the installed bytecode:
 
-| Sealed patch  | Introduced in | Testnet seal                 | Installed bytecode                                |
-| ------------- | ------------- | ---------------------------- | ------------------------------------------------- |
-| `SfcV2Patch2` | v2.0.5        | Mid-v2.0.5 boot              | Cycle-158 SFC (45,240 bytes)                      |
-| `SfcV2Patch3` | v2.0.10       | 2026-04-19 · block 1,424,440 | Cycle-159 SFC — inline reentrancy guard fix       |
-| `SfcV2Patch4` | v2.0.11       | 2026-04-23 · block 1,430,436 | Cycle-160 SFC — `_lockStake` / `relockStake` fix  |
-| `SfcV2Patch5` | v2.0.14       | Active by 2026-05-17         | Cycle-161 SFC — canonical-pubkey validation       |
-| `SfcV2Patch6` | v2.0.21       | Pending v2.0.21 seal         | Cycle-162 SFC — orphan-delegation auto-backfill   |
+| Sealed patch  | Introduced in | Testnet seal                 | Installed bytecode                               |
+| ------------- | ------------- | ---------------------------- | ------------------------------------------------ |
+| `SfcV2Patch2` | v2.0.5        | Mid-v2.0.5 boot              | Cycle-158 SFC (45,240 bytes)                     |
+| `SfcV2Patch3` | v2.0.10       | 2026-04-19 · block 1,424,440 | Cycle-159 SFC — inline reentrancy guard fix      |
+| `SfcV2Patch4` | v2.0.11       | 2026-04-23 · block 1,430,436 | Cycle-160 SFC — `_lockStake` / `relockStake` fix |
+| `SfcV2Patch5` | v2.0.14       | Active by 2026-05-17         | Cycle-161 SFC — canonical-pubkey validation      |
+| `SfcV2Patch6` | v2.0.21       | Pending v2.0.21 seal         | Cycle-162 SFC — orphan-delegation auto-backfill  |
 
 This is expected behavior — the bytecode update is the intended outcome of each upgrade and cannot be undone by swapping binaries. Reverting installed bytecode would require shipping another epoch-sealed upgrade flag, which is a forward-moving change rather than a rollback.
 
 Mainnet is currently unaffected because no `SfcV2*` flag has sealed there yet. During a future mainnet SfcV2 window, rollback is routine only before the SfcV2 seal; after that seal, bytecode and backfill state persist and downgrade must be coordinated.
 {% endhint %}
 
-***
+---
 
 ## Troubleshooting
 
@@ -442,6 +446,9 @@ Mainnet is currently unaffected because no `SfcV2*` flag has sealed there yet. D
 1. Confirm `--validator.password` points to a readable file via absolute path.
 2. Confirm `--validator.id` and `--validator.pubkey` match your on-chain registration.
 3. Confirm peers are connecting — an isolated node cannot produce events.
+
+<!-- markdownlint-disable-next-line MD033 -->
+<a id="warn-incoming-event-rejected-err-wrong-event-epoch-hash"></a>
 
 ### `WARN Incoming event rejected ... err="wrong event epoch hash"`
 
@@ -526,7 +533,7 @@ curl -s -X POST https://vinufoundation-rpc.com \
 
 The RPC-safe payback accessor is gated by a process-wide semaphore (8 in-flight, 2 s acquire timeout). Error code `-32005` is the rate-limit rejection. Clients should retry with exponential backoff; operators running high-volume scanners should either spread load across multiple RPC endpoints or reduce concurrent caller count. See [Changelog → Payback Fee Refunds](#payback-fee-refunds).
 
-***
+---
 
 ## Coordinated Upgrade Procedure
 
@@ -539,13 +546,13 @@ The recommended rollout:
 
 **Missed the window?** Patch6 sealed on testnet at block 1,460,329 in epoch 5801 on 2026-05-16. If your node was not already running v2.0.21 before that seal, a later binary swap will not replay the `SfcV2Patch6` edge and will not apply the automatic backfill. Stop the node, preserve `keystore/` and `go-opera/nodekey`, and restore from the post-v2.0.21 Patch6 chaindata snapshot in [Troubleshooting](#warn-incoming-event-rejected-err-wrong-event-epoch-hash) before rejoining.
 
-***
+---
 
 ## Contact
 
 If you encounter issues during the upgrade, reach out to the VinuChain team through the official channels.
 
-***
+---
 
 ## Changelog
 
@@ -553,40 +560,40 @@ If you encounter issues during the upgrade, reach out to the VinuChain team thro
 
 The codebase uses several internal upgrade names. The base SfcV2, Podgorica, and Elemont flags activate together when SfcV2 first fires; later testnet-only patch flags re-flash specific bytecode or operational state at their own epoch seals.
 
-| Name        | What it covers                                                                                              |
-| ----------- | ----------------------------------------------------------------------------------------------------------- |
-| **SfcV2**   | Replaces the on-chain SFC contract bytecode at `0xFC00FACE...` and turns on the 30% base fee burn.          |
-| **Podgorica** | Payback fee refund mechanism. Source of the optional `feeRefund` field on receipts and transactions.       |
-| **Elemont** | Cheater fee zeroing at `SealEpoch` plus the broader v2.0+ release-series naming used in version strings.   |
-| **PaybackV2** | Binary-level swap of `Economy.QuotaCacheAddress` from the original `TransparentUpgradeableProxy`-based Quota proxy to a freshly-deployed non-proxy `QuotaContractV2` whose owner is a recoverable EOA. Activates at the first epoch seal after the v2.0.18+ binary boots. Designed to escape the lost-ProxyAdmin-key state on the original proxy without losing access to existing depositor stake (V1 `unstake`/`withdrawStake` remain permissionless after activation; only the protocol-side backing balance is orphaned). |
-| **PaybackV2Patch** | One-shot testnet repair edge that rebinds an already-active PaybackV2 chain from the superseded V2 address to corrected `QuotaContractV2` `0x89D1cBD9DEAaB4dFf6f800a336FBDd9A5c6829e4`. |
-| **SfcV2Patch6** | One-shot testnet SFC bytecode re-flash to Cycle-162, adding orphan-delegation registration/backfill and an undelegate-to-zero fix for legacy orphaned stake pairs. v2.0.21 also performs the known live testnet delegation backfill in node state at the seal. |
-| **Mainnet SfcV2 backfill** | Future mainnet `SfcV2` activation installs the latest Cycle-162 bytecode directly and now has a mainnet-only node-state backfill hook for the 82 live mainnet delegation rows audited on 2026-05-17. The list must be refreshed immediately before a mainnet activation release so newly-created missing rows are not missed. |
+| Name                       | What it covers                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **SfcV2**                  | Replaces the on-chain SFC contract bytecode at `0xFC00FACE...` and turns on the 30% base fee burn.                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| **Podgorica**              | Payback fee refund mechanism. Source of the optional `feeRefund` field on receipts and transactions.                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| **Elemont**                | Cheater fee zeroing at `SealEpoch` plus the broader v2.0+ release-series naming used in version strings.                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| **PaybackV2**              | Binary-level swap of `Economy.QuotaCacheAddress` from the original `TransparentUpgradeableProxy`-based Quota proxy to a freshly-deployed non-proxy `QuotaContractV2` whose owner is a recoverable EOA. Activates at the first epoch seal after the v2.0.18+ binary boots. Designed to escape the lost-ProxyAdmin-key state on the original proxy without losing access to existing depositor stake (V1 `unstake`/`withdrawStake` remain permissionless after activation; only the protocol-side backing balance is orphaned). |
+| **PaybackV2Patch**         | One-shot testnet repair edge that rebinds an already-active PaybackV2 chain from the superseded V2 address to corrected `QuotaContractV2` `0x89D1cBD9DEAaB4dFf6f800a336FBDd9A5c6829e4`.                                                                                                                                                                                                                                                                                                                                       |
+| **SfcV2Patch6**            | One-shot testnet SFC bytecode re-flash to Cycle-162, adding orphan-delegation registration/backfill and an undelegate-to-zero fix for legacy orphaned stake pairs. v2.0.21 also performs the known live testnet delegation backfill in node state at the seal.                                                                                                                                                                                                                                                                |
+| **Mainnet SfcV2 backfill** | Future mainnet `SfcV2` activation installs the latest Cycle-162 bytecode directly and now has a mainnet-only node-state backfill hook for the 82 live mainnet delegation rows audited on 2026-05-17. The list must be refreshed immediately before a mainnet activation release so newly-created missing rows are not missed.                                                                                                                                                                                                 |
 
 Testnet has the earlier SFC re-flashes (`SfcV2Patch2` / `SfcV2Patch3` / `SfcV2Patch4` / `SfcV2Patch5`), the `ElemontPubkeyValidation` sealer guard, PaybackV2, PaybackV2Patch, and the new `SfcV2Patch6` edge. Mainnet has no `SfcV2*` patch flags active yet — when it activates `SfcV2`, the latest Cycle-162 bytecode is installed directly without separate `Patch*` events, and the mainnet-only activation hook backfills the audited missing delegation rows. Mainnet `PaybackV2` is staged for a separate release after testnet bake-in completes.
 
 ### Release overview
 
-| Version             | Type                                          | What changed                                                                                                        |
-| ------------------- | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| **v2.0.21-elemont** | **SfcV2 automatic delegation backfill** | Keeps the Cycle-162 SFC bytecode and adds activation-time node storage repair for the three known live testnet validator-1 delegation rows missing from `stakes[]`. Also pre-wires mainnet `SfcV2` activation to backfill the 82 live mainnet rows audited on 2026-05-17. The repair runs only if each pair still has non-zero `getStake`, validates whether the row is already present, and handles stale `stakePosition` values that point at a different stake. |
-| **v2.0.20-elemont** | **Testnet SfcV2Patch6 bytecode release** | Adds the `SfcV2Patch6` testnet epoch edge and Cycle-162 SFC bytecode. New SFC version `3.0.5` adds `registerStake(uint256)` for delegator self-registration, owner-only `backfillStakes(address[],uint256[])` for bounded batch remediation, and an orphan-tolerant full undelegate-to-zero path for legacy pairs where `getStake > 0` but `stakePosition == 0`. Superseded by v2.0.21 before testnet Patch6 sealed so the known live missing rows are backfilled automatically. |
-| **v2.0.19-elemont** | **Testnet PaybackV2Patch corrected contract rebind** | Deployed corrected `QuotaContractV2` `0x89D1cBD9DEAaB4dFf6f800a336FBDd9A5c6829e4` on 2026-05-16 (tx `0xd99e4111a87dee6b9a16802f9696f5e6663d953ff7de54e43572ab75f8241ce4`, owner = recoverable EOA `0xf9c82B1117e8BeA97843042521B8FBC93044f347`). Adds `Upgrades.PaybackV2Patch = true` on testnet so the next epoch seal rebinds `Economy.QuotaCacheAddress` from the superseded V2 address to the corrected staker-owned withdrawal contract. |
+| Version             | Type                                                                    | What changed                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| ------------------- | ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **v2.0.21-elemont** | **SfcV2 automatic delegation backfill**                                 | Keeps the Cycle-162 SFC bytecode and adds activation-time node storage repair for the three known live testnet validator-1 delegation rows missing from `stakes[]`. Also pre-wires mainnet `SfcV2` activation to backfill the 82 live mainnet rows audited on 2026-05-17. The repair runs only if each pair still has non-zero `getStake`, validates whether the row is already present, and handles stale `stakePosition` values that point at a different stake.                                                                                                                                                                                                                                                                                                                    |
+| **v2.0.20-elemont** | **Testnet SfcV2Patch6 bytecode release**                                | Adds the `SfcV2Patch6` testnet epoch edge and Cycle-162 SFC bytecode. New SFC version `3.0.5` adds `registerStake(uint256)` for delegator self-registration, owner-only `backfillStakes(address[],uint256[])` for bounded batch remediation, and an orphan-tolerant full undelegate-to-zero path for legacy pairs where `getStake > 0` but `stakePosition == 0`. Superseded by v2.0.21 before testnet Patch6 sealed so the known live missing rows are backfilled automatically.                                                                                                                                                                                                                                                                                                      |
+| **v2.0.19-elemont** | **Testnet PaybackV2Patch corrected contract rebind**                    | Deployed corrected `QuotaContractV2` `0x89D1cBD9DEAaB4dFf6f800a336FBDd9A5c6829e4` on 2026-05-16 (tx `0xd99e4111a87dee6b9a16802f9696f5e6663d953ff7de54e43572ab75f8241ce4`, owner = recoverable EOA `0xf9c82B1117e8BeA97843042521B8FBC93044f347`). Adds `Upgrades.PaybackV2Patch = true` on testnet so the next epoch seal rebinds `Economy.QuotaCacheAddress` from the superseded V2 address to the corrected staker-owned withdrawal contract.                                                                                                                                                                                                                                                                                                                                        |
 | **v2.0.18-elemont** | **Testnet PaybackV2 activation (binary-level Quota proxy replacement)** | Tagged and deployed to testnet RPC + V1–V4 on 2026-05-15. Flips `Upgrades.PaybackV2 = true` on `VinuChainTestNetRules`. At the first epoch seal after binary boot, the seal-time activation branch in `gossip/block_processor.go::sealEpochIfNeeded` swaps `Economy.QuotaCacheAddress` from the V1 proxy `0x824B93dE7221cf8a35FBd29d5202f6eFa3A29C5D` (lost-ProxyAdmin-key) to `QuotaContractV2` at `0xdEA4687FDBA2528d1b30222e199c90b63AF8c850` (deploy tx `0x3ed6fc5e1f0b6c14aaf74f9cfbc611ee5eae7973f4aa10f608d4605020bb505a`, owner = recoverable EOA `0xf9c82B1117e8BeA97843042521B8FBC93044f347`). Post-release testing on 2026-05-16 found that this deployed V2 address assigns third-party `stakeFor(receiver)` withdrawal ownership to the receiver; v2.0.19 supersedes it. |
-| v2.0.17-elemont | Payback/Quota receiver staking          | Deployed to testnet RPC + validators on 2026-05-10. The node PaybackCache recognizes `stakeFor(address)` as Payback quota credit for the receiver, preserving same-epoch duration accounting for the refunding address. The V1 receiver-implementation rollout was **superseded** by v2.0.18-elemont's PaybackV2 binary-level Quota proxy replacement and v2.0.19-elemont's corrected V2 rebind. |
-| **v2.0.14-elemont** | Testnet consensus flags (Patch5 + ElemontPubkeyValidation) | Cycle-161 SFC bytecode. Adds canonical-pubkey validation (`length == 66 && pubkey[0] == 0xc0`) at `createValidator`, `_rawCreateValidator`, and `NodeDriverAuth.updateValidatorPubkey`. Off-chain sealer guard ejects validators with malformed stored pubkeys (testnet validator 16) at the next epoch seal. Also: real `gasUsedRatio` in `eth_feeHistory`. |
-| v2.0.13-elemont     | Same-day scaffolding (no live activation)     | Defines flags + ships the deadbeef-placeholder Cycle-161 bytecode; flipped to v2.0.14 same day with the real bytecode and activation. Don't deploy v2.0.13 standalone. |
-| v2.0.12-elemont     | Diagnostic + tooling                          | Multi-`SfcV2Patch*` divergence warn at single seal; chaindata snapshot producer (`scripts/create-chaindata-snapshot.sh` with `SNAPSHOT_INFO.txt`). Non-consensus. |
-| v2.0.11-elemont     | Testnet consensus flag (Patch4)               | Cycle-160 SFC bytecode. Fixes `_lockStake` / `relockStake`: invariant becomes `endTime >= ld.endTime`.              |
-| v2.0.10-elemont     | Testnet consensus flag (Patch3) | Cycle-159 SFC bytecode. Fixes inline reentrancy guard (`_reentrancyGuardCounter < 2`); unblocks `delegate`, `undelegate`, `withdraw`, `claimRewards`, `restakeRewards`, `stashRewards`, `createValidator`. |
-| v2.0.9-elemont      | Trusted-preset entry            | Recognizes `vitainu-genesis-testnet-20260419.g` — fresh installs no longer need `--genesis.allowExperimental`.       |
-| v2.0.8-elemont      | Hotfix                          | Removes `validatePeerProgress` drift caps so long-offline validators can rejoin.                                     |
-| v2.0.7-elemont      | Hotfix                          | Raises per-peer event-processing quota to 3,250 (matches `EventsBufferLimit.Num`); kills the warning storm during sync. |
-| v2.0.6-elemont      | RPC addition                    | New `vc_getPaybackBalance` JSON-RPC method (rate-limited).                                                          |
-| v2.0.5-elemont      | Testnet consensus flag (Patch2) | Cycle-158 SFC bytecode re-flash at `0xFC00FACE...`.                                                                  |
-| v2.0.4-elemont      | Internal                        | lachesis-base bumped to `v0.1.6-elemont`: vecengine cap, dagprocessor drain, kvdb flushable race fix, gossip deadlock fix. |
-| v2.0.3-elemont      | RPC defensive caps              | go-vinu fork `v1.20.14-quota`: batch-size cap (100), in-flight cap (50, configurable), state-override caps.          |
-| v2.0.2-elemont      | Consensus rules                 | `feeRefund` receipt field, 30% base fee burn, cheater fee zeroing, payback fee refunds.                              |
+| v2.0.17-elemont     | Payback/Quota receiver staking                                          | Deployed to testnet RPC + validators on 2026-05-10. The node PaybackCache recognizes `stakeFor(address)` as Payback quota credit for the receiver, preserving same-epoch duration accounting for the refunding address. The V1 receiver-implementation rollout was **superseded** by v2.0.18-elemont's PaybackV2 binary-level Quota proxy replacement and v2.0.19-elemont's corrected V2 rebind.                                                                                                                                                                                                                                                                                                                                                                                      |
+| **v2.0.14-elemont** | Testnet consensus flags (Patch5 + ElemontPubkeyValidation)              | Cycle-161 SFC bytecode. Adds canonical-pubkey validation (`length == 66 && pubkey[0] == 0xc0`) at `createValidator`, `_rawCreateValidator`, and `NodeDriverAuth.updateValidatorPubkey`. Off-chain sealer guard ejects validators with malformed stored pubkeys (testnet validator 16) at the next epoch seal. Also: real `gasUsedRatio` in `eth_feeHistory`.                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| v2.0.13-elemont     | Same-day scaffolding (no live activation)                               | Defines flags + ships the deadbeef-placeholder Cycle-161 bytecode; flipped to v2.0.14 same day with the real bytecode and activation. Don't deploy v2.0.13 standalone.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| v2.0.12-elemont     | Diagnostic + tooling                                                    | Multi-`SfcV2Patch*` divergence warn at single seal; chaindata snapshot producer (`scripts/create-chaindata-snapshot.sh` with `SNAPSHOT_INFO.txt`). Non-consensus.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| v2.0.11-elemont     | Testnet consensus flag (Patch4)                                         | Cycle-160 SFC bytecode. Fixes `_lockStake` / `relockStake`: invariant becomes `endTime >= ld.endTime`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| v2.0.10-elemont     | Testnet consensus flag (Patch3)                                         | Cycle-159 SFC bytecode. Fixes inline reentrancy guard (`_reentrancyGuardCounter < 2`); unblocks `delegate`, `undelegate`, `withdraw`, `claimRewards`, `restakeRewards`, `stashRewards`, `createValidator`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| v2.0.9-elemont      | Trusted-preset entry                                                    | Recognizes `vitainu-genesis-testnet-20260419.g` — fresh installs no longer need `--genesis.allowExperimental`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| v2.0.8-elemont      | Hotfix                                                                  | Removes `validatePeerProgress` drift caps so long-offline validators can rejoin.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| v2.0.7-elemont      | Hotfix                                                                  | Raises per-peer event-processing quota to 3,250 (matches `EventsBufferLimit.Num`); kills the warning storm during sync.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| v2.0.6-elemont      | RPC addition                                                            | New `vc_getPaybackBalance` JSON-RPC method (rate-limited).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| v2.0.5-elemont      | Testnet consensus flag (Patch2)                                         | Cycle-158 SFC bytecode re-flash at `0xFC00FACE...`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| v2.0.4-elemont      | Internal                                                                | lachesis-base bumped to `v0.1.6-elemont`: vecengine cap, dagprocessor drain, kvdb flushable race fix, gossip deadlock fix.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| v2.0.3-elemont      | RPC defensive caps                                                      | go-vinu fork `v1.20.14-quota`: batch-size cap (100), in-flight cap (50, configurable), state-override caps.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| v2.0.2-elemont      | Consensus rules                                                         | `feeRefund` receipt field, 30% base fee burn, cheater fee zeroing, payback fee refunds.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 
 Mainnet has not yet activated any `SfcV2*` flag — when it does, the latest bytecode (Cycle-162) installs directly and the mainnet-only node hook backfills the audited missing delegation rows; the testnet patch flags do not fire on mainnet.
 
@@ -616,13 +623,13 @@ When `SfcV2` activates, the on-chain SFC contract at `0xfc00face0000000000000000
 
 Subsequent testnet patches re-flash the same address with newer bytecode at additional epoch seals:
 
-| Patch         | Introduced | Sealed (testnet)              | Bytecode                                       |
-| ------------- | ---------- | ----------------------------- | ---------------------------------------------- |
-| `SfcV2Patch2` | v2.0.5     | Mid-v2.0.5 boot               | Cycle-158 (45,240 bytes)                       |
-| `SfcV2Patch3` | v2.0.10    | 2026-04-19, block 1,424,440   | Cycle-159 — inline reentrancy guard fix         |
-| `SfcV2Patch4` | v2.0.11    | 2026-04-23, block 1,430,436   | Cycle-160 — `_lockStake` / `relockStake` fix    |
-| `SfcV2Patch5` | v2.0.14    | Active by 2026-05-17          | Cycle-161 — canonical-pubkey validation         |
-| `SfcV2Patch6` | v2.0.21    | Pending v2.0.21 seal          | Cycle-162 — orphan-delegation auto-backfill     |
+| Patch         | Introduced | Sealed (testnet)            | Bytecode                                     |
+| ------------- | ---------- | --------------------------- | -------------------------------------------- |
+| `SfcV2Patch2` | v2.0.5     | Mid-v2.0.5 boot             | Cycle-158 (45,240 bytes)                     |
+| `SfcV2Patch3` | v2.0.10    | 2026-04-19, block 1,424,440 | Cycle-159 — inline reentrancy guard fix      |
+| `SfcV2Patch4` | v2.0.11    | 2026-04-23, block 1,430,436 | Cycle-160 — `_lockStake` / `relockStake` fix |
+| `SfcV2Patch5` | v2.0.14    | Active by 2026-05-17        | Cycle-161 — canonical-pubkey validation      |
+| `SfcV2Patch6` | v2.0.21    | Pending v2.0.21 seal        | Cycle-162 — orphan-delegation auto-backfill  |
 
 Cycle-162 extends the ABI with `RegisteredStake`, `registerStake(uint256)`, and `backfillStakes(address[],uint256[])`; earlier Cycle-158/159/160/161 selectors remain stable. Binary startup guards (`sfc.EnforcePatch4StartupCheck`, `sfc.EnforcePatch5StartupCheck`, and `sfc.EnforcePatch6StartupCheck`) refuse to start a build with invalid embedded SFC patch bytecode.
 
@@ -663,13 +670,13 @@ The `feeRefund` receipt field reports the refund amount. dApps showing "gas spen
 
 #### `vc_getPaybackBalance`
 
-| Field         | Value                                                                                              |
-| ------------- | -------------------------------------------------------------------------------------------------- |
-| Namespace     | `vc` (not `eth`)                                                                                   |
-| Method        | `vc_getPaybackBalance`                                                                             |
-| Params        | `[address]` (20-byte hex). Optional second param: block tag (default `"latest"`).                  |
-| Returns       | Hex-encoded wei. Returns `0x0` for the zero address, when Podgorica is inactive, or sub-minimum stake. |
-| Rate limit    | 8 in-flight, 2 s acquire timeout. Rejection error `-32005` `payback query rate-limited`.           |
+| Field      | Value                                                                                                  |
+| ---------- | ------------------------------------------------------------------------------------------------------ |
+| Namespace  | `vc` (not `eth`)                                                                                       |
+| Method     | `vc_getPaybackBalance`                                                                                 |
+| Params     | `[address]` (20-byte hex). Optional second param: block tag (default `"latest"`).                      |
+| Returns    | Hex-encoded wei. Returns `0x0` for the zero address, when Podgorica is inactive, or sub-minimum stake. |
+| Rate limit | 8 in-flight, 2 s acquire timeout. Rejection error `-32005` `payback query rate-limited`.               |
 
 ```bash
 curl -s -X POST http://localhost:18545/ \
@@ -681,14 +688,14 @@ The `vc` namespace is intentionally separate from `eth` — the accessor is RPC-
 
 ### JSON-RPC defensive caps
 
-| Cap                                | RPC method(s)                                              | Limit                                                          | Error on exceed                       |
-| ---------------------------------- | ---------------------------------------------------------- | -------------------------------------------------------------- | ------------------------------------- |
-| Batch size                         | Any batched call                                           | 100 messages per batch                                         | `invalid request: batch too large`    |
-| In-flight concurrency              | All HTTP & WS RPC                                          | 50 concurrent (`--rpc.maxconcurrent N` to tune; `0` to disable) | HTTP 503                              |
-| `StateOverride.code` size          | `eth_call`, `eth_estimateGas`, `debug_traceCall`           | 24,576 bytes per account                                       | `code size exceeds MaxCodeSize`       |
-| `StateOverride.stateDiff` entries  | same as above                                              | 1,000 entries per account                                      | `stateDiff size exceeds 1000 entries` |
-| `feeRefund` P2P ingress            | Internal (peer RLP decoding)                               | 32 bytes / 256 bits                                            | Peer drops the receipt                |
-| Graceful shutdown                  | Any RPC method during shutdown                             | Handler returns proper JSON-RPC error                          | `handler is stopping`                 |
+| Cap                               | RPC method(s)                                    | Limit                                                           | Error on exceed                       |
+| --------------------------------- | ------------------------------------------------ | --------------------------------------------------------------- | ------------------------------------- |
+| Batch size                        | Any batched call                                 | 100 messages per batch                                          | `invalid request: batch too large`    |
+| In-flight concurrency             | All HTTP & WS RPC                                | 50 concurrent (`--rpc.maxconcurrent N` to tune; `0` to disable) | HTTP 503                              |
+| `StateOverride.code` size         | `eth_call`, `eth_estimateGas`, `debug_traceCall` | 24,576 bytes per account                                        | `code size exceeds MaxCodeSize`       |
+| `StateOverride.stateDiff` entries | same as above                                    | 1,000 entries per account                                       | `stateDiff size exceeds 1000 entries` |
+| `feeRefund` P2P ingress           | Internal (peer RLP decoding)                     | 32 bytes / 256 bits                                             | Peer drops the receipt                |
+| Graceful shutdown                 | Any RPC method during shutdown                   | Handler returns proper JSON-RPC error                           | `handler is stopping`                 |
 
 Indexers batching block-range queries should paginate at ≤100 messages. Heavy analytics workloads can raise concurrency with `--rpc.maxconcurrent N` or distribute across endpoints.
 
@@ -696,11 +703,11 @@ Indexers batching block-range queries should paginate at ≤100 messages. Heavy 
 
 Operator-facing controls for managing chaindata size on long-lived nodes.
 
-| Surface                              | Purpose                                                                                       |
-| ------------------------------------ | --------------------------------------------------------------------------------------------- |
-| `--prune-keep-epochs <N>`            | Retain the last N sealed epochs of state; prune older. Negative values are rejected with a clear error (previously wrapped to large unsigned values and pruned everything). |
-| `--prune-keep-blocks <N>`            | Same semantics, applied to receipt/log retention.                                             |
-| `opera snapshot prune-receipts`      | One-shot subcommand for fine-grained receipt retention control outside the live retention flags. |
+| Surface                         | Purpose                                                                                                                                                                     |
+| ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--prune-keep-epochs <N>`       | Retain the last N sealed epochs of state; prune older. Negative values are rejected with a clear error (previously wrapped to large unsigned values and pruned everything). |
+| `--prune-keep-blocks <N>`       | Same semantics, applied to receipt/log retention.                                                                                                                           |
+| `opera snapshot prune-receipts` | One-shot subcommand for fine-grained receipt retention control outside the live retention flags.                                                                            |
 
 **Crash-safe.** If a prune operation is interrupted (node crash, OOM kill), the next startup automatically resumes the interrupted prune — no manual intervention. The `Snapshots count=128` default produces enough snapshot density for prune to find recoverable boundaries on restart.
 
@@ -713,6 +720,6 @@ Operator-facing controls for managing chaindata size on long-lived nodes.
 - **Gas accounting.** Block-vote gas calc uses overflow-safe addition. Gas oracle guards against `MaxAllocPeriod=0`. `MinGasPrice=0` is rejected.
 - **EVM.** `eth_call` enforces `MaxCodeSize` even when code comes from `stateOverride`.
 
-***
+---
 
 _Last updated: 2026-05-17 · latest guide target `v2.0.21-elemont` · corrected PaybackV2 address `0x89D1cBD9DEAaB4dFf6f800a336FBDd9A5c6829e4` · SFC Cycle-162 `version() = 3.0.5` · go-vinu `v1.20.14-quota` · lachesis-base `v0.1.6-elemont`_
