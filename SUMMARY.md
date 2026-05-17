@@ -50,6 +50,7 @@
   * [FAQ - Staking](technical-docs/staking/faq-staking.md)
 * [Smart Contracts](technical-docs/smart-contracts/README.md)
   * [Deploy a Smart Contract](technical-docs/smart-contracts/deploy-a-smart-contract.md)
+  * [VinuChain Name Service](technical-docs/smart-contracts/vinuchain-name-service.md)
 * [API](technical-docs/api/README.md)
   * [Public API Endpoints](technical-docs/api/public-api-endpoints.md)
   * [GraphQL](technical-docs/api/graphql.md)
