@@ -465,7 +465,7 @@ Mainnet is currently unaffected because no `SfcV2*` flag has sealed there yet. D
 ### Node won't start after upgrade
 
 1. Check logs: `journalctl -u opera -f` (systemd) or your terminal / Docker output.
-2. Verify the binary: `opera version` must print `2.0.22-elemont`.
+2. Verify the binary: `opera version` must print `2.0.24-elemont`.
 3. If the database is reported as corrupted, restore from the chaindata snapshot below.
 
 ### Node starts but doesn't produce events
@@ -498,11 +498,11 @@ Your locally-computed epoch state hash does not match the network's. The check r
    find go-opera -mindepth 1 -not -name nodekey -not -name 'static-nodes.json' -not -name 'trusted-nodes.json' -exec rm -rf {} +
    ```
 
-4. Download the latest testnet snapshot and extract it in-place over the datadir (the tar is written with relative paths, so extract at the datadir root; the tar excludes `nodekey`, `keystore/`, `opera.ipc`, `static-nodes.json`, `trusted-nodes.json` so your identity files are preserved). Until a post-v2.0.24 Cancun snapshot is published, use the exact post-Patch6 snapshot below and then let the current binary seal any still-pending EVM upgrade flags. After Cancun seals, use the newest post-Cancun snapshot instead.
+4. Download the latest testnet snapshot and extract it in-place over the datadir (the tar is written with relative paths, so extract at the datadir root; the tar excludes `nodekey`, `keystore/`, `opera.ipc`, `static-nodes.json`, `trusted-nodes.json` so your identity files are preserved). Use the exact post-Cancun snapshot below for fresh v2.0.24 installs and for nodes that missed the Shanghai or Cancun seal window.
 
    ```bash
    cd <datadir>
-   SNAPSHOT_URL="https://vinu-blockchain-genesis.s3.amazonaws.com/chaindata-snapshots/testnet-chaindata-v2.0.21-elemont-20260516T164445Z-clean.tar.gz"
+   SNAPSHOT_URL="https://vinu-blockchain-genesis.s3.amazonaws.com/chaindata-snapshots/testnet-chaindata-v2.0.24-elemont-20260518T005603Z-clean.tar.gz"
    curl -LO "$SNAPSHOT_URL"
    # verify integrity
    curl -L "$SNAPSHOT_URL.sha256" | sha256sum -c -
@@ -518,16 +518,16 @@ Your locally-computed epoch state hash does not match the network's. The check r
 
    The file lists the network, snapshot timestamp, binary version, tip block, tip epoch, and the full set of sealed upgrade flags. The tip block listed there is the minimum block number your first `New block` log line should show after restart. If `cat` returns nothing, the tarball did not extract correctly — do not start opera; re-extract at the datadir root.
 
-   Current snapshot listing (public, no AWS credentials required). If the listing still contains older objects, treat them as archival and use the exact v2.0.21 URL above:
+   Current snapshot listing (public, no AWS credentials required). If the listing still contains older objects, treat them as archival and use the exact v2.0.24 URL above:
 
    ```text
    https://vinu-blockchain-genesis.s3.amazonaws.com/?list-type=2&prefix=chaindata-snapshots/
    ```
 
-   The tarball is flat (top-level is `chaindata/`, `go-opera/`, and `SNAPSHOT_INFO.txt` — no `datadir/` prefix to nest) and excludes `nodekey`, `keystore/`, `opera.ipc`, `static-nodes.json`, `trusted-nodes.json`, archived `chaindata.bak.*/`, and shell `history` files. New snapshots are published under `s3://vinu-blockchain-genesis/chaindata-snapshots/`; until the post-Cancun snapshot is published, use `testnet-chaindata-v2.0.21-elemont-20260516T164445Z-clean`.
+   The tarball is flat (top-level is `chaindata/`, `go-opera/`, and `SNAPSHOT_INFO.txt` — no `datadir/` prefix to nest) and excludes `nodekey`, `keystore/`, `opera.ipc`, `static-nodes.json`, `trusted-nodes.json`, archived `chaindata.bak.*/`, and shell `history` files. New snapshots are published under `s3://vinu-blockchain-genesis/chaindata-snapshots/`; the current published object is `testnet-chaindata-v2.0.24-elemont-20260518T005603Z-clean`.
 
 5. Ensure `--nat extip:<your_public_ip>` is set and `<datadir>/go-opera/static-nodes.json` contains the canonical bootnode list from the [Start your node](#start-your-node) section.
-6. Restart opera. The node resumes from the snapshot's tip (epoch 5802 / block 1,460,330 at snapshot time) and syncs forward. Expect `New DAG summary age=<few seconds>` within 1-2 minutes of restart.
+6. Restart opera. The node resumes from the snapshot's tip (epoch 5810 / block 1,461,789 at snapshot time) and syncs forward. Expect `New DAG summary age=<few seconds>` within 1-2 minutes of restart.
 
 ### Stuck at `net.peerCount == 1` with one stale peer
 
@@ -569,9 +569,9 @@ The recommended rollout:
 1. VinuChain team announces the patch window. Date: TBD.
 2. Pre-stage the binary on every validator before the window (Upgrade Steps step 2).
 3. During the window, each operator performs the binary swap.
-4. Confirm in the coordination channel that block production resumed and `opera version` reports `2.0.22-elemont`.
+4. Confirm in the coordination channel that block production resumed and `opera version` reports `2.0.24-elemont`.
 
-**Missed the window?** Patch6 sealed on testnet at block 1,460,329 in epoch 5801 on 2026-05-16. If your node was not already running v2.0.21 before that seal, a later binary swap will not replay the `SfcV2Patch6` edge and will not apply the automatic backfill. Stop the node, preserve `keystore/` and `go-opera/nodekey`, and restore from the post-v2.0.21 Patch6 chaindata snapshot in [Troubleshooting](#warn-incoming-event-rejected-err-wrong-event-epoch-hash) before rejoining.
+**Missed the window?** Patch6 sealed on testnet at block 1,460,329 in epoch 5801 on 2026-05-16. If your node was not already running v2.0.21 before that seal, a later binary swap will not replay the `SfcV2Patch6` edge and will not apply the automatic backfill. Stop the node, preserve `keystore/` and `go-opera/nodekey`, and restore from the latest post-seal chaindata snapshot in [Troubleshooting](#warn-incoming-event-rejected-err-wrong-event-epoch-hash) before rejoining.
 
 After Cancun seals, the same rule applies to v2.0.24: nodes that missed the Cancun window should restore from the newest post-Cancun snapshot instead of replaying the edge at a different block. After Shanghai seals, nodes that missed the Shanghai window should restore from the newest post-Shanghai-or-later snapshot instead of replaying the edge at a different block.
 
@@ -602,6 +602,13 @@ The codebase uses several internal upgrade names. The base SfcV2, Podgorica, and
 | **Mainnet SfcV2 backfill** | Future mainnet `SfcV2` activation installs the latest Cycle-162 bytecode directly and now has a mainnet-only node-state backfill hook for the 82 live mainnet delegation rows audited on 2026-05-17. The list must be refreshed immediately before a mainnet activation release so newly-created missing rows are not missed.                                                                                                                                                                                                 |
 
 Testnet has Shanghai, Cancun, the earlier SFC re-flashes (`SfcV2Patch2` / `SfcV2Patch3` / `SfcV2Patch4` / `SfcV2Patch5`), the `ElemontPubkeyValidation` sealer guard, PaybackV2, PaybackV2Patch, and the `SfcV2Patch6` edge. Mainnet has Shanghai and Cancun disabled and no `SfcV2*` patch flags active yet — when it activates `SfcV2`, the latest Cycle-162 bytecode is installed directly without separate `Patch*` events, and the mainnet-only activation hook backfills the audited missing delegation rows. Mainnet `PaybackV2` is staged for a separate release after testnet bake-in completes.
+
+Recent execution-layer seal points on testnet:
+
+| Flag       | Introduced | Sealed (testnet)            | Notes                                        |
+| ---------- | ---------- | --------------------------- | -------------------------------------------- |
+| `Shanghai` | v2.0.22    | 2026-05-17, block 1,461,622 | EIP-3651, EIP-3855, and EIP-3860 active     |
+| `Cancun`   | v2.0.24    | 2026-05-18, block 1,461,786 | EIP-1153, EIP-5656, and EIP-6780 active     |
 
 ### Release overview
 
