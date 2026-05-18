@@ -6,14 +6,15 @@
 
 | Version           | Network | Status                                             |
 | ----------------- | ------- | -------------------------------------------------- |
-| `v2.0.25-elemont` | Testnet | Shanghai/Cancun execution compatibility fix release |
+| `v2.0.26-elemont` | Testnet | EIP audit hardening release |
 
 ## What's new
 
 - Adds the Shanghai and Cancun execution-layer upgrade flags on testnet.
 - Enables EIP-3651 warm coinbase access, EIP-3855 `PUSH0`, EIP-3860 initcode metering plus the 49,152-byte initcode limit, EIP-1153 transient storage, EIP-5656 `MCOPY`, and EIP-6780 Cancun `SELFDESTRUCT` behavior.
 - Wires the Shanghai transaction-level rules into VinuChain's local `evmcore` execution and txpool paths, not only the underlying go-vinu VM dependency.
-- Sequences skipped-binary activation so a node booting from pre-Shanghai state stages Shanghai first and only stages Cancun after Shanghai is active.
+- Extends Shanghai transaction validation to event admission and txpool fork reset, and ensures skipped intrinsic/initcode failures do not debit balances or block gas.
+- Sequences skipped-binary activation so a node booting from pre-Shanghai state stages Shanghai first and automatically stages Cancun after Shanghai becomes active.
 - Keeps the v2.0.21 Cycle-162 SFC / Patch6 backfill behavior and the corrected PaybackV2 address from v2.0.19: `QuotaContractV2` at `0x89D1cBD9DEAaB4dFf6f800a336FBDd9A5c6829e4`.
 - Leaves mainnet Shanghai and Cancun disabled until a separately scheduled mainnet release flips the hardcoded mainnet rule.
 
@@ -52,7 +53,7 @@ Ensure these remain open in your firewall:
 ## Upgrade Steps
 
 {% hint style="info" %}
-**Fresh install?** This guide covers binary swaps on existing validator nodes. If you're bootstrapping a brand-new testnet node, replay from genesis is **not supported under v2.0.25** — follow the snapshot-restore procedure in [Troubleshooting → Wrong event epoch hash](#warn-incoming-event-rejected-err-wrong-event-epoch-hash) instead. Do not use this v2.0.25 guide as a routine pre-activation mainnet genesis-replay path: the binary hardcodes the future mainnet `SfcV2` activation and stages that transition at the next epoch seal when run on a pre-SfcV2 mainnet datadir.
+**Fresh install?** This guide covers binary swaps on existing validator nodes. If you're bootstrapping a brand-new testnet node, replay from genesis is **not supported under v2.0.26** — follow the snapshot-restore procedure in [Troubleshooting → Wrong event epoch hash](#warn-incoming-event-rejected-err-wrong-event-epoch-hash) instead. Do not use this v2.0.26 guide as a routine pre-activation mainnet genesis-replay path: the binary hardcodes the future mainnet `SfcV2` activation and stages that transition at the next epoch seal when run on a pre-SfcV2 mainnet datadir.
 {% endhint %}
 
 {% stepper %}
@@ -116,7 +117,7 @@ The build directory is independent of your node's `--datadir`. The build process
 ```bash
 git clone https://github.com/VinuChain/VinuChain.git $HOME/vinuchain-upgrade
 cd $HOME/vinuchain-upgrade
-git checkout v2.0.25-elemont
+git checkout v2.0.26-elemont
 make opera
 # Binary is at $HOME/vinuchain-upgrade/build/opera
 ```
@@ -126,7 +127,7 @@ make opera
 Substitute `/opt/vinuchain-upgrade` (or any other path) if `$HOME` is not the right partition for your setup — every later command in this guide that references `$HOME/vinuchain-upgrade` should be adjusted to match.
 
 {% hint style="info" %}
-**Dependency pins.** `v2.0.25-elemont` uses go-vinu `v1.20.17-quota` for Shanghai and selected Cancun execution support and keeps lachesis-base at `v0.1.6-elemont`. `make opera` fetches dependencies on first build.
+**Dependency pins.** `v2.0.26-elemont` uses go-vinu `v1.20.17-quota` for Shanghai and selected Cancun execution support and keeps lachesis-base at `v0.1.6-elemont`. `make opera` fetches dependencies on first build.
 {% endhint %}
 {% endstep %}
 
@@ -139,11 +140,11 @@ The newly-built binary is at `vinuchain-upgrade/build/opera`. Move into that dir
 ```bash
 cd $HOME/vinuchain-upgrade/build
 ./opera version
-# Expected: Version: 2.0.25-elemont
+# Expected: Version: 2.0.26-elemont
 ```
 
 {% hint style="info" %}
-`opera version` prints `2.0.25-elemont` — this matches the git tag `v2.0.25-elemont`. See the note at the top of this page.
+`opera version` prints `2.0.26-elemont` — this matches the git tag `v2.0.26-elemont`. See the note at the top of this page.
 {% endhint %}
 {% endstep %}
 
@@ -273,7 +274,7 @@ For testing or development, you can run in the foreground:
 
 What to expect:
 
-**Startup banner.** Every v2.x build prints the VinuChain banner. This is the first visual confirmation that you are running v2.0.25-elemont and not the previous binary:
+**Startup banner.** Every v2.x build prints the VinuChain banner. This is the first visual confirmation that you are running v2.0.26-elemont and not the previous binary:
 
 ```text
  ██╗   ██╗██╗███╗   ██╗██╗   ██╗ ██████╗██╗  ██╗ █████╗ ██╗███╗   ██╗
@@ -285,10 +286,10 @@ What to expect:
 
                         v2.0  -  ELEMONT
 
-  Version: 2.0.25-elemont
+  Version: 2.0.26-elemont
 ```
 
-**Staging logs (testnet only, first-time Shanghai/Cancun install).** On the first v2.0.25 boot of a node that has not yet sealed Shanghai, you will see Shanghai staged and Cancun deferred:
+**Staging logs (testnet only, first-time Shanghai/Cancun install).** On the first v2.0.26 boot of a node that has not yet sealed Shanghai, you will see Shanghai staged and Cancun deferred:
 
 ```text
 INFO Staged Shanghai upgrade from binary rules; will activate at next epoch seal
@@ -297,13 +298,13 @@ INFO Deferring Cancun upgrade from binary rules until Shanghai is active
 
 This confirms EIP-3651, EIP-3855, and EIP-3860 are pending for the next epoch seal, while Cancun is intentionally held back so skipped-binary nodes do not collapse Shanghai and Cancun into the same activation height.
 
-After `vc_getRules` reports `Upgrades.Shanghai = true`, restart on v2.0.25 to stage Cancun if it is not already pending:
+After `vc_getRules` reports `Upgrades.Shanghai = true`, v2.0.26 stages Cancun automatically on the same continuous process:
 
 ```text
 INFO Staged Cancun upgrade from binary rules; will activate at next epoch seal
 ```
 
-This confirms EIP-1153, EIP-5656, and EIP-6780 behavior are pending for the next epoch seal. If you do not see a staging line, you may be running the wrong binary (`opera version` check), the flag may already be pending in `DirtyRules` from an earlier v2.0.25 boot, or the flag may already be sealed on this datadir. Absence of the staging line by itself is not proof that the fork has sealed; confirm with `vc_getRules`. Mainnet and staging nodes do not show these lines because `VinuChainMainNetRules` keeps Shanghai and Cancun disabled until a coordinated mainnet release.
+This confirms EIP-1153, EIP-5656, and EIP-6780 behavior are pending for the next epoch seal. If you do not see a staging line, you may be running the wrong binary (`opera version` check), the flag may already be pending in `DirtyRules` from an earlier v2.0.26 boot, or the flag may already be sealed on this datadir. Absence of the staging line by itself is not proof that the fork has sealed; confirm with `vc_getRules`. Mainnet and staging nodes do not show these lines because `VinuChainMainNetRules` keeps Shanghai and Cancun disabled until a coordinated mainnet release.
 
 **Older staging logs (testnet only, first-time SfcV2Patch6 install).** Nodes upgrading from before v2.0.21 that have not yet sealed SfcV2Patch6 can also see this older staging line:
 
@@ -329,7 +330,7 @@ INFO Backfilled SFC Patch6 testnet delegations block=<N> appended=3 repaired=0
 
 If every listed pair is already visible in `stakes[]` or has dropped to zero stake, the re-flash log can appear without a `Backfilled ...` line. After it fires, `vc_getRules` must report `Upgrades.SfcV2Patch6 = true`, and `eth_call` to SFC `version()` must return `0x333035` (`"305"`). The `Backfilled ...` counts are lower if a listed pair already became visible or dropped to zero stake before the seal; `repaired` may be non-zero if a pair is present in `stakes[]` but its `stakePosition` points at a stale row. `Economy.QuotaCacheAddress` remains the corrected PaybackV2 address `0x89D1cBD9DEAaB4dFf6f800a336FBDd9A5c6829e4`.
 
-**Future mainnet SfcV2 activation.** When mainnet activation is explicitly scheduled, the first v2.0.25+ boot on a pre-SfcV2 mainnet datadir stages `SfcV2`, not `SfcV2Patch6`:
+**Future mainnet SfcV2 activation.** When mainnet activation is explicitly scheduled, the first v2.0.26+ boot on a pre-SfcV2 mainnet datadir stages `SfcV2`, not `SfcV2Patch6`:
 
 ```text
 INFO Staged SfcV2 upgrade from binary rules; will activate at next epoch seal
@@ -344,12 +345,12 @@ After the mainnet seal, `vc_getRules` must report `Upgrades.SfcV2 = true`, SFC `
 | Check                                                     | Expected                                                                                                                                              |
 | --------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Startup banner                                            | `VINUCHAIN v2.0 - ELEMONT` ASCII art printed to stderr                                                                                                |
-| `opera version`                                           | `Version: 2.0.25-elemont`                                                                                                                             |
+| `opera version`                                           | `Version: 2.0.26-elemont`                                                                                                                             |
 | Block production                                          | Resumes within seconds of startup; block numbers advance                                                                                              |
 | Peer count                                                | Returns to prior steady-state within minutes                                                                                                          |
-| Shanghai staging logs (testnet, first pre-Shanghai v2.0.25 boot) | 1× `Staged Shanghai upgrade …`; Cancun may log as deferred until Shanghai is active                                                                    |
+| Shanghai staging logs (testnet, first pre-Shanghai v2.0.26 boot) | 1× `Staged Shanghai upgrade …`; Cancun may log as deferred until Shanghai is active                                                                    |
 | Shanghai rule after seal                                  | `vc_getRules` reports `Upgrades.Shanghai = true`                                                                                                      |
-| Cancun staging logs (testnet, first post-Shanghai v2.0.25 boot) | 1× `Staged Cancun upgrade …`                                                                                                                          |
+| Cancun staging logs (testnet, post-Shanghai v2.0.26 process) | 1× `Staged Cancun upgrade …` after Shanghai seals; no restart required                                                                                 |
 | Cancun rule after seal                                    | `vc_getRules` reports `Upgrades.Cancun = true`                                                                                                        |
 | SfcV2Patch6 staging logs (older unsealed datadirs only)   | 1× `Staged SfcV2Patch6 …`                                                                                                                             |
 | SfcV2Patch6 staging log — all other cases                 | None                                                                                                                                                  |
@@ -410,7 +411,7 @@ That guide uses the correct `opera validator new` command for generating a valid
 
 ## Rollback
 
-Before Shanghai seals, rollback is a normal binary swap back to the previous testnet binary. After Shanghai seals, do not roll back below v2.0.25 without operator coordination: older binaries either do not know the `Shanghai`/`Cancun` upgrade bits or, in the v2.0.22-v2.0.24 range, do not apply the fixed VinuChain-local transaction-level Shanghai gas checks in `evmcore`.
+Before Shanghai seals, rollback is a normal binary swap back to the previous testnet binary. After Shanghai seals, do not roll back below v2.0.26 without operator coordination: older binaries either do not know the `Shanghai`/`Cancun` upgrade bits, or in the v2.0.22-v2.0.25 range, do not apply the complete VinuChain-local Shanghai event, txpool, and state-transition hardening in `evmcore`.
 
 The earlier SfcV2Patch6 rollback constraints still apply. After SfcV2Patch6 seals, do not roll back below v2.0.21 without operator coordination: the Cycle-162 bytecode and automatic testnet delegation backfill persist in chain state, and older binaries do not contain the activation-time backfill logic. The corrected PaybackV2 v2.0.19 rollback constraints still apply if PaybackV2Patch was also part of the node's upgrade path.
 
@@ -425,6 +426,7 @@ No datadir changes are needed for a pre-seal rollback. A post-seal rollback must
 {% hint style="info" %}
 **Per-version rollback deltas.** Each bullet describes the only functional difference between the two versions.
 
+- **v2.0.26 → earlier rollback:** Safe only before the relevant Shanghai/Cancun seal. After Shanghai seals, v2.0.21 and older lack Shanghai support, v2.0.22-v2.0.24 lack the fixed VinuChain-local Shanghai transaction checks, and v2.0.25 lacks the full event-admission, txpool reset, skipped-transaction accounting, and continuous Cancun-staging hardening. After Cancun seals, older binaries also lack the final Cancun opcode/`SELFDESTRUCT` behavior and downgrade can diverge on valid post-Cancun transactions or gas accounting.
 - **v2.0.25 → earlier rollback:** Safe only before the relevant Shanghai/Cancun seal. After Shanghai seals, v2.0.21 and older lack Shanghai support, and v2.0.22-v2.0.24 lack the fixed VinuChain-local Shanghai transaction checks. After Cancun seals, older binaries also lack the final Cancun opcode/`SELFDESTRUCT` behavior and downgrade can diverge on valid post-Cancun transactions or gas accounting.
 - **v2.0.21 → v2.0.20 rollback:** Safe only before `SfcV2Patch6` seals. During the pending Patch6 window, v2.0.20 can stage the bytecode re-flash but does **not** perform the automatic testnet delegation backfill, so validators should run v2.0.21 before the Patch6 seal.
 - **v2.0.20 → v2.0.19 rollback:** Safe only before `SfcV2Patch6` seals. After the seal, Cycle-162 SFC bytecode persists in chain state, but v2.0.19 lacks the `SfcV2Patch6` rule bit, startup guard, and staging logic; downgrade only as coordinated incident response.
@@ -463,7 +465,7 @@ Mainnet is currently unaffected because no `SfcV2*` flag has sealed there yet. D
 ### Node won't start after upgrade
 
 1. Check logs: `journalctl -u opera -f` (systemd) or your terminal / Docker output.
-2. Verify the binary: `opera version` must print `2.0.25-elemont`.
+2. Verify the binary: `opera version` must print `2.0.26-elemont`.
 3. If the database is reported as corrupted, restore from the chaindata snapshot below.
 
 ### Node starts but doesn't produce events
@@ -496,7 +498,7 @@ Your locally-computed epoch state hash does not match the network's. The check r
    find go-opera -mindepth 1 -not -name nodekey -not -name 'static-nodes.json' -not -name 'trusted-nodes.json' -exec rm -rf {} +
    ```
 
-4. Download the latest testnet snapshot and extract it in-place over the datadir (the tar is written with relative paths, so extract at the datadir root; the tar excludes `nodekey`, `keystore/`, `opera.ipc`, `static-nodes.json`, `trusted-nodes.json` so your identity files are preserved). Use the exact post-Cancun snapshot below for fresh v2.0.25 installs and for nodes that missed the Shanghai or Cancun seal window.
+4. Download the latest testnet snapshot and extract it in-place over the datadir (the tar is written with relative paths, so extract at the datadir root; the tar excludes `nodekey`, `keystore/`, `opera.ipc`, `static-nodes.json`, `trusted-nodes.json` so your identity files are preserved). Use the exact post-Cancun snapshot below for fresh v2.0.26 installs and for nodes that missed the Shanghai or Cancun seal window.
 
    ```bash
    cd <datadir>
@@ -567,11 +569,11 @@ The recommended rollout:
 1. VinuChain team announces the patch window. Date: TBD.
 2. Pre-stage the binary on every validator before the window (Upgrade Steps step 2).
 3. During the window, each operator performs the binary swap.
-4. Confirm in the coordination channel that block production resumed and `opera version` reports `2.0.25-elemont`.
+4. Confirm in the coordination channel that block production resumed and `opera version` reports `2.0.26-elemont`.
 
 **Missed the window?** Patch6 sealed on testnet at block 1,460,329 in epoch 5801 on 2026-05-16. If your node was not already running v2.0.21 before that seal, a later binary swap will not replay the `SfcV2Patch6` edge and will not apply the automatic backfill. Stop the node, preserve `keystore/` and `go-opera/nodekey`, and restore from the latest post-seal chaindata snapshot in [Troubleshooting](#warn-incoming-event-rejected-err-wrong-event-epoch-hash) before rejoining.
 
-After Shanghai or Cancun seals, the same rule applies to v2.0.25: nodes that missed the activation window should restore from the newest post-seal snapshot instead of replaying the edge at a different block.
+After Shanghai or Cancun seals, the same rule applies to v2.0.26: nodes that missed the activation window should restore from the newest post-seal snapshot instead of replaying the edge at a different block.
 
 ---
 
@@ -612,7 +614,8 @@ Recent execution-layer seal points on testnet:
 
 | Version             | Type                                                                    | What changed                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | ------------------- | ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **v2.0.25-elemont** | **Shanghai/Cancun local execution fix**                                  | Wires Shanghai transaction-level gas checks into VinuChain's local `evmcore` execution and txpool paths, adds regression coverage for local `evmcore`, sequences skipped-binary activation so Cancun cannot seal at the same height as Shanghai, and keeps go-vinu at `v1.20.17-quota`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| **v2.0.26-elemont** | **EIP audit hardening**                                                  | Extends fork-aware Shanghai transaction validation into event admission, drops pre-Shanghai pending/queued contract creations that become invalid when Shanghai activates, keeps skipped intrinsic/initcode failures from mutating sender balance or block gas, and stages Cancun automatically after Shanghai seals on continuous nodes. Keeps go-vinu at `v1.20.17-quota`.                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| **v2.0.25-elemont** | **Shanghai/Cancun local execution fix**                                  | Wires Shanghai transaction-level gas checks into VinuChain's local `evmcore` execution and txpool paths, adds regression coverage for local `evmcore`, sequences skipped-binary activation so Cancun cannot seal at the same height as Shanghai, and keeps go-vinu at `v1.20.17-quota`. Superseded by v2.0.26 for event-admission, txpool reset, skipped-transaction accounting, and no-restart Cancun staging hardening.                                                                                                                                                                                                                                                                                                                                                               |
 | **v2.0.24-elemont** | **Cancun `SELFDESTRUCT` behavior**                                      | Updates go-vinu to `v1.20.17-quota` for EIP-6780-style `SELFDESTRUCT` behavior. Superseded by v2.0.25 because v2.0.24 did not yet wire the Shanghai transaction-level gas rules into VinuChain's local `evmcore` path.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | **v2.0.23-elemont** | **Cancun opcode support**                                               | Updates go-vinu to `v1.20.16-quota` and adds the `Cancun` upgrade flag for selected non-blob Cancun behavior: EIP-1153 transient storage and EIP-5656 `MCOPY`. Superseded by v2.0.25 for the local `evmcore` Shanghai gas fix and activation sequencing guard.                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | **v2.0.22-elemont** | **Shanghai execution compatibility**                                    | Adds the `Shanghai` upgrade flag on testnet and updates go-vinu to `v1.20.15-quota`. Enables EIP-3651 warm coinbase access, EIP-3855 `PUSH0`, and EIP-3860 initcode metering plus the 49,152-byte initcode limit. Superseded by v2.0.25 because VinuChain's local `evmcore` transaction path also needed the Shanghai transaction-level gas checks. Mainnet remains prepared but disabled until a separately coordinated release flips the mainnet rule.                                                                                                                                                                                                                                                                                 |
@@ -638,7 +641,7 @@ Recent execution-layer seal points on testnet:
 Mainnet has not yet activated Shanghai, Cancun, or any `SfcV2*` flag — when it activates `SfcV2`, the latest bytecode (Cycle-162) installs directly and the mainnet-only node hook backfills the audited missing delegation rows; the testnet patch flags do not fire on mainnet.
 
 {% hint style="info" %}
-**Activation timing.** Consensus flags and seal-bound rebinding (`SfcV2`, `Podgorica`, `Elemont`, `Shanghai`, `Cancun`, `SfcV2Patch2/3/4/5/6`, `ElemontPubkeyValidation`, `PaybackV2`, `PaybackV2Patch`, and v2.0.2 rules) activate at the **next epoch seal** after the binary is first installed or the pending `DirtyRules` edge is staged (up to `MaxEpochDuration = 4h`). On skipped-binary boots, v2.0.25 deliberately stages Shanghai before Cancun; restart after Shanghai seals to stage Cancun. All other changes — RPC caps, RPC additions, peer-quota resize, drift-cap removal, `eth_feeHistory.gasUsedRatio` fix, lachesis-base internals — are **immediate on restart**, no epoch-seal wait.
+**Activation timing.** Consensus flags and seal-bound rebinding (`SfcV2`, `Podgorica`, `Elemont`, `Shanghai`, `Cancun`, `SfcV2Patch2/3/4/5/6`, `ElemontPubkeyValidation`, `PaybackV2`, `PaybackV2Patch`, and v2.0.2 rules) activate at the **next epoch seal** after the binary is first installed or the pending `DirtyRules` edge is staged (up to `MaxEpochDuration = 4h`). On skipped-binary boots, v2.0.26 deliberately stages Shanghai before Cancun; once Shanghai seals, the same continuous node stages Cancun for the following seal without a restart. All other changes — RPC caps, RPC additions, peer-quota resize, drift-cap removal, `eth_feeHistory.gasUsedRatio` fix, lachesis-base internals — are **immediate on restart**, no epoch-seal wait.
 {% endhint %}
 
 ### `feeRefund` receipt field
@@ -762,4 +765,4 @@ Operator-facing controls for managing chaindata size on long-lived nodes.
 
 ---
 
-_Last updated: 2026-05-18 · latest guide target `v2.0.25-elemont` · corrected PaybackV2 address `0x89D1cBD9DEAaB4dFf6f800a336FBDd9A5c6829e4` · SFC Cycle-162 `version() = 3.0.5` · go-vinu `v1.20.17-quota` · lachesis-base `v0.1.6-elemont`_
+_Last updated: 2026-05-18 · latest guide target `v2.0.26-elemont` · corrected PaybackV2 address `0x89D1cBD9DEAaB4dFf6f800a336FBDd9A5c6829e4` · SFC Cycle-162 `version() = 3.0.5` · go-vinu `v1.20.17-quota` · lachesis-base `v0.1.6-elemont`_
