@@ -6,7 +6,7 @@
 
 | Version           | Network | Status                                      |
 | ----------------- | ------- | ------------------------------------------- |
-| `v2.0.28-elemont` | Testnet | Deployed; Prague staged for next epoch seal |
+| `v2.0.28-elemont` | Testnet | Deployed; Prague active; snapshot published |
 
 ## What's new
 
@@ -23,13 +23,25 @@
 
 `v2.0.28-elemont` was built on the testnet hosts and deployed to the public trace RPC plus validators V1-V4 on 2026-05-18 between 18:01 UTC and 18:05 UTC. The deployed client string is `go-opera/v2.0.28-elemont-d62ab5a0-1779127036/linux-amd64/go1.26.2`.
 
-Post-deploy verification confirmed the trace RPC still serves `trace_block`, all four validator services are active, and the RPC log contains:
+Post-deploy verification confirmed the trace RPC still serves `trace_block`, all four validator services are active, and the RPC log contained:
 
 ```text
 Staged Prague upgrade from binary rules; will activate at next epoch seal
 ```
 
-At 2026-05-18 18:16 UTC, `vc_getRules("latest")` still reported `Upgrades.Prague = false` at epoch `0x16b6`, which is expected until the pending epoch seals. After the seal, update this guide with the Prague activation block and publish the post-Prague snapshot before using v2.0.28 for fresh testnet nodes.
+Prague sealed on testnet at block `1,462,637` in epoch `5,815` on 2026-05-18 20:49:17 UTC. After the seal, `vc_getRules("latest")` reported `Upgrades.Prague = true`.
+
+The post-Prague recovery snapshot is:
+
+```text
+https://vinu-blockchain-genesis.s3.amazonaws.com/chaindata-snapshots/testnet-chaindata-v2.0.28-elemont-20260518T205521Z-clean.tar.gz
+```
+
+Snapshot SHA256:
+
+```text
+79fea06eaa330a5efe5c396d37cc42ae7c9c5e1b3f5e0c901f2d8c0f820b8bb7
+```
 
 ---
 
@@ -38,7 +50,7 @@ At 2026-05-18 18:16 UTC, `vc_getRules("latest")` still reported `Upgrades.Prague
 | Network | Chain ID   | RPC                              | Status          |
 | ------- | ---------- | -------------------------------- | --------------- |
 | Mainnet | 207 (0xcf) | `https://vinuchain-rpc.com`      | Upgrade pending |
-| Testnet | 206 (0xce) | `https://vinufoundation-rpc.com` | v2.0.28 deployed; Prague pending seal |
+| Testnet | 206 (0xce) | `https://vinufoundation-rpc.com` | v2.0.28 deployed; Prague active |
 
 ---
 
@@ -525,11 +537,11 @@ Your locally-computed epoch state hash does not match the network's. The check r
    find go-opera -mindepth 1 -not -name nodekey -not -name 'static-nodes.json' -not -name 'trusted-nodes.json' -exec rm -rf {} +
    ```
 
-4. Download the latest testnet snapshot and extract it in-place over the datadir (the tar is written with relative paths, so extract at the datadir root; the tar excludes `nodekey`, `keystore/`, `opera.ipc`, `static-nodes.json`, `trusted-nodes.json` so your identity files are preserved). Use the latest post-Prague snapshot after Prague seals. Until that snapshot is published, the exact post-Cancun snapshot below remains valid only for nodes joining before the Prague seal.
+4. Download the latest post-Prague testnet snapshot and extract it in-place over the datadir (the tar is written with relative paths, so extract at the datadir root; the tar excludes `nodekey`, `keystore/`, `opera.ipc`, `static-nodes.json`, `trusted-nodes.json` so your identity files are preserved). Do not use the older post-Cancun snapshot after the Prague seal.
 
    ```bash
    cd <datadir>
-   SNAPSHOT_URL="https://vinu-blockchain-genesis.s3.amazonaws.com/chaindata-snapshots/testnet-chaindata-v2.0.24-elemont-20260518T005603Z-clean.tar.gz"
+   SNAPSHOT_URL="https://vinu-blockchain-genesis.s3.amazonaws.com/chaindata-snapshots/testnet-chaindata-v2.0.28-elemont-20260518T205521Z-clean.tar.gz"
    curl -LO "$SNAPSHOT_URL"
    # verify integrity
    curl -L "$SNAPSHOT_URL.sha256" | sha256sum -c -
@@ -637,7 +649,7 @@ Recent execution-layer seal points on testnet:
 | ---------- | ---------- | --------------------------- | -------------------------------------------- |
 | `Shanghai` | v2.0.22    | 2026-05-17, block 1,461,622 | EIP-3651, EIP-3855, and EIP-3860 active     |
 | `Cancun`   | v2.0.24    | 2026-05-18, block 1,461,786 | EIP-1153, EIP-5656, and EIP-6780 active     |
-| `Prague`   | v2.0.28    | Staged 2026-05-18; pending next seal | EIP-7702 set-code transactions              |
+| `Prague`   | v2.0.28    | 2026-05-18, block 1,462,637 | EIP-7702 set-code transactions              |
 
 ### Release overview
 
@@ -808,4 +820,4 @@ Operator-facing controls for managing chaindata size on long-lived nodes.
 
 ---
 
-_Last updated: 2026-05-19 · latest guide target `v2.0.28-elemont` · Prague/EIP-7702 set-code transactions · corrected PaybackV2 address `0x89D1cBD9DEAaB4dFf6f800a336FBDd9A5c6829e4` · SFC Cycle-162 `version() = 3.0.5` · go-vinu `v1.20.19-quota` · lachesis-base `v0.1.6-elemont`_
+_Last updated: 2026-05-19 · latest guide target `v2.0.28-elemont` · Prague/EIP-7702 set-code transactions active on testnet · latest snapshot `testnet-chaindata-v2.0.28-elemont-20260518T205521Z-clean.tar.gz` · corrected PaybackV2 address `0x89D1cBD9DEAaB4dFf6f800a336FBDd9A5c6829e4` · SFC Cycle-162 `version() = 3.0.5` · go-vinu `v1.20.19-quota` · lachesis-base `v0.1.6-elemont`_
