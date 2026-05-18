@@ -6,7 +6,7 @@
 
 | Version           | Network | Status                                      |
 | ----------------- | ------- | ------------------------------------------- |
-| `v2.0.28-elemont` | Testnet | Prague / EIP-7702 abstract-account release |
+| `v2.0.28-elemont` | Testnet | Deployed; Prague staged for next epoch seal |
 
 ## What's new
 
@@ -19,6 +19,18 @@
 - Does not deploy or re-flash any contracts. `vinuchain-lists` does not need a companion contract, ABI, or registry update for EIP-7702.
 - Leaves mainnet Shanghai, Cancun, and Prague disabled until a separately scheduled mainnet release flips the hardcoded mainnet rule.
 
+## Current Testnet Rollout State
+
+`v2.0.28-elemont` was built on the testnet hosts and deployed to the public trace RPC plus validators V1-V4 on 2026-05-18 between 18:01 UTC and 18:05 UTC. The deployed client string is `go-opera/v2.0.28-elemont-d62ab5a0-1779127036/linux-amd64/go1.26.2`.
+
+Post-deploy verification confirmed the trace RPC still serves `trace_block`, all four validator services are active, and the RPC log contains:
+
+```text
+Staged Prague upgrade from binary rules; will activate at next epoch seal
+```
+
+At 2026-05-18 18:16 UTC, `vc_getRules("latest")` still reported `Upgrades.Prague = false` at epoch `0x16b6`, which is expected until the pending epoch seals. After the seal, update this guide with the Prague activation block and publish the post-Prague snapshot before using v2.0.28 for fresh testnet nodes.
+
 ---
 
 ## Network Details
@@ -26,7 +38,7 @@
 | Network | Chain ID   | RPC                              | Status          |
 | ------- | ---------- | -------------------------------- | --------------- |
 | Mainnet | 207 (0xcf) | `https://vinuchain-rpc.com`      | Upgrade pending |
-| Testnet | 206 (0xce) | `https://vinufoundation-rpc.com` | Upgrade first   |
+| Testnet | 206 (0xce) | `https://vinufoundation-rpc.com` | v2.0.28 deployed; Prague pending seal |
 
 ---
 
@@ -625,7 +637,7 @@ Recent execution-layer seal points on testnet:
 | ---------- | ---------- | --------------------------- | -------------------------------------------- |
 | `Shanghai` | v2.0.22    | 2026-05-17, block 1,461,622 | EIP-3651, EIP-3855, and EIP-3860 active     |
 | `Cancun`   | v2.0.24    | 2026-05-18, block 1,461,786 | EIP-1153, EIP-5656, and EIP-6780 active     |
-| `Prague`   | v2.0.28    | Pending v2.0.28 seal        | EIP-7702 set-code transactions              |
+| `Prague`   | v2.0.28    | Staged 2026-05-18; pending next seal | EIP-7702 set-code transactions              |
 
 ### Release overview
 
