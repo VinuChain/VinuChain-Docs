@@ -118,15 +118,17 @@ rent curve into the VC amount enforced at registration and renewal time.
    owner-updated VC/USD feed. It stores the answer with 8 decimals and
    enforces a configured staleness window, absolute answer bounds, and a
    per-update relative-change cap. If any of those guards fail the feed
-   reverts on read, which causes the registrar controller to refuse new
-   commits and registrations until a fresh answer is accepted.
+   reverts on read, which causes price reads, registrations, and renewals to
+   fail until a fresh answer is accepted. `commit(bytes32)` only stores the
+   commitment and does not read pricing.
 2. Exponential Premium Price Oracle at
    `0xf165a2a7858C6E215e56B27a3Bf4565Bcf16e226` holds the owner-governed USD
    rent curve for 1-, 2-, 3-, 4-, and 5+ character names and converts that
    curve into VC at quote time using the live `VinuUsdOracle` answer.
 3. VNS Registrar Controller at `0x313b4C7CDe49a74983205c938f904b4a488bDb14`
-   reads the price oracle inside `commit`, `register`, and `renew` and rejects
-   underpayment against the current `rentPrice(...)`.
+   stores commitments in `commit(bytes32)`, computes pricing inside
+   `register` and `renew`, and rejects underpayment against the current
+   `rentPrice(...)`.
 
 Active oracle parameters (from the 2026-05-18 testnet redeploy):
 
@@ -148,9 +150,8 @@ fresh and within the configured deviation threshold for normal sends, and
 submits `VinuUsdOracle.setLatestAnswer(...)` using the
 `VNS_ORACLE_PRIVATE_KEY` repository secret. An emergency single-source flag
 exists for the case where CoinGecko or the guarded pool fallback is
-unavailable. The current default cadence is once per day at 00:17 UTC; the
-cadence is moving to every four hours as part of oracle and CI hardening work
-in progress.
+unavailable. The current scheduled cadence is every four hours at 17 minutes
+past the hour.
 
 ### Key management
 
@@ -185,8 +186,8 @@ approved for public launch. Recommended (not yet executed) follow-ups before
 public launch and before any mainnet rollout:
 
 * Split the registrar-administrator role from the oracle-updater role so the
-  daily-update workflow runs under a key that does not also own `Root` or the
-  registrar/wrapper controller-set.
+  scheduled oracle-update workflow runs under a key that does not also own
+  `Root` or the registrar/wrapper controller-set.
 * Move the registrar-administrator role behind a multi-signature wallet with
   a time-locked owner rotation procedure.
 * Document the key-rotation playbook (covering both the `VNS_ORACLE_PRIVATE_KEY`
