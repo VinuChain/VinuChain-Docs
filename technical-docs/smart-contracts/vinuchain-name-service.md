@@ -229,7 +229,7 @@ provenance, and public-docs consistency. Open items from that review:
 Public registration should remain disabled on `vinuchain.org` until the full
 stack is reviewed and approved for public launch.
 
-Security contact: `hello@vinuchain.com`.
+Security contact: `hello@vinuchain.org`.
 
 ## Explorer integration
 
@@ -307,6 +307,98 @@ maintained in the VinuChain repo's operational rules under
 file is gitignored so the source-of-truth deltas live at
 `.claude/audit/vns-G001-2026-05-21/g006-docs-deltas.md` on the
 VinuChain `elemont` branch.
+
+## Oracle refresh runbook
+
+`VinuUsdOracle.latestAnswer()` reverts with `StaleAnswer(updatedAt, maxAge)` if
+`block.timestamp - updatedAt > maxAge`. Every downstream price read in
+`rentPrice`, `register`, and `renew` propagates that revert. Refresh procedure:
+
+### Cron-driven refresh (normal path)
+
+A GitHub Actions workflow in `vinuchain-lists` runs every 4 hours at `:17` past
+the hour. The workflow is `.github/workflows/vns-oracle-update.yml` and is
+gated on the `vns-oracle-prod` GitHub Environment, which scopes the
+`VNS_ORACLE_PRIVATE_KEY` secret to that environment.
+
+To verify the cron is healthy:
+
+```bash
+gh run list --workflow vns-oracle-update.yml --limit 5 \
+  --repo VinuChain/vinuchain-lists \
+  --json conclusion,createdAt,databaseId
+```
+
+A run of `failure` repeated across multiple ticks means the cron has stopped
+refreshing the oracle. Each consecutive failure is a 4-hour staleness budget
+spent; budget is exhausted at `maxAge / cronInterval = 24h / 4h = 6` failures
+in a row.
+
+Common failure modes and their fixes:
+
+| Failure error | Cause | Fix |
+|---|---|---|
+| `Set VNS_ORACLE_PRIVATE_KEY` | Secret missing from `vns-oracle-prod` env | `gh secret set VNS_ORACLE_PRIVATE_KEY --env vns-oracle-prod --repo VinuChain/vinuchain-lists` (key for EOA `0xf9c82B…f347`) |
+| `CoinGecko/V3 TWAP deviation … bps exceeds N` | Pool TWAP and CoinGecko prices diverge by more than the cap | Set repo variable `VNS_ORACLE_MAX_DEVIATION_BPS` to widen the cap (e.g. `750`). Walking past `1000` requires script-level review. |
+| `Answer update deviation … bps exceeds N` | Trying to set an answer that moves the price more than `maxChangeBps` (default 20 %) in one step | Wait for the next cron tick (the script computes a fresh price each run); or manually call `setLatestAnswer` with a value within the cap. |
+| `Unable to price VC from CoinGecko or guarded V3 TWAP pools` | Both price sources unreachable | Trigger workflow_dispatch with `allow_single_source: true` if one source is up; otherwise wait for upstream recovery. |
+| Workflow stuck in `waiting` | Environment has required reviewers; nobody approved | An admin opens the Actions tab and approves the pending run. |
+
+### Manual refresh (emergency path)
+
+When the cron is broken and the oracle is approaching staleness, refresh from
+a local checkout of `vinuchain-lists` with the oracle-owner key in a
+gitignored `.env`:
+
+```bash
+# 1. Stage the oracle-owner key in a gitignored .env (mode 600)
+cd ~/vinuchain-lists
+umask 077
+printf 'VNS_ORACLE_PRIVATE_KEY=%s\n' "$YOUR_KEY" > .env
+# verify .env is gitignored (.gitignore:.env)
+
+# 2. Dry-run to confirm reachability and acceptable deviation
+VNS_USD_ORACLE_ADDRESS='0xde7931dCA452Be9647e4AF13C92edCFac1f26d52' \
+VNS_ORACLE_CHAIN_ID='206' \
+VNS_PRICE_CHAIN_ID='207' \
+VNS_ORACLE_REQUIRE_POOL_GUARD='1' \
+VNS_ORACLE_RPC_URL='https://vinufoundation-rpc.com' \
+VNS_PRICE_RPC_URL='https://vinuchain-rpc.com' \
+VNS_ORACLE_MAX_DEVIATION_BPS='750' \
+npm run vns:oracle:dry-run
+
+# 3. Broadcast (same env vars + the script's send flag)
+VNS_USD_ORACLE_ADDRESS='0xde7931dCA452Be9647e4AF13C92edCFac1f26d52' \
+VNS_ORACLE_CHAIN_ID='206' \
+VNS_PRICE_CHAIN_ID='207' \
+VNS_ORACLE_REQUIRE_POOL_GUARD='1' \
+VNS_ORACLE_RPC_URL='https://vinufoundation-rpc.com' \
+VNS_PRICE_RPC_URL='https://vinuchain-rpc.com' \
+VNS_ORACLE_MAX_DEVIATION_BPS='750' \
+npm run vns:oracle:update
+
+# 4. Verify post-refresh: latestAnswer should not revert
+curl -sS https://vinufoundation-rpc.com -X POST -H 'Content-Type: application/json' \
+  --data '{"jsonrpc":"2.0","method":"eth_call",
+           "params":[{"to":"0xde7931dCA452Be9647e4AF13C92edCFac1f26d52","data":"0x50d25bcd"},
+                     "latest"],"id":1}'
+# expected: result is non-revert; decoded uint = vcUsd * 1e8
+```
+
+After the manual refresh, set the secret in the `vns-oracle-prod` GH
+environment so the next scheduled cron tick succeeds without manual
+intervention:
+
+```bash
+printf '%s' "$YOUR_KEY" | gh secret set VNS_ORACLE_PRIVATE_KEY \
+  --env vns-oracle-prod --repo VinuChain/vinuchain-lists
+```
+
+### Recent incidents
+
+| Date | Cause | Resolution |
+|---|---|---|
+| 2026-05-21 | `VNS_ORACLE_PRIVATE_KEY` secret missing from `vns-oracle-prod` env from creation (2026-05-20T04:39Z) onwards; all 5 subsequent cron runs failed silently. Compounding factor: thin VinuSwap V3 pool TWAP froze at `0.0003878450641267948` across multiple runs, so the CoinGecko-vs-pool deviation exceeded the default `500 bps` cap. | Owner key located in `~/vinu-quotacontract/.env::PRIVATE_TEST` (EOA `0xf9c82B…f347`). Local refresh broadcast at tx `0xe28ffd8a0e3af57f34f0cc9af724bfb14a451e68d0a4cb1e55649d2f9aa4dac2` block `1,465,168` (`latestAnswer = 41382` = $0.00041382/VC). Secret subsequently added to GH env. Workflow patched to expose `VNS_ORACLE_MAX_DEVIATION_BPS` as a repo variable, and the script's `Set VNS_ORACLE_PRIVATE_KEY` throw was replaced with an actionable error pointing at this runbook. |
 
 ## Mainnet preparation
 
