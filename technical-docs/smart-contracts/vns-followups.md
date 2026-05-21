@@ -59,7 +59,25 @@ to defend.
 
 ---
 
-## F2 — Split the deployer EOA into per-role keys
+## F2 — Split deployer EOA into per-role keys (shipped 2026-05-21)
+
+Resolved. Two new EOAs were generated and ownership was transferred:
+
+* **VNS namespace admin** — `0x9214C638e240eda8D47AAc4A01C57b08C10fcdCd` — owns
+  Root, BaseRegistrar, NameWrapper, OwnedResolver, GatewayProvider,
+  ETHRegistrarController, ReverseRegistrar, DefaultReverseRegistrar.
+* **VNS oracle updater** — `0xD77b037c1F6F8Eb0D21629C97F6E330a7816557e` — owns
+  VinuUsdOracle and ExponentialPremiumPriceOracle. The GitHub Actions
+  cron's `VNS_ORACLE_PRIVATE_KEY` secret (env: `vns-oracle-prod`) was
+  rotated to this key at 2026-05-21T03:45:42Z.
+
+Chain governance (NodeDriverAuth, QuotaContractV2) stays with the
+previous EOA `0xf9c82B…f347`. The full set of transfer txs is recorded
+in `deployment-testnet.json::roleOwners.transferTxs`. The
+`scripts/transfer-vns-ownership.js` script gained a `--targets=`
+filter for the role-scoped batch transfers.
+
+## F2 (original) — Split the deployer EOA into per-role keys
 
 ### Symptom
 
@@ -109,7 +127,26 @@ in-house.
 
 ---
 
-## F3 — On-chain pause method on ETHRegistrarController
+## F3 — On-chain pause method on ETHRegistrarController (shipped 2026-05-21)
+
+Resolved. `ETHRegistrarController.sol` now has `paused()`/`pause()`/
+`unpause()` owner-gated methods + `whenNotPaused` modifier on
+`commit`/`register`/`renew` + custom errors `EnforcedPause`,
+`ExpectedPause`, `AlreadyPaused`. Deployed at
+`0x67f98dD44B88bE9fAB06e3b94C77EB2444E81695` (tx `0x4431bea3`, block
+1,465,346) owned by the namespace-admin EOA. Atomically swapped on
+BaseRegistrar (addController + removeController), NameWrapper /
+ReverseRegistrar / DefaultReverseRegistrar (setController(addr, bool)
+for each). All tx hashes recorded in
+`deployment-testnet.json::roleOwners.f3PauseControllerSwap.txs`.
+
+Frontend `lib/vns/contracts.ts` updated to point at the new controller
+and decode the new error selectors. The previous controller
+`0x313b4C7CDe49a74983205c938f904b4a488bDb14` is retired; users with a
+pending commit on the old controller must re-commit on the new
+address. Existing names continue to resolve unchanged.
+
+## F3 (original) — On-chain pause method on ETHRegistrarController
 
 ### Symptom
 
