@@ -231,6 +231,83 @@ stack is reviewed and approved for public launch.
 
 Security contact: `hello@vinuchain.com`.
 
+## Explorer integration
+
+See [Explorer support](#explorer-support) above for the user-visible
+behaviour and search semantics. This section documents the backend
+wiring that powers those surfaces.
+
+VinuExplorer surfaces VNS without a separate Blockscout BENS Rust service.
+The upstream BENS service does not have a record for VinuChain (chains 206
+or 207); both `bens.services.blockscout.com` and its dev variant return
+`Network with id <id> not found`. To bridge this, the `vinuexplorer-backend`
+fork carries a custom adapter that emits BENS-protocol-shaped envelopes
+from local data.
+
+| BENS resource | Where it comes from |
+|---------------|---------------------|
+| `domain_info` / `/api/v1/206/domains/:name` | `VNSMetadata.domain_info/2` composes from `@known_allocations_by_name`, controller `NameRegistered` log scan, and `address_names` rows with `metadata->>'protocol' = 'VNS'` |
+| `address_domain` / `/api/v1/206/addresses/:address` | Reverse-resolution via `VNSMetadata.name_for_address_hash/2` (indexed ERC-721 owner + `address_names` row) |
+| `domains:lookup` / `/api/v1/206/domains:lookup` | Bulk enumeration of every registered name — unions controller `NameRegistered` logs with `@known_allocations_by_name`. Supports `name=` substring (auto-strips `.vinu`), `only_active=`, `page_size=`, `page_token=` |
+| `addresses:lookup` / `/api/v1/206/addresses:lookup` | Filters bulk enumeration by owner address. Refuses malformed addresses without raising |
+| `protocols` / `/api/v1/206/protocols` | Hardcoded `[vns]` protocol entry — the frontend protocol-selector keys off the `id` |
+| `domain_events` / `/api/v1/206/domains/:name/events` | Returns `{"items":[]}` (no separate event index yet; a future Graph Node deployment would populate it) |
+
+### Frontend wiring
+
+`NEXT_PUBLIC_NAME_SERVICE_API_HOST` points at the explorer's own host
+(`https://testnet.vinuexplorer.org`) rather than at a separate BENS service.
+The Next.js page is `/name-services` (the nav label is "VinuChain Name
+Service (VNS)"); the per-domain detail page is `/name-services/domains/[name]`.
+
+Every consumer surface gates off `config.features.nameServices`, which becomes
+truthy whenever `NEXT_PUBLIC_NAME_SERVICE_API_HOST` is set. The P0 surfaces
+wired through that flag are:
+
+* `/name-services` — Domains tab + Clusters tab
+* `/name-services/domains/[name]` — detail page
+* top-nav button (sidebar / horizontal nav)
+* universal search bar (accepts `1.vinu` style queries)
+* `/search-results` (search row with `EnsEntity`)
+* `/address/[hash]` header — primary VNS badge via `bens:address_domain`
+* `/address/[hash]` "Names" tab — `AddressEnsDomains` via `bens:addresses_lookup`
+* connected-wallet badge in the user profile widget
+* tx-interpretation chips
+
+All address-bearing display surfaces share a single `EnsEntity` component
+that URL-encodes the link target (so `/`, `?`, `#`, and `..` in a name
+cannot escape the path segment) and safe-displays the name via
+`lib/vns/displayName.ts` (strips bidi/zero-width characters, Punycode-encodes
+non-ASCII labels, warns on mixed-script labels).
+
+### Mainnet status
+
+VNS is not deployed on mainnet (chain 207). The explorer's `VNSMetadata`
+module fails closed on chain 207 — no domain lookups, no reverse resolution,
+no metadata emission.
+
+The mainnet rollout gate has five criteria, each of which must land before
+any wallet, explorer, or DEX integration treats mainnet `.vinu` as
+authoritative. Summary:
+
+- **P0** — `Root.lock(vinu)` on testnet, and split the deployer EOA
+  `0xf9c82B11…f347` into per-role keys.
+- **P1** — deploy the VNS stack on mainnet with the split-owner keys,
+  then generalise `Explorer.Chain.Token.Instance.VNSMetadata` to dispatch
+  on chain-id (chain 207 alongside chain 206).
+- **P2** — publish a chaindata snapshot, register mainnet addresses in
+  `~/vinuchain-lists/contracts/vns/deployment-mainnet.json`, surface a
+  "Mainnet deployment" section here, and announce that the testnet
+  `1.vinu` allocation does not carry over.
+
+The full criteria (including helper-script paths, the "Why not bundle with
+a consensus release" rationale, and open testnet audit items) are
+maintained in the VinuChain repo's operational rules under
+`.claude/rules/deployment-log.md` → "VNS Mainnet Rollout Criteria". That
+file is gitignored so the source-of-truth deltas live at
+`.claude/audit/vns-G001-2026-05-21/g006-docs-deltas.md` on the
+VinuChain `elemont` branch.
+
 ## Mainnet preparation
 
 Before deploying VNS on mainnet:
