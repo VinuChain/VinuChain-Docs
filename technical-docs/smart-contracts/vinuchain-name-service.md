@@ -233,6 +233,10 @@ Security contact: `hello@vinuchain.com`.
 
 ## Explorer integration
 
+See [Explorer support](#explorer-support) above for the user-visible
+behaviour and search semantics. This section documents the backend
+wiring that powers those surfaces.
+
 VinuExplorer surfaces VNS without a separate Blockscout BENS Rust service.
 The upstream BENS service does not have a record for VinuChain (chains 206
 or 207); both `bens.services.blockscout.com` and its dev variant return
@@ -280,8 +284,29 @@ non-ASCII labels, warns on mixed-script labels).
 
 VNS is not deployed on mainnet (chain 207). The explorer's `VNSMetadata`
 module fails closed on chain 207 — no domain lookups, no reverse resolution,
-no metadata emission. The mainnet rollout gate is tracked in the VinuChain
-repository's deployment log alongside other pending mainnet rollouts.
+no metadata emission.
+
+The mainnet rollout gate has five criteria, each of which must land before
+any wallet, explorer, or DEX integration treats mainnet `.vinu` as
+authoritative. Summary:
+
+- **P0** — `Root.lock(vinu)` on testnet, and split the deployer EOA
+  `0xf9c82B11…f347` into per-role keys.
+- **P1** — deploy the VNS stack on mainnet with the split-owner keys,
+  then generalise `Explorer.Chain.Token.Instance.VNSMetadata` to dispatch
+  on chain-id (chain 207 alongside chain 206).
+- **P2** — publish a chaindata snapshot, register mainnet addresses in
+  `~/vinuchain-lists/contracts/vns/deployment-mainnet.json`, surface a
+  "Mainnet deployment" section here, and announce that the testnet
+  `1.vinu` allocation does not carry over.
+
+The full criteria (including helper-script paths, the "Why not bundle with
+a consensus release" rationale, and open testnet audit items) are
+maintained in the VinuChain repo's operational rules under
+`.claude/rules/deployment-log.md` → "VNS Mainnet Rollout Criteria". That
+file is gitignored so the source-of-truth deltas live at
+`.claude/audit/vns-G001-2026-05-21/g006-docs-deltas.md` on the
+VinuChain `elemont` branch.
 
 ## Mainnet preparation
 
