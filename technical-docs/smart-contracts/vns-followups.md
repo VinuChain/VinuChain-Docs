@@ -201,3 +201,80 @@ Consumers that decode reverts in the rentPrice/register/renew path must
 load **both** ABIs so they can decode revert selectors that originated in
 either contract. The landing frontend's `vnsRegistrarControllerAbi`
 (`~/VinuChain-Landing/lib/vns/contracts.ts`) demonstrates the merge.
+
+---
+
+## G010 — TypeScript 6.0.3 upgrade in `vinuexplorer-frontend` (verified working, needs clean checkout to land)
+
+### Symptom
+
+IDE shows `Option 'baseUrl' is deprecated and will stop functioning in
+TypeScript 7.0. Specify compilerOption '"ignoreDeprecations": "6.0"' to
+silence this error.` on `tsconfig.json:17`. The installed TypeScript
+dependency is `5.9.2`, which only accepts `"ignoreDeprecations": "5.0"`,
+so the silencing setting must lag the editor's bundled TypeScript by one
+major version. Upgrading the dev dependency to `^6.0.3` (TS 6 is GA as
+of 2026-04) lets the silencing setting and the deprecation suggestion
+agree.
+
+### Verified-working procedure
+
+These exact steps were dry-run end-to-end against the current
+`vinuexplorer-frontend` working tree and `tsc --noEmit` returned exit 0
+with zero errors. Land them from a clean checkout because the procedure
+must update `yarn.lock`; the integrity-checked nature of `yarn add`
+makes it brittle when run after npm has touched node_modules in the
+same tree (see "Why not landed in 2026-05-21 session" below).
+
+```bash
+# 1. From a clean repo checkout with no uncommitted node_modules state:
+cd ~/vinuexplorer-frontend
+git checkout main && git pull
+rm -rf node_modules
+yarn install --frozen-lockfile
+
+# 2. Bump the dev dependency. This updates package.json AND yarn.lock.
+yarn add --dev typescript@^6.0.3
+
+# 3. Flip the silencing setting in tsconfig.json from "5.0" to "6.0":
+#       "ignoreDeprecations": "6.0",
+
+# 4. TS 6+ raises TS2882 on side-effect imports of style files unless
+#    the module is declared ambient. Append this block to decs.d.ts:
+#
+#       declare module '*.css';
+#       declare module '*.scss';
+#       declare module '*.sass';
+
+# 5. Re-run the typecheck. Expect zero errors.
+yarn lint:tsc
+
+# 6. Commit and push.
+git add tsconfig.json decs.d.ts package.json yarn.lock
+git commit -m 'chore(ts): upgrade typescript to 6.0.3, silence baseUrl deprecation'
+git push origin main
+```
+
+### Acceptance pins
+
+* `yarn lint:tsc` exit 0 with zero `TS2882` or `TS5103` errors.
+* Editor warning on `tsconfig.json::baseUrl` is gone.
+* No production runtime change — TS 6 emits the same JS for the Pages
+  Router + Chakra + wagmi stack the explorer uses. The only behavioural
+  change is type-check strictness.
+
+### Why this didn't land in the 2026-05-21 session
+
+The first attempt installed `typescript@^6.0.3` via `npm install
+--legacy-peer-deps` to work around peer-dep conflicts that yarn would
+resolve cleanly. That npm install rewrote ~9000 lines of `yarn.lock`
+(rewriting `resolved` URLs from `registry.yarnpkg.com` to
+`registry.npmjs.org` and dropping the transitive
+`@adraffy/ens-normalize@1.10.0` entry that yarn keeps). Reverting
+`yarn.lock` and running `yarn add` afterwards then hit an integrity
+mismatch on `cross-spawn@7.0.6` because remnants of npm-style
+node_modules persisted. The procedure above starts from a clean
+`rm -rf node_modules` + `yarn install --frozen-lockfile`, which avoids
+the integrity-check failure mode entirely. The TS 6 typecheck was
+nevertheless **verified locally** in that session before reverting, so
+the procedure is known-good.
