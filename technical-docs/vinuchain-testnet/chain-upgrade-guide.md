@@ -6,41 +6,33 @@
 
 | Version           | Network | Status                                      |
 | ----------------- | ------- | ------------------------------------------- |
-| `v2.0.28-elemont` | Testnet | Deployed; Prague active; snapshot published |
+| `v2.0.31-elemont` | Testnet | Deployed; ERC-4337 account abstraction live; snapshot published |
 
 ## What's new
 
-- Adds the Prague execution-layer upgrade flag on testnet.
-- Enables EIP-7702 set-code transactions (`type: 0x04`) with authorization lists and EOA delegation designators (`0xef0100 || address`).
-- Keeps blob transactions (`type: 0x03`) unsupported; this is a scoped Prague/EIP-7702 release, not a full Pectra/blob rollout.
-- Wires EIP-7702 through go-vinu transaction types/signing, VinuChain `evmcore`, txpool, event admission, CSER event serialization, JSON-RPC transaction input/output, light txpool, and signer paths.
-- Sequences skipped-binary activation so a node booting from pre-Shanghai state stages Shanghai first, Cancun after Shanghai, and Prague after Cancun.
-- Keeps the v2.0.21 Cycle-162 SFC / Patch6 backfill behavior and the corrected PaybackV2 address from v2.0.19: `QuotaContractV2` at `0x89D1cBD9DEAaB4dFf6f800a336FBDd9A5c6829e4`.
-- Does not deploy or re-flash any contracts. `vinuchain-lists` does not need a companion contract, ABI, or registry update for EIP-7702.
-- Leaves mainnet Shanghai, Cancun, and Prague disabled until a separately scheduled mainnet release flips the hardcoded mainnet rule.
+- **Enables ERC-4337 account abstraction on testnet.** The canonical EntryPoint v0.7 (`0x0000000071727De22E5E9d8BAf0edAc6f37da032`), SimpleAccountFactory (`0x27e13cC69A1d0cb6205153f89Be711B1872CfFd6`), and a public Skandha bundler (`https://bundler-testnet.vinuexplorer.org/rpc`) are live, and the explorer indexes and renders UserOperations. See [Account Abstraction (ERC-4337)](../smart-contracts/account-abstraction.md).
+- Adds the `--rpc.allow-unprotected-txs` node flag (v2.0.29) so operators can admit pre-EIP-155 (chain-id-less) transactions over RPC — required to land the Arachnid deterministic deployer and the canonical EntryPoint. The flag is **refused on mainnet** (NetworkID 207) by a gossip-layer guard; it is for non-mainnet networks only.
+- Adds a mainnet allowlist (v2.0.30) for the single canonical Arachnid deterministic-deployer transaction, pinned by exact tx hash, so the canonical EntryPoint can eventually land on mainnet without otherwise relaxing replay protection. It is replay-benign and independent of the flag above.
+- Hardens the unprotected-tx mainnet guard (v2.0.31): extracts it into a tested helper with all-network regression coverage and adds an `ethapi` call-site test. No consensus or state change — testnet/mainnet behavior is identical to v2.0.30, so this release activates no new flag.
+- Carries forward Prague/EIP-7702 set-code support (v2.0.28), Shanghai/Cancun execution compatibility, the `SfcV2Patch6` Cycle-162 backfill, and the corrected PaybackV2 address `0x89D1cBD9DEAaB4dFf6f800a336FBDd9A5c6829e4`. go-vinu stays at `v1.20.19-quota`; lachesis-base at `v0.1.6-elemont`.
+- Mainnet remains on `v2.0.0-rc.1`; account abstraction is not deployed on mainnet yet (EntryPoint code is empty there, by design).
 
 ## Current Testnet Rollout State
 
-`v2.0.28-elemont` was built on the testnet hosts and deployed to the public trace RPC plus validators V1-V4 on 2026-05-18 between 18:01 UTC and 18:05 UTC. The deployed client string is `go-opera/v2.0.28-elemont-d62ab5a0-1779127036/linux-amd64/go1.26.2`.
+`v2.0.31-elemont` was built on the testnet hosts and deployed to the public trace RPC plus validators V1-V4 on 2026-05-28 (~14:48 UTC). The deployed client string is `go-opera/v2.0.31-elemont-7ae5b1ac-1779978779/linux-amd64/go1.26.3`. Builds are byte-identical across both build hosts (`sha256 5bb68ae95aaa5fe3fd071cf66e269ba942a10a97fb719d1eda7c32546d217d70`).
 
-Post-deploy verification confirmed the trace RPC still serves `trace_block`, all four validator services are active, and the RPC log contained:
+v2.0.31 is non-consensus (mainnet unprotected-tx guard hardening + regression tests + a CLI usage-string fix), so it activates no new flag — the live consensus flag set is unchanged from v2.0.30. Post-deploy verification confirmed the trace RPC serves `v2.0.31-elemont`, all four validator services restarted active, the chain resumed after the standard ~5-6 minute emitter pause, and `vc_getRules("latest")` is unchanged (`Economy.QuotaCacheAddress = 0x89d1cbd9deaab4dff6f800a336fbdd9a5c6829e4`).
 
-```text
-Staged Prague upgrade from binary rules; will activate at next epoch seal
-```
-
-Prague sealed on testnet at block `1,462,637` in epoch `5,815` on 2026-05-18 20:49:17 UTC. After the seal, `vc_getRules("latest")` reported `Upgrades.Prague = true`.
-
-The post-Prague recovery snapshot is:
+The current recovery snapshot (tip block `1,475,761`, epoch `5,875`, all 18 upgrade flags sealed) is:
 
 ```text
-https://vinu-blockchain-genesis.s3.amazonaws.com/chaindata-snapshots/testnet-chaindata-v2.0.28-elemont-20260518T205521Z-clean.tar.gz
+https://vinu-blockchain-genesis.s3.amazonaws.com/chaindata-snapshots/testnet-chaindata-v2.0.31-elemont-20260529T002920Z-clean.tar.gz
 ```
 
 Snapshot SHA256:
 
 ```text
-79fea06eaa330a5efe5c396d37cc42ae7c9c5e1b3f5e0c901f2d8c0f820b8bb7
+77523c5f907add15ddde257fe6c80f4b3ac07d2c3129da2d5135f90570c59e16
 ```
 
 ---
@@ -142,7 +134,7 @@ The build directory is independent of your node's `--datadir`. The build process
 ```bash
 git clone https://github.com/VinuChain/VinuChain.git $HOME/vinuchain-upgrade
 cd $HOME/vinuchain-upgrade
-git checkout v2.0.28-elemont
+git checkout v2.0.31-elemont
 make opera
 # Binary is at $HOME/vinuchain-upgrade/build/opera
 ```
@@ -152,7 +144,7 @@ make opera
 Substitute `/opt/vinuchain-upgrade` (or any other path) if `$HOME` is not the right partition for your setup — every later command in this guide that references `$HOME/vinuchain-upgrade` should be adjusted to match.
 
 {% hint style="info" %}
-**Dependency pins.** `v2.0.28-elemont` uses go-vinu `v1.20.19-quota` for Shanghai, selected Cancun execution support, Prague/EIP-7702 set-code transactions, and txpool authority reservation safeguards. It keeps lachesis-base at `v0.1.6-elemont`. `make opera` fetches dependencies on first build.
+**Dependency pins.** `v2.0.31-elemont` keeps go-vinu `v1.20.19-quota` (Shanghai, selected Cancun execution support, Prague/EIP-7702 set-code transactions, txpool authority reservation safeguards) and lachesis-base `v0.1.6-elemont` — unchanged since v2.0.28. `make opera` fetches dependencies on first build.
 {% endhint %}
 {% endstep %}
 
@@ -165,11 +157,11 @@ The newly-built binary is at `vinuchain-upgrade/build/opera`. Move into that dir
 ```bash
 cd $HOME/vinuchain-upgrade/build
 ./opera version
-# Expected: Version: 2.0.28-elemont
+# Expected: Version: 2.0.31-elemont
 ```
 
 {% hint style="info" %}
-`opera version` prints `2.0.28-elemont` — this matches the git tag `v2.0.28-elemont`. See the note at the top of this page.
+`opera version` prints `2.0.31-elemont` — this matches the git tag `v2.0.31-elemont`. See the note at the top of this page.
 {% endhint %}
 {% endstep %}
 
@@ -311,10 +303,10 @@ What to expect:
 
                         v2.0  -  ELEMONT
 
-  Version: 2.0.28-elemont
+  Version: 2.0.31-elemont
 ```
 
-**Staging logs (testnet only, first-time Shanghai/Cancun/Prague install).** On the first v2.0.28 boot of a node that has not yet sealed Shanghai, you will see Shanghai staged while Cancun and Prague are deferred:
+**Staging logs (testnet only, first-time Shanghai/Cancun/Prague install).** On the first boot of a node that has not yet sealed Shanghai (e.g. a genesis replay rather than a snapshot restore), you will see Shanghai staged while Cancun and Prague are deferred:
 
 ```text
 INFO Staged Shanghai upgrade from binary rules; will activate at next epoch seal
@@ -339,7 +331,7 @@ After `vc_getRules` reports `Upgrades.Cancun = true`, v2.0.28 stages Prague auto
 INFO Staged Prague upgrade from binary rules; will activate at next epoch seal
 ```
 
-On current post-Cancun testnet datadirs, Prague is the only new first-boot staging line expected. It confirms EIP-7702 set-code transaction handling is pending for the next epoch seal. If you do not see a staging line, you may be running the wrong binary (`opera version` check), the flag may already be pending in `DirtyRules` from an earlier v2.0.28 boot, or the flag may already be sealed on this datadir. Absence of the staging line by itself is not proof that the fork has sealed; confirm with `vc_getRules`. Mainnet and staging nodes do not show these lines because `VinuChainMainNetRules` keeps Shanghai, Cancun, and Prague disabled until coordinated mainnet releases.
+On current post-Cancun testnet datadirs, Prague is the only new first-boot staging line expected. It confirms EIP-7702 set-code transaction handling is pending for the next epoch seal. If you do not see a staging line, you may be running the wrong binary (`opera version` check), the flag may already be pending in `DirtyRules` from an earlier boot, or the flag may already be sealed on this datadir. Absence of the staging line by itself is not proof that the fork has sealed; confirm with `vc_getRules`. Mainnet and staging nodes do not show these lines because `VinuChainMainNetRules` keeps Shanghai, Cancun, and Prague disabled until coordinated mainnet releases.
 
 **Older staging logs (testnet only, first-time SfcV2Patch6 install).** Nodes upgrading from before v2.0.21 that have not yet sealed SfcV2Patch6 can also see this older staging line:
 
@@ -380,10 +372,10 @@ After the mainnet seal, `vc_getRules` must report `Upgrades.SfcV2 = true`, SFC `
 | Check                                                     | Expected                                                                                                                                              |
 | --------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Startup banner                                            | `VINUCHAIN v2.0 - ELEMONT` ASCII art printed to stderr                                                                                                |
-| `opera version`                                           | `Version: 2.0.28-elemont`                                                                                                                             |
+| `opera version`                                           | `Version: 2.0.31-elemont`                                                                                                                             |
 | Block production                                          | Resumes within seconds of startup; block numbers advance                                                                                              |
 | Peer count                                                | Returns to prior steady-state within minutes                                                                                                          |
-| Shanghai staging logs (testnet, first pre-Shanghai v2.0.28 boot) | 1× `Staged Shanghai upgrade …`; Cancun and Prague may log as deferred until predecessors are active                                                    |
+| Shanghai staging logs (testnet, first pre-Shanghai boot) | 1× `Staged Shanghai upgrade …`; Cancun and Prague may log as deferred until predecessors are active                                                    |
 | Shanghai rule after seal                                  | `vc_getRules` reports `Upgrades.Shanghai = true`                                                                                                      |
 | Cancun staging logs (testnet, post-Shanghai v2.0.28 process) | 1× `Staged Cancun upgrade …` after Shanghai seals; no restart required                                                                                 |
 | Cancun rule after seal                                    | `vc_getRules` reports `Upgrades.Cancun = true`                                                                                                        |
@@ -537,11 +529,11 @@ Your locally-computed epoch state hash does not match the network's. The check r
    find go-opera -mindepth 1 -not -name nodekey -not -name 'static-nodes.json' -not -name 'trusted-nodes.json' -exec rm -rf {} +
    ```
 
-4. Download the latest post-Prague testnet snapshot and extract it in-place over the datadir (the tar is written with relative paths, so extract at the datadir root; the tar excludes `nodekey`, `keystore/`, `opera.ipc`, `static-nodes.json`, `trusted-nodes.json` so your identity files are preserved). Do not use the older post-Cancun snapshot after the Prague seal.
+4. Download the latest testnet snapshot (`v2.0.31-elemont`) and extract it in-place over the datadir (the tar is written with relative paths, so extract at the datadir root; the tar excludes `nodekey`, `keystore/`, `opera.ipc`, `static-nodes.json`, `trusted-nodes.json` so your identity files are preserved). Always use the latest snapshot — older objects in the bucket are archival.
 
    ```bash
    cd <datadir>
-   SNAPSHOT_URL="https://vinu-blockchain-genesis.s3.amazonaws.com/chaindata-snapshots/testnet-chaindata-v2.0.28-elemont-20260518T205521Z-clean.tar.gz"
+   SNAPSHOT_URL="https://vinu-blockchain-genesis.s3.amazonaws.com/chaindata-snapshots/testnet-chaindata-v2.0.31-elemont-20260529T002920Z-clean.tar.gz"
    curl -LO "$SNAPSHOT_URL"
    # verify integrity
    curl -L "$SNAPSHOT_URL.sha256" | sha256sum -c -
@@ -557,16 +549,16 @@ Your locally-computed epoch state hash does not match the network's. The check r
 
    The file lists the network, snapshot timestamp, binary version, tip block, tip epoch, and the full set of sealed upgrade flags. The tip block listed there is the minimum block number your first `New block` log line should show after restart. If `cat` returns nothing, the tarball did not extract correctly — do not start opera; re-extract at the datadir root.
 
-   Current snapshot listing (public, no AWS credentials required). If the listing still contains older objects, treat them as archival and use the exact v2.0.24 URL above:
+   Current snapshot listing (public, no AWS credentials required). If the listing still contains older objects, treat them as archival and use the exact v2.0.31 URL above:
 
    ```text
    https://vinu-blockchain-genesis.s3.amazonaws.com/?list-type=2&prefix=chaindata-snapshots/
    ```
 
-   The tarball is flat (top-level is `chaindata/`, `go-opera/`, and `SNAPSHOT_INFO.txt` — no `datadir/` prefix to nest) and excludes `nodekey`, `keystore/`, `opera.ipc`, `static-nodes.json`, `trusted-nodes.json`, archived `chaindata.bak.*/`, and shell `history` files. New snapshots are published under `s3://vinu-blockchain-genesis/chaindata-snapshots/`; the current published object is `testnet-chaindata-v2.0.24-elemont-20260518T005603Z-clean`.
+   The tarball is flat (top-level is `chaindata/`, `go-opera/`, and `SNAPSHOT_INFO.txt` — no `datadir/` prefix to nest) and excludes `nodekey`, `keystore/`, `opera.ipc`, `static-nodes.json`, `trusted-nodes.json`, archived `chaindata.bak.*/`, and shell `history` files. New snapshots are published under `s3://vinu-blockchain-genesis/chaindata-snapshots/`; the current published object is `testnet-chaindata-v2.0.31-elemont-20260529T002920Z-clean`.
 
 5. Ensure `--nat extip:<your_public_ip>` is set and `<datadir>/go-opera/static-nodes.json` contains the canonical bootnode list from the [Start your node](#start-your-node) section.
-6. Restart opera. The node resumes from the snapshot's tip (epoch 5810 / block 1,461,789 at snapshot time) and syncs forward. Expect `New DAG summary age=<few seconds>` within 1-2 minutes of restart.
+6. Restart opera. The node resumes from the snapshot's tip (epoch 5875 / block 1,475,761 at snapshot time) and syncs forward. Expect `New DAG summary age=<few seconds>` within 1-2 minutes of restart.
 
 ### Stuck at `net.peerCount == 1` with one stale peer
 
@@ -655,6 +647,9 @@ Recent execution-layer seal points on testnet:
 
 | Version             | Type                                                                    | What changed                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | ------------------- | ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **v2.0.31-elemont** | **Unprotected-tx guard hardening (non-consensus)**                      | Extracts the mainnet `AllowUnprotectedTxs` refusal from `NewService` into a tested `checkUnprotectedTxsPolicy` helper with all-network regression coverage so the guard cannot be silently dropped or separated from the flag, adds an `ethapi` call-site test proving the Arachnid carve-out is admitted only on mainnet (NetworkID 207) and refused elsewhere, and corrects the `--rpc.allow-unprotected-txs` usage string. No consensus or persisted-state change; activates no flag. Deployed to testnet RPC + V1-V4 on 2026-05-28.                                                                                                                                                                                                                                                                          |
+| **v2.0.30-elemont** | **Mainnet Arachnid deployer allowlist (ERC-4337 enablement)**           | Adds `opera/unprotected_allowlist.go`, allowlisting exactly one pre-EIP-155 transaction on mainnet — the canonical Arachnid deterministic-deployment-proxy tx, pinned by exact hash `0xeddf9e61…033d26` — so the deterministic deployer (`0x4e59b448…4956C`) and, via CREATE2, the canonical ERC-4337 EntryPoint v0.7 (`0x0000000071727De…f37da032`) can eventually land on mainnet. Replay-benign (deploys a stateless, fund-less factory) and independent of `AllowUnprotectedTxs`, which stays refused on mainnet. Not yet deployed to mainnet.                                                                                                                                                                                                                                            |
+| **v2.0.29-elemont** | **`--rpc.allow-unprotected-txs` flag (testnet AA enabler)**             | Exposes a `--rpc.allow-unprotected-txs` CLI flag wiring `gossip.Config.AllowUnprotectedTxs`, letting non-mainnet operators admit pre-EIP-155 (chain-id-less) transactions over RPC — the testnet enabler for the Arachnid deployer and the canonical EntryPoint. The existing `gossip/service.go` guard refuses the flag on mainnet (NetworkID 207). This release is what unlocked ERC-4337 account abstraction on testnet; keeps go-vinu at `v1.20.19-quota`.                                                                                                                                                                                                                                                                                                                          |
 | **v2.0.28-elemont** | **Prague / EIP-7702 abstract-account release**                          | Adds the Prague upgrade flag on testnet and updates go-vinu to `v1.20.19-quota`. Enables EIP-7702 set-code transaction type `0x04`, authorization lists, delegated EOA execution via `0xef0100 || address`, JSON-RPC and signer round trips, CSER/event admission support, and txpool/light-txpool gates including delegated-sender and authority-reservation safeguards. Explicitly keeps blob transaction type `0x03` unsupported, leaves mainnet Prague disabled, and adds skipped-binary sequencing so Prague stages only after Cancun is active.                                                                                                                                                                                                 |
 | **v2.0.26-elemont** | **EIP audit hardening**                                                  | Extends fork-aware Shanghai transaction validation into event admission, drops pre-Shanghai pending/queued contract creations that become invalid when Shanghai activates, keeps skipped intrinsic/initcode failures from mutating sender balance or block gas, and stages Cancun automatically after Shanghai seals on continuous nodes. Keeps go-vinu at `v1.20.17-quota`.                                                                                                                                                                                                                                                                                                                                                                                                                  |
 | **v2.0.25-elemont** | **Shanghai/Cancun local execution fix**                                  | Wires Shanghai transaction-level gas checks into VinuChain's local `evmcore` execution and txpool paths, adds regression coverage for local `evmcore`, sequences skipped-binary activation so Cancun cannot seal at the same height as Shanghai, and keeps go-vinu at `v1.20.17-quota`. Superseded by v2.0.26 for event-admission, txpool reset, skipped-transaction accounting, and no-restart Cancun staging hardening.                                                                                                                                                                                                                                                                                                                                                               |
@@ -820,4 +815,4 @@ Operator-facing controls for managing chaindata size on long-lived nodes.
 
 ---
 
-_Last updated: 2026-05-19 · latest guide target `v2.0.28-elemont` · Prague/EIP-7702 set-code transactions active on testnet · latest snapshot `testnet-chaindata-v2.0.28-elemont-20260518T205521Z-clean.tar.gz` · corrected PaybackV2 address `0x89D1cBD9DEAaB4dFf6f800a336FBDd9A5c6829e4` · SFC Cycle-162 `version() = 3.0.5` · go-vinu `v1.20.19-quota` · lachesis-base `v0.1.6-elemont`_
+_Last updated: 2026-05-29 · latest guide target `v2.0.31-elemont` · ERC-4337 account abstraction live on testnet · latest snapshot `testnet-chaindata-v2.0.31-elemont-20260529T002920Z-clean.tar.gz` · corrected PaybackV2 address `0x89D1cBD9DEAaB4dFf6f800a336FBDd9A5c6829e4` · SFC Cycle-162 `version() = 3.0.5` · go-vinu `v1.20.19-quota` · lachesis-base `v0.1.6-elemont`_
