@@ -6,7 +6,7 @@
 
 | Version           | Network | Status                                                                 |
 | ----------------- | ------- | ---------------------------------------------------------------------- |
-| `v2.0.37-elemont` | Testnet | Binary deployed to validators/RPC; BLS active; latest-EVM staged       |
+| `v2.0.37-elemont` | Testnet | Binary deployed to validators/RPC; BLS active; latest-EVM active       |
 
 ## What's new
 
@@ -31,21 +31,22 @@ Post-deploy verification confirmed:
 - The public trace RPC at `http://100.22.109.110:4000` serves `v2.0.37-elemont`, exposes `trace` and `debug`, returns `eth_syncing=false`, and `trace_block("latest")` succeeds.
 - `vc_getRules("latest")` reports `PaybackV2=true`, `PaybackV2Patch=true`, and `Economy.QuotaCacheAddress=0x89d1cbd9deaab4dff6f800a336fbdd9a5c6829e4`.
 - The corrected PaybackV2 contract has code at `0x89D1cBD9DEAaB4dFf6f800a336FBDd9A5c6829e4`, owner `0xf9c82B1117e8BeA97843042521B8FBC93044f347`, and the `stakeFor(address)` / `unstakeFor(address,uint256)` selectors.
-- At 2026-06-03 05:54:31 UTC, `VinuBLS12381` sealed at block `1,482,823`. `vc_getRules("latest")` now reports `VinuBLS12381=true`, `VinuLatestEVM=false`; `eth_config.current.precompiles` includes the BLS12-381 precompiles at `0x0b` through `0x11`. `VinuLatestEVM` is staged after BLS and waits for the next epoch seal, so P256/CLZ/MODEXP/latest-EVM runtime smoke checks are still pending.
+- At 2026-06-03 05:54:31 UTC, `VinuBLS12381` sealed at block `1,482,823`. `vc_getRules("latest")` reports `VinuBLS12381=true`; `eth_config.current.precompiles` includes the BLS12-381 precompiles at `0x0b` through `0x11`.
+- At 2026-06-03 09:47:52 UTC, `VinuLatestEVM` sealed at block `1,482,978`. `vc_getRules("latest")` reports `VinuLatestEVM=true`, and `eth_config.current.precompiles` includes `P256VERIFY` at `0x0000000000000000000000000000000000000100`; `eth_config.next` is `null`.
 
-The latest public recovery snapshot is the post-`VinuBLS12381` object:
+The latest public recovery snapshot is the post-`VinuLatestEVM` object:
 
 ```text
-https://vinu-blockchain-genesis.s3.amazonaws.com/chaindata-snapshots/testnet-chaindata-v2.0.37-elemont-post-vinubls12381-20260603T080900Z-clean.tar.gz
+https://vinu-blockchain-genesis.s3.amazonaws.com/chaindata-snapshots/testnet-chaindata-v2.0.37-elemont-post-vinulatestevm-20260603T150430Z-clean.tar.gz
 ```
 
 Snapshot SHA256:
 
 ```text
-f5110088aa8a168a0d0166d522d94734a47856d7bb5b5312c427f05f555ddd59
+b3f2e104df0dde4f9f00c7624479d68aa89de2c9926c953535abd2c9d009e672
 ```
 
-It was produced from the trace RPC datadir on 2026-06-03 at tip block `1,482,910` / epoch `5,907`, with `VinuBLS12381` active and `VinuLatestEVM` still false. The old pre-BLS public snapshot was removed from S3 because it can replay the BLS fork edge at the wrong seal. After `VinuLatestEVM` seals, publish and use a newer post-latest-EVM snapshot. During the 2026-06-03 trace-RPC recovery, a stale May snapshot replayed historical forks under v2.0.37 and hit `wrong event epoch hash`; restoring current chaindata brought the trace node back at the current head.
+It was produced from the trace RPC datadir under the `20260603T150430Z` object name; `SNAPSHOT_INFO.txt` records snapshot timestamp `2026-06-03T15:04:50Z`, tip block `1,483,201`, and epoch `5,909`, with both `VinuBLS12381` and `VinuLatestEVM` active. The older public post-BLS snapshot was removed from S3 because it can replay the latest-EVM fork edge at the wrong seal. During the 2026-06-03 trace-RPC recovery, a stale May snapshot replayed historical forks under v2.0.37 and hit `wrong event epoch hash`; restoring current chaindata brought the trace node back at the current head.
 
 ---
 
@@ -54,7 +55,7 @@ It was produced from the trace RPC datadir on 2026-06-03 at tip block `1,482,910
 | Network | Chain ID   | RPC                              | Status          |
 | ------- | ---------- | -------------------------------- | --------------- |
 | Mainnet | 207 (0xcf) | `https://vinuchain-rpc.com`      | Upgrade pending |
-| Testnet | 206 (0xce) | `https://vinufoundation-rpc.com` | v2.0.37 deployed; PaybackV2 active; BLS active |
+| Testnet | 206 (0xce) | `https://vinufoundation-rpc.com` | v2.0.37 deployed; PaybackV2 active; BLS active; latest-EVM active |
 
 ---
 
@@ -362,7 +363,7 @@ After `vc_getRules` reports `Upgrades.VinuBLS12381 = true`, v2.0.37 stages VinuL
 INFO Staged VinuLatestEVM upgrade from binary rules; will activate at next epoch seal
 ```
 
-On current post-Prague testnet datadirs, the expected first-boot staging line is `Staged VinuBLS12381 ...`, followed by `Deferring VinuLatestEVM ...`. That is the correct state until the next epoch seal. `eth_config` reports sealed execution config only; it does not show pending `DirtyRules`, so use `vc_getRules("latest")` after the seal to confirm that the flag is active. If you do not see a staging line, you may be running the wrong binary (`opera version` check), the flag may already be pending in `DirtyRules` from an earlier boot, or the flag may already be sealed on this datadir. Absence of the staging line by itself is not proof that the fork has sealed; confirm with `vc_getRules`. Mainnet does not stage `VinuBLS12381` or `VinuLatestEVM` in v2.0.37.
+On current post-latest-EVM testnet datadirs, both `VinuBLS12381` and `VinuLatestEVM` are already sealed. The staging lines above are expected only on older datadirs that have not already crossed those seal points. `eth_config` reports sealed execution config only; it does not show pending `DirtyRules`, so use `vc_getRules("latest")` after the seal to confirm that the flag is active. If you do not see a staging line, you may be running the wrong binary (`opera version` check), the flag may already be pending in `DirtyRules` from an earlier boot, or the flag may already be sealed on this datadir. Absence of the staging line by itself is not proof that the fork has sealed; confirm with `vc_getRules`. Mainnet does not stage `VinuBLS12381` or `VinuLatestEVM` in v2.0.37.
 
 **Older staging logs (testnet only, first-time SfcV2Patch6 install).** Nodes upgrading from before v2.0.21 that have not yet sealed SfcV2Patch6 can also see this older staging line:
 
@@ -554,7 +555,7 @@ Mainnet is currently unaffected because no `SfcV2*` flag has sealed there yet. D
 
 Your locally-computed epoch state hash does not match the network's. The check rejects any event whose `PrevEpochHash` differs from the local store's `EpochState.Hash()`. There is no protocol-level recovery; chaindata must be replaced with a snapshot.
 
-After `VinuBLS12381` sealed on 2026-06-03, live validators rejected stale peer events such as `event=5907:1:42bc39 creator=17 err="wrong event epoch hash"`. If your node logs that shape around epoch `5907`, it is on pre-BLS or otherwise divergent chaindata and should restore from the post-BLS snapshot below.
+After the `VinuBLS12381` and `VinuLatestEVM` seals on 2026-06-03, live validators rejected stale peer events such as `event=5907:1:42bc39 creator=17 err="wrong event epoch hash"`. If your node logs that shape around epoch `5907` or later, it is on stale or otherwise divergent chaindata and should restore from the post-latest-EVM snapshot below.
 
 {% hint style="danger" %}
 **Do not resync from genesis on testnet.** A fresh replay stages not-yet-sealed upgrade flags at replay time — at a different block from the live chain's historical activations — so the epoch state hash diverges immediately. Use the latest published post-seal snapshot below instead. Snapshots taken before the Prague, Shanghai, Cancun, SfcV2Patch6, PaybackV2Patch, VinuBLS12381, or VinuLatestEVM seals are stale for fresh installs after those upgrades because they can re-fire edges at the wrong replay seal.
@@ -577,7 +578,7 @@ After `VinuBLS12381` sealed on 2026-06-03, live validators rejected stale peer e
 
    ```bash
    cd <datadir>
-   SNAPSHOT_URL="https://vinu-blockchain-genesis.s3.amazonaws.com/chaindata-snapshots/testnet-chaindata-v2.0.37-elemont-post-vinubls12381-20260603T080900Z-clean.tar.gz"
+   SNAPSHOT_URL="https://vinu-blockchain-genesis.s3.amazonaws.com/chaindata-snapshots/testnet-chaindata-v2.0.37-elemont-post-vinulatestevm-20260603T150430Z-clean.tar.gz"
    curl -LO "$SNAPSHOT_URL"
    # verify integrity
    curl -L "$SNAPSHOT_URL.sha256" | sha256sum -c -
@@ -599,7 +600,7 @@ After `VinuBLS12381` sealed on 2026-06-03, live validators rejected stale peer e
    https://vinu-blockchain-genesis.s3.amazonaws.com/?list-type=2&prefix=chaindata-snapshots/
    ```
 
-   The tarball is flat (top-level is `chaindata/`, `go-opera/`, and `SNAPSHOT_INFO.txt` — no `datadir/` prefix to nest) and excludes `nodekey`, `keystore/`, `opera.ipc`, `static-nodes.json`, `trusted-nodes.json`, archived `chaindata.bak.*/`, and shell `history` files. New snapshots are published under `s3://vinu-blockchain-genesis/chaindata-snapshots/`. As of the post-BLS v2.0.37 rollout, the current public object is `testnet-chaindata-v2.0.37-elemont-post-vinubls12381-20260603T080900Z-clean`; publish a new snapshot again after `VinuLatestEVM` seals.
+   The tarball is flat (top-level is `chaindata/`, `go-opera/`, and `SNAPSHOT_INFO.txt` — no `datadir/` prefix to nest) and excludes `nodekey`, `keystore/`, `opera.ipc`, `static-nodes.json`, `trusted-nodes.json`, archived `chaindata.bak.*/`, and shell `history` files. New snapshots are published under `s3://vinu-blockchain-genesis/chaindata-snapshots/`. As of the post-latest-EVM v2.0.37 rollout, the current public object is `testnet-chaindata-v2.0.37-elemont-post-vinulatestevm-20260603T150430Z-clean`; older objects may be removed and must not be reused after a newer fork seal.
 
 5. Ensure `--nat extip:<your_public_ip>` is set and `<datadir>/go-opera/static-nodes.json` contains the canonical bootnode list from the [Start your node](#start-your-node) section.
 6. Restart opera. The node resumes from the snapshot's tip and syncs forward. Expect `New DAG summary age=<few seconds>` within 1-2 minutes of restart.
@@ -675,13 +676,13 @@ The codebase uses several internal upgrade names. The base SfcV2, Podgorica, and
 | **Cancun**                 | Introduced in v2.0.24; sealed on testnet 2026-05-18 at block `1,461,786`                        | Selected Cancun/Dencun EVM compatibility that applies without blob transactions: EIP-1153 transient storage (`TLOAD` / `TSTORE`), EIP-5656 `MCOPY`, and EIP-6780 `SELFDESTRUCT` behavior.                                                                                                                                                                                                                                                                                                                                      |
 | **Prague**                 | Introduced in v2.0.28; sealed on testnet 2026-05-18 at block `1,462,637`                        | Scoped Prague/EIP-7702 compatibility for abstract-account delegation: set-code transaction type `0x04`, authorization lists, `0xef0100 || address` delegation designators, delegated EOA execution, and Prague-specific sender/txpool/event admission rules. Blob transaction type `0x03` remains unsupported.                                                                                                                                                                                                                 |
 | **VinuBLS12381**           | Introduced in v2.0.33; sealed on testnet 2026-06-03 at block `1,482,823`                        | VinuChain-specific EIP-2537/BLS12-381 precompile fork. Adds `BLS12_G1ADD`, `BLS12_G1MSM`, `BLS12_G2ADD`, `BLS12_G2MSM`, `BLS12_PAIRING_CHECK`, `BLS12_MAP_FP_TO_G1`, and `BLS12_MAP_FP2_TO_G2` at `0x0b`-`0x11` without coupling the rollout to upstream Prague/KZG behavior.                                                                                                                                                                                       |
-| **VinuLatestEVM**          | Introduced in v2.0.34; staged after `VinuBLS12381`; seal pending                                | VinuChain-specific latest-EVM compatibility fork. Adds P256VERIFY at `0x0100`, CLZ, MODEXP bounds/repricing, and EIP-7825 per-transaction gas-cap enforcement. This flag is intentionally separate from `VinuBLS12381` so BLS can bake first.                                                                                                                                                                                                                                                                                |
+| **VinuLatestEVM**          | Introduced in v2.0.34; sealed on testnet 2026-06-03 at block `1,482,978`                        | VinuChain-specific latest-EVM compatibility fork. Adds P256VERIFY at `0x0100`, CLZ, MODEXP bounds/repricing, and EIP-7825 per-transaction gas-cap enforcement. This flag is intentionally separate from `VinuBLS12381` so BLS can bake first. Activation time was 2026-06-03 09:47:52 UTC.                                                                                                                                                                                                                                   |
 | **PaybackV2**              | Introduced in v2.0.18; active on testnet                                                       | Binary-level swap of `Economy.QuotaCacheAddress` from the original `TransparentUpgradeableProxy`-based Quota proxy to a freshly-deployed non-proxy `QuotaContractV2` whose owner is a recoverable EOA. Activates at the first epoch seal after the v2.0.18+ binary boots. Designed to escape the lost-ProxyAdmin-key state on the original proxy without losing access to existing depositor stake (V1 `unstake`/`withdrawStake` remain permissionless after activation; only the protocol-side backing balance is orphaned). |
 | **PaybackV2Patch**         | Introduced in v2.0.19; active on testnet                                                       | One-shot testnet repair edge that rebinds an already-active PaybackV2 chain from the superseded V2 address to corrected `QuotaContractV2` `0x89D1cBD9DEAaB4dFf6f800a336FBDd9A5c6829e4`.                                                                                                                                                                                                                                                                                                                                       |
 | **SfcV2Patch6**            | Introduced in v2.0.20 and sealed with v2.0.21 on 2026-05-16 at block `1,460,329`                | One-shot testnet SFC bytecode re-flash to Cycle-162, adding orphan-delegation registration/backfill and an undelegate-to-zero fix for legacy orphaned stake pairs. v2.0.21 also performs the known live testnet delegation backfill in node state at the seal.                                                                                                                                                                                                                                                                |
 | **Mainnet SfcV2 backfill** | Mainnet-only future hook; not a testnet seal point                                             | Future mainnet `SfcV2` activation installs the latest Cycle-162 bytecode directly and now has a mainnet-only node-state backfill hook for the 82 live mainnet delegation rows audited on 2026-05-17. The list must be refreshed immediately before a mainnet activation release so newly-created missing rows are not missed.                                                                                                                                                                                                 |
 
-Testnet has Shanghai, Cancun, Prague, the earlier SFC re-flashes (`SfcV2Patch2` / `SfcV2Patch3` / `SfcV2Patch4` / `SfcV2Patch5`), the `ElemontPubkeyValidation` sealer guard, PaybackV2, PaybackV2Patch, the `SfcV2Patch6` edge, and `VinuBLS12381` active. As of the post-BLS v2.0.37 rollout, `VinuLatestEVM` is staged on testnet and waiting for the next epoch seal. Current source enables mainnet SfcV2, Podgorica, ElemontPubkeyValidation, Shanghai, Cancun, and Prague for the planned hard fork and points fresh mainnet rules at the live Quota proxy. Mainnet still has no `SfcV2*` patch flags, no `PaybackV2`, no `VinuBLS12381`, and no `VinuLatestEVM` active in v2.0.37.
+Testnet has Shanghai, Cancun, Prague, the earlier SFC re-flashes (`SfcV2Patch2` / `SfcV2Patch3` / `SfcV2Patch4` / `SfcV2Patch5`), the `ElemontPubkeyValidation` sealer guard, PaybackV2, PaybackV2Patch, the `SfcV2Patch6` edge, `VinuBLS12381`, and `VinuLatestEVM` active. Current source enables mainnet SfcV2, Podgorica, ElemontPubkeyValidation, Shanghai, Cancun, and Prague for the planned hard fork and points fresh mainnet rules at the live Quota proxy. Mainnet still has no `SfcV2*` patch flags, no `PaybackV2`, no `VinuBLS12381`, and no `VinuLatestEVM` active in v2.0.37.
 
 ### Release overview
 
@@ -880,4 +881,4 @@ Operator-facing controls for managing chaindata size on long-lived nodes.
 
 ---
 
-_Last updated: 2026-06-03 · latest guide target `v2.0.37-elemont` · ERC-4337 account abstraction live on testnet · latest public post-BLS snapshot `testnet-chaindata-v2.0.37-elemont-post-vinubls12381-20260603T080900Z-clean.tar.gz` · corrected PaybackV2 address `0x89D1cBD9DEAaB4dFf6f800a336FBDd9A5c6829e4` · `VinuBLS12381` active and `VinuLatestEVM` staged/pending · SFC Cycle-162 `version() = 3.0.5` · go-vinu `v1.20.24-quota` · lachesis-base `v0.1.6-elemont`_
+_Last updated: 2026-06-03 · latest guide target `v2.0.37-elemont` · ERC-4337 account abstraction live on testnet · latest public post-latest-EVM snapshot `testnet-chaindata-v2.0.37-elemont-post-vinulatestevm-20260603T150430Z-clean.tar.gz` · corrected PaybackV2 address `0x89D1cBD9DEAaB4dFf6f800a336FBDd9A5c6829e4` · `VinuBLS12381` active and `VinuLatestEVM` active · SFC Cycle-162 `version() = 3.0.5` · go-vinu `v1.20.24-quota` · lachesis-base `v0.1.6-elemont`_
