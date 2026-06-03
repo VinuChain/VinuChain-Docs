@@ -4,26 +4,36 @@
 
 ## Latest release
 
-| Version           | Network | Status                                      |
-| ----------------- | ------- | ------------------------------------------- |
-| `v2.0.31-elemont` | Testnet | Deployed; ERC-4337 account abstraction live; snapshot published |
+| Version           | Network | Status                                                                 |
+| ----------------- | ------- | ---------------------------------------------------------------------- |
+| `v2.0.37-elemont` | Testnet | Binary deployed to validators/RPC; BLS staged; latest-EVM deferred     |
 
 ## What's new
 
-- **Enables ERC-4337 account abstraction on testnet.** The canonical EntryPoint v0.7 (`0x0000000071727De22E5E9d8BAf0edAc6f37da032`), SimpleAccountFactory (`0x27e13cC69A1d0cb6205153f89Be711B1872CfFd6`), and a public Skandha bundler (`https://bundler-testnet.vinuexplorer.org/rpc`) are live, and the explorer indexes and renders UserOperations. See [Account Abstraction (ERC-4337)](../smart-contracts/account-abstraction.md).
+- **Stages VinuChain-specific BLS12-381 and latest-EVM forks on testnet.** `VinuBLS12381` enables the EIP-2537/BLS12-381 precompile family at `0x0b`-`0x11` as an explicit VinuChain fork flag. `VinuLatestEVM` then enables P256VERIFY at `0x0100`, CLZ, MODEXP bounds/repricing, and the EIP-7825 per-transaction gas cap. These are staged in order and activate only at epoch seals.
+- **Adds `eth_config` support.** The public RPC now reports the sealed execution configuration, chain ID, fork ID, activation block/time, and active precompile set. `eth_config` does not expose pending `DirtyRules`; use `vc_getRules("latest")` after each seal to confirm fork activation.
+- **Adds explicit gas-cap enforcement and tests.** v2.0.36 rejects transactions above the `VinuLatestEVM` per-transaction gas cap in txpool, state transition, and block execution, and caps `eth_estimateGas` once the fork is active.
+- **Consumes the go-vinu precompile/ModExp vector-test release.** v2.0.37 pins go-vinu `v1.20.24-quota`, which carries the broader BLS12-381, secp256r1/P256, CLZ, MODEXP, and gas-cap vector coverage used for this testnet hard-fork validation. lachesis-base remains `v0.1.6-elemont`.
+- **Carries forward ERC-4337 account abstraction on testnet.** The canonical EntryPoint v0.7 (`0x0000000071727De22E5E9d8BAf0edAc6f37da032`), SimpleAccountFactory (`0x27e13cC69A1d0cb6205153f89Be711B1872CfFd6`), and a public Skandha bundler (`https://bundler-testnet.vinuexplorer.org/rpc`) are live, and the explorer indexes and renders UserOperations. See [Account Abstraction (ERC-4337)](../smart-contracts/account-abstraction.md).
 - Adds the `--rpc.allow-unprotected-txs` node flag (v2.0.29) so operators can admit pre-EIP-155 (chain-id-less) transactions over RPC — required to land the Arachnid deterministic deployer and the canonical EntryPoint. The flag is **refused on mainnet** (NetworkID 207) by a gossip-layer guard; it is for non-mainnet networks only.
 - Adds a mainnet allowlist (v2.0.30) for the single canonical Arachnid deterministic-deployer transaction, pinned by exact tx hash, so the canonical EntryPoint can eventually land on mainnet without otherwise relaxing replay protection. It is replay-benign and independent of the flag above.
 - Hardens the unprotected-tx mainnet guard (v2.0.31): extracts it into a tested helper with all-network regression coverage and adds an `ethapi` call-site test. No consensus or state change — testnet/mainnet behavior is identical to v2.0.30, so this release activates no new flag.
-- Carries forward Prague/EIP-7702 set-code support (v2.0.28), Shanghai/Cancun execution compatibility, the `SfcV2Patch6` Cycle-162 backfill, and the corrected PaybackV2 address `0x89D1cBD9DEAaB4dFf6f800a336FBDd9A5c6829e4`. go-vinu stays at `v1.20.19-quota`; lachesis-base at `v0.1.6-elemont`.
-- Mainnet remains on `v2.0.0-rc.1`; account abstraction is not deployed on mainnet yet (EntryPoint code is empty there, by design).
+- Carries forward Prague/EIP-7702 set-code support (v2.0.28), Shanghai/Cancun execution compatibility, the `SfcV2Patch6` Cycle-162 backfill, and the corrected PaybackV2 address `0x89D1cBD9DEAaB4dFf6f800a336FBDd9A5c6829e4`.
+- Current source stages a future mainnet hard fork for SfcV2, Podgorica, ElemontPubkeyValidation, Shanghai, Cancun, and Prague, and points fresh mainnet rules at the live Quota proxy. Mainnet `PaybackV2`, `VinuBLS12381`, and `VinuLatestEVM` remain deliberately false until separate activation releases.
 
 ## Current Testnet Rollout State
 
-`v2.0.31-elemont` was built on the testnet hosts and deployed to the public trace RPC plus validators V1-V4 on 2026-05-28 (~14:48 UTC). The deployed client string is `go-opera/v2.0.31-elemont-7ae5b1ac-1779978779/linux-amd64/go1.26.3`. Builds are byte-identical across both build hosts (`sha256 5bb68ae95aaa5fe3fd071cf66e269ba942a10a97fb719d1eda7c32546d217d70`).
+`v2.0.37-elemont` was built on the testnet hosts and deployed to the public trace RPC plus validators V1-V4 on 2026-06-03. The deployed client string is `go-opera/v2.0.37-elemont-df23f245-1780458226/linux-amd64/go1.26.3`. The trace RPC and validator host binaries are byte-identical (`sha256 89b63f226d9621f11fd8a3ad979563895c57555bdf7b8a0e3440cc215d826edb`).
 
-v2.0.31 is non-consensus (mainnet unprotected-tx guard hardening + regression tests + a CLI usage-string fix), so it activates no new flag — the live consensus flag set is unchanged from v2.0.30. Post-deploy verification confirmed the trace RPC serves `v2.0.31-elemont`, all four validator services restarted active, the chain resumed after the standard ~5-6 minute emitter pause, and `vc_getRules("latest")` is unchanged (`Economy.QuotaCacheAddress = 0x89d1cbd9deaab4dff6f800a336fbdd9a5c6829e4`).
+Post-deploy verification confirmed:
 
-The current recovery snapshot (tip block `1,475,761`, epoch `5,875`, all 18 upgrade flags sealed) is:
+- All four validator services are active on `v2.0.37-elemont`, at the same live head, with `eth_syncing=false`.
+- The public trace RPC at `http://100.22.109.110:4000` serves `v2.0.37-elemont`, exposes `trace` and `debug`, returns `eth_syncing=false`, and `trace_block("latest")` succeeds.
+- `vc_getRules("latest")` reports `PaybackV2=true`, `PaybackV2Patch=true`, and `Economy.QuotaCacheAddress=0x89d1cbd9deaab4dff6f800a336fbdd9a5c6829e4`.
+- The corrected PaybackV2 contract has code at `0x89D1cBD9DEAaB4dFf6f800a336FBDd9A5c6829e4`, owner `0xf9c82B1117e8BeA97843042521B8FBC93044f347`, and the `stakeFor(address)` / `unstakeFor(address,uint256)` selectors.
+- At 2026-06-03 05:29 UTC, testnet was still in epoch `5906` at block `1,482,805`; `VinuBLS12381` was staged in `DirtyRules` and waiting for the next epoch seal, and `VinuLatestEVM` was correctly deferred until after BLS seals. Until those seals complete, BLS/P256/CLZ/MODEXP/latest-EVM runtime smoke checks are not final.
+
+The latest public recovery snapshot currently published before this rollout is:
 
 ```text
 https://vinu-blockchain-genesis.s3.amazonaws.com/chaindata-snapshots/testnet-chaindata-v2.0.31-elemont-20260529T002920Z-clean.tar.gz
@@ -35,6 +45,8 @@ Snapshot SHA256:
 77523c5f907add15ddde257fe6c80f4b3ac07d2c3129da2d5135f90570c59e16
 ```
 
+Treat that object as the last public pre-v2.0.37 snapshot, not as a post-BLS/latest-EVM recovery point. After `VinuBLS12381` or `VinuLatestEVM` seals, publish and use a new snapshot taken after those seals. During the 2026-06-03 trace-RPC recovery, the stale replay path was avoided by restoring `chaindata/` from a current validator snapshot instead.
+
 ---
 
 ## Network Details
@@ -42,7 +54,7 @@ Snapshot SHA256:
 | Network | Chain ID   | RPC                              | Status          |
 | ------- | ---------- | -------------------------------- | --------------- |
 | Mainnet | 207 (0xcf) | `https://vinuchain-rpc.com`      | Upgrade pending |
-| Testnet | 206 (0xce) | `https://vinufoundation-rpc.com` | v2.0.28 deployed; Prague active |
+| Testnet | 206 (0xce) | `https://vinufoundation-rpc.com` | v2.0.37 deployed; PaybackV2 active; BLS staged |
 
 ---
 
@@ -70,7 +82,7 @@ Ensure these remain open in your firewall:
 ## Upgrade Steps
 
 {% hint style="info" %}
-**Fresh install?** This guide covers binary swaps on existing validator nodes. If you're bootstrapping a brand-new testnet node, replay from genesis is **not supported under v2.0.28** — follow the snapshot-restore procedure in [Troubleshooting → Wrong event epoch hash](#warn-incoming-event-rejected-err-wrong-event-epoch-hash) instead. Do not use this v2.0.28 guide as a routine pre-activation mainnet genesis-replay path: the binary hardcodes the future mainnet `SfcV2` activation and stages that transition at the next epoch seal when run on a pre-SfcV2 mainnet datadir.
+**Fresh install?** This guide covers binary swaps on existing validator nodes. Bootstrapping a brand-new testnet node by replaying from genesis is **not supported under the current v2.x binary rules** — follow the snapshot-restore procedure in [Troubleshooting → Wrong event epoch hash](#warn-incoming-event-rejected-err-wrong-event-epoch-hash) instead. Do not use this guide as a routine pre-activation mainnet genesis-replay path: the current binary hardcodes future mainnet `SfcV2` / EVM fork activations and stages those transitions at the next epoch seal when run on a pre-activation mainnet datadir.
 {% endhint %}
 
 {% stepper %}
@@ -134,7 +146,7 @@ The build directory is independent of your node's `--datadir`. The build process
 ```bash
 git clone https://github.com/VinuChain/VinuChain.git $HOME/vinuchain-upgrade
 cd $HOME/vinuchain-upgrade
-git checkout v2.0.31-elemont
+git checkout v2.0.37-elemont
 make opera
 # Binary is at $HOME/vinuchain-upgrade/build/opera
 ```
@@ -144,7 +156,7 @@ make opera
 Substitute `/opt/vinuchain-upgrade` (or any other path) if `$HOME` is not the right partition for your setup — every later command in this guide that references `$HOME/vinuchain-upgrade` should be adjusted to match.
 
 {% hint style="info" %}
-**Dependency pins.** `v2.0.31-elemont` keeps go-vinu `v1.20.19-quota` (Shanghai, selected Cancun execution support, Prague/EIP-7702 set-code transactions, txpool authority reservation safeguards) and lachesis-base `v0.1.6-elemont` — unchanged since v2.0.28. `make opera` fetches dependencies on first build.
+**Dependency pins.** `v2.0.37-elemont` uses go-vinu `v1.20.24-quota` (Shanghai, selected Cancun execution support, Prague/EIP-7702 set-code transactions, VinuBLS12381, VinuLatestEVM, and precompile/ModExp vector tests) and lachesis-base `v0.1.6-elemont`. `make opera` fetches dependencies on first build.
 {% endhint %}
 {% endstep %}
 
@@ -157,11 +169,11 @@ The newly-built binary is at `vinuchain-upgrade/build/opera`. Move into that dir
 ```bash
 cd $HOME/vinuchain-upgrade/build
 ./opera version
-# Expected: Version: 2.0.31-elemont
+# Expected: Version: 2.0.37-elemont
 ```
 
 {% hint style="info" %}
-`opera version` prints `2.0.31-elemont` — this matches the git tag `v2.0.31-elemont`. See the note at the top of this page.
+`opera version` prints `2.0.37-elemont` — this matches the git tag `v2.0.37-elemont`. See the note at the top of this page.
 {% endhint %}
 {% endstep %}
 
@@ -291,7 +303,7 @@ For testing or development, you can run in the foreground:
 
 What to expect:
 
-**Startup banner.** Every v2.x build prints the VinuChain banner. This is the first visual confirmation that you are running v2.0.28-elemont and not the previous binary:
+**Startup banner.** Every v2.x build prints the VinuChain banner. This is the first visual confirmation that you are running v2.0.37-elemont and not the previous binary:
 
 ```text
  ██╗   ██╗██╗███╗   ██╗██╗   ██╗ ██████╗██╗  ██╗ █████╗ ██╗███╗   ██╗
@@ -303,35 +315,54 @@ What to expect:
 
                         v2.0  -  ELEMONT
 
-  Version: 2.0.31-elemont
+  Version: 2.0.37-elemont
 ```
 
-**Staging logs (testnet only, first-time Shanghai/Cancun/Prague install).** On the first boot of a node that has not yet sealed Shanghai (e.g. a genesis replay rather than a snapshot restore), you will see Shanghai staged while Cancun and Prague are deferred:
+**Staging logs (testnet only, first-time Shanghai/Cancun/Prague/BLS/latest-EVM install).** On the first boot of a node that has not yet sealed Shanghai (e.g. a genesis replay rather than a snapshot restore), you will see Shanghai staged while later forks are deferred:
 
 ```text
 INFO Staged Shanghai upgrade from binary rules; will activate at next epoch seal
 INFO Deferring Cancun upgrade from binary rules until Shanghai is active
 INFO Deferring Prague upgrade from binary rules until Cancun is active
+INFO Deferring VinuBLS12381 upgrade from binary rules until Prague is active
+INFO Deferring VinuLatestEVM upgrade from binary rules until VinuBLS12381 is active
 ```
 
 This confirms EIP-3651, EIP-3855, and EIP-3860 are pending for the next epoch seal, while Cancun is intentionally held back so skipped-binary nodes do not collapse Shanghai and Cancun into the same activation height.
 
-After `vc_getRules` reports `Upgrades.Shanghai = true`, v2.0.28 stages Cancun automatically on the same continuous process:
+After `vc_getRules` reports `Upgrades.Shanghai = true`, v2.0.37 stages Cancun automatically on the same continuous process:
 
 ```text
 INFO Staged Cancun upgrade from binary rules; will activate at next epoch seal
 INFO Deferring Prague upgrade from binary rules until Cancun is active
+INFO Deferring VinuBLS12381 upgrade from binary rules until Prague is active
+INFO Deferring VinuLatestEVM upgrade from binary rules until VinuBLS12381 is active
 ```
 
 This confirms EIP-1153, EIP-5656, and EIP-6780 behavior are pending for the next epoch seal.
 
-After `vc_getRules` reports `Upgrades.Cancun = true`, v2.0.28 stages Prague automatically on the same continuous process:
+After `vc_getRules` reports `Upgrades.Cancun = true`, v2.0.37 stages Prague automatically on the same continuous process:
 
 ```text
 INFO Staged Prague upgrade from binary rules; will activate at next epoch seal
+INFO Deferring VinuBLS12381 upgrade from binary rules until Prague is active
+INFO Deferring VinuLatestEVM upgrade from binary rules until VinuBLS12381 is active
 ```
 
-On current post-Cancun testnet datadirs, Prague is the only new first-boot staging line expected. It confirms EIP-7702 set-code transaction handling is pending for the next epoch seal. If you do not see a staging line, you may be running the wrong binary (`opera version` check), the flag may already be pending in `DirtyRules` from an earlier boot, or the flag may already be sealed on this datadir. Absence of the staging line by itself is not proof that the fork has sealed; confirm with `vc_getRules`. Mainnet and staging nodes do not show these lines because `VinuChainMainNetRules` keeps Shanghai, Cancun, and Prague disabled until coordinated mainnet releases.
+After `vc_getRules` reports `Upgrades.Prague = true`, v2.0.37 stages VinuBLS12381:
+
+```text
+INFO Staged VinuBLS12381 upgrade from binary rules; will activate at next epoch seal
+INFO Deferring VinuLatestEVM upgrade from binary rules until VinuBLS12381 is active
+```
+
+After `vc_getRules` reports `Upgrades.VinuBLS12381 = true`, v2.0.37 stages VinuLatestEVM:
+
+```text
+INFO Staged VinuLatestEVM upgrade from binary rules; will activate at next epoch seal
+```
+
+On current post-Prague testnet datadirs, the expected first-boot staging line is `Staged VinuBLS12381 ...`, followed by `Deferring VinuLatestEVM ...`. That is the correct state until the next epoch seal. `eth_config` reports sealed execution config only; it does not show pending `DirtyRules`, so use `vc_getRules("latest")` after the seal to confirm that the flag is active. If you do not see a staging line, you may be running the wrong binary (`opera version` check), the flag may already be pending in `DirtyRules` from an earlier boot, or the flag may already be sealed on this datadir. Absence of the staging line by itself is not proof that the fork has sealed; confirm with `vc_getRules`. Mainnet does not stage `VinuBLS12381` or `VinuLatestEVM` in v2.0.37.
 
 **Older staging logs (testnet only, first-time SfcV2Patch6 install).** Nodes upgrading from before v2.0.21 that have not yet sealed SfcV2Patch6 can also see this older staging line:
 
@@ -341,7 +372,7 @@ INFO Staged SfcV2Patch6 upgrade from binary rules; will activate at next epoch s
 
 This confirms the Cycle-162 SFC bytecode re-flash and automatic testnet delegation backfill are pending. Mainnet nodes never show this line because SfcV2Patch6 is testnet-only. Nodes upgrading directly from v2.0.18 or earlier may also see the older `Staged PaybackV2Patch ...` line if that edge has not yet sealed on their datadir.
 
-**Seal-time activation (testnet only).** At the next epoch seal after Shanghai staging, `vc_getRules` must report `Upgrades.Shanghai = true`. At the next epoch seal after Cancun staging, it must also report `Upgrades.Cancun = true`. At the next epoch seal after Prague staging, it must also report `Upgrades.Prague = true`. There is no SFC bytecode re-flash, contract address change, or registry update for these EVM fork flags.
+**Seal-time activation (testnet only).** At the next epoch seal after Shanghai staging, `vc_getRules` must report `Upgrades.Shanghai = true`. At the next epoch seal after Cancun staging, it must also report `Upgrades.Cancun = true`. At the next epoch seal after Prague staging, it must also report `Upgrades.Prague = true`. At the next epoch seal after VinuBLS12381 staging, `vc_getRules` must report `Upgrades.VinuBLS12381 = true` and `eth_config.current.precompiles` must include the BLS12-381 precompiles. At the next epoch seal after VinuLatestEVM staging, `vc_getRules` must report `Upgrades.VinuLatestEVM = true` and `eth_config.current.precompiles` must include `P256VERIFY`. There is no SFC bytecode re-flash, contract address change, or registry update for these EVM fork flags.
 
 If SfcV2Patch6 is also still pending, the same seal can include the older SFC Patch6 re-flash:
 
@@ -357,7 +388,7 @@ INFO Backfilled SFC Patch6 testnet delegations block=<N> appended=3 repaired=0
 
 If every listed pair is already visible in `stakes[]` or has dropped to zero stake, the re-flash log can appear without a `Backfilled ...` line. After it fires, `vc_getRules` must report `Upgrades.SfcV2Patch6 = true`, and `eth_call` to SFC `version()` must return `0x333035` (`"305"`). The `Backfilled ...` counts are lower if a listed pair already became visible or dropped to zero stake before the seal; `repaired` may be non-zero if a pair is present in `stakes[]` but its `stakePosition` points at a stale row. `Economy.QuotaCacheAddress` remains the corrected PaybackV2 address `0x89D1cBD9DEAaB4dFf6f800a336FBDd9A5c6829e4`.
 
-**Future mainnet SfcV2 activation.** When mainnet activation is explicitly scheduled, the first v2.0.28+ boot on a pre-SfcV2 mainnet datadir stages `SfcV2`, not `SfcV2Patch6`:
+**Future mainnet SfcV2 activation.** When mainnet activation is explicitly scheduled, the first current v2.x boot on a pre-SfcV2 mainnet datadir stages `SfcV2`, not `SfcV2Patch6`:
 
 ```text
 INFO Staged SfcV2 upgrade from binary rules; will activate at next epoch seal
@@ -372,16 +403,21 @@ After the mainnet seal, `vc_getRules` must report `Upgrades.SfcV2 = true`, SFC `
 | Check                                                     | Expected                                                                                                                                              |
 | --------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Startup banner                                            | `VINUCHAIN v2.0 - ELEMONT` ASCII art printed to stderr                                                                                                |
-| `opera version`                                           | `Version: 2.0.31-elemont`                                                                                                                             |
+| `opera version`                                           | `Version: 2.0.37-elemont`                                                                                                                             |
 | Block production                                          | Resumes within seconds of startup; block numbers advance                                                                                              |
 | Peer count                                                | Returns to prior steady-state within minutes                                                                                                          |
 | Shanghai staging logs (testnet, first pre-Shanghai boot) | 1× `Staged Shanghai upgrade …`; Cancun and Prague may log as deferred until predecessors are active                                                    |
 | Shanghai rule after seal                                  | `vc_getRules` reports `Upgrades.Shanghai = true`                                                                                                      |
-| Cancun staging logs (testnet, post-Shanghai v2.0.28 process) | 1× `Staged Cancun upgrade …` after Shanghai seals; no restart required                                                                                 |
+| Cancun staging logs (testnet, post-Shanghai process)      | 1× `Staged Cancun upgrade …` after Shanghai seals; no restart required                                                                                 |
 | Cancun rule after seal                                    | `vc_getRules` reports `Upgrades.Cancun = true`                                                                                                        |
-| Prague staging logs (testnet, post-Cancun v2.0.28 process) | 1× `Staged Prague upgrade …` after Cancun seals; current post-Cancun testnet nodes should see this on first boot                                      |
+| Prague staging logs (testnet, post-Cancun process)        | 1× `Staged Prague upgrade …` after Cancun seals; already-active testnet nodes will not show it again                                                  |
 | Prague rule after seal                                    | `vc_getRules` reports `Upgrades.Prague = true`                                                                                                        |
 | EIP-7702 transaction support after Prague seal             | Set-code transactions (`type: 0x04`) accepted; blob transactions (`type: 0x03`) remain rejected                                                        |
+| VinuBLS12381 staging logs (testnet, post-Prague process)  | 1× `Staged VinuBLS12381 upgrade …`; `VinuLatestEVM` remains deferred until BLS is active                                                              |
+| VinuBLS12381 rule after seal                              | `vc_getRules` reports `Upgrades.VinuBLS12381 = true`; `eth_config` includes `BLS12_G1ADD` through `BLS12_MAP_FP2_TO_G2`                               |
+| VinuLatestEVM staging logs (testnet, post-BLS process)    | 1× `Staged VinuLatestEVM upgrade …` after BLS seals; no restart required                                                                               |
+| VinuLatestEVM rule after seal                             | `vc_getRules` reports `Upgrades.VinuLatestEVM = true`; `eth_config` includes `P256VERIFY` at `0x0000000000000000000000000000000000000100`             |
+| VinuLatestEVM transaction gas cap                         | Over-cap transactions are rejected by txpool/state transition; `eth_estimateGas` caps at the fork limit                                               |
 | SfcV2Patch6 staging logs (older unsealed datadirs only)   | 1× `Staged SfcV2Patch6 …`                                                                                                                             |
 | SfcV2Patch6 staging log — all other cases                 | None                                                                                                                                                  |
 | Mainnet staging logs (future coordinated SfcV2 release)   | 1× `Staged SfcV2 upgrade …` on a pre-SfcV2 mainnet datadir                                                                                            |
@@ -393,6 +429,7 @@ After the mainnet seal, `vc_getRules` must report `Upgrades.SfcV2 = true`, SFC `
 | Block hash vs peer                                        | Identical                                                                                                                                             |
 | `rpc_modules` returns                                     | Includes `"vc":"1.0"` (`vc_getPaybackBalance`)                                                                                                        |
 | `vc_getPaybackBalance` call                               | Returns hex-encoded wei (or `0x0` for ineligible addresses / Podgorica inactive)                                                                      |
+| `eth_config` before BLS/latest seals                      | Reports the sealed current config; pending `DirtyRules` are not shown                                                                                 |
 
 {% endstep %}
 
@@ -441,7 +478,7 @@ That guide uses the correct `opera validator new` command for generating a valid
 
 ## Rollback
 
-Before Prague seals, rollback is a normal binary swap back to the previous testnet binary. After Prague seals, do not roll back below v2.0.28 without operator coordination: older binaries do not know the `Prague` upgrade bit, set-code transaction type `0x04`, EIP-7702 authorization lists, or delegated EOA execution rules. The earlier Shanghai/Cancun rollback constraints still apply: after Shanghai seals, do not roll back below v2.0.26 without operator coordination, and after Cancun seals do not roll back below the release that sealed Cancun on that datadir.
+Before a staged fork seals, rollback is a normal coordinated binary swap back to the previous testnet binary. After `VinuBLS12381` seals, do not roll back below v2.0.33 without operator coordination: older binaries do not know the BLS12-381 rule bit or precompile set. After `VinuLatestEVM` seals, do not roll back below v2.0.36 without operator coordination: older binaries lack the latest-EVM execution rules and complete per-transaction gas-cap enforcement. The earlier Prague rollback constraint still applies: after Prague seals, do not roll back below v2.0.28 without operator coordination. The earlier Shanghai/Cancun rollback constraints also still apply: after Shanghai seals, do not roll back below v2.0.26 without operator coordination, and after Cancun seals do not roll back below the release that sealed Cancun on that datadir.
 
 The earlier SfcV2Patch6 rollback constraints still apply. After SfcV2Patch6 seals, do not roll back below v2.0.21 without operator coordination: the Cycle-162 bytecode and automatic testnet delegation backfill persist in chain state, and older binaries do not contain the activation-time backfill logic. The corrected PaybackV2 v2.0.19 rollback constraints still apply if PaybackV2Patch was also part of the node's upgrade path.
 
@@ -456,6 +493,11 @@ No datadir changes are needed for a pre-seal rollback. A post-seal rollback must
 {% hint style="info" %}
 **Per-version rollback deltas.** Each bullet describes the only functional difference between the two versions.
 
+- **v2.0.37 → earlier rollback:** v2.0.37 consumes the go-vinu precompile/ModExp vector-test release. Treat rollback like v2.0.36: safe only before the relevant BLS/latest-EVM seal, and never below the binary that sealed an already-active flag without operator coordination.
+- **v2.0.36 → earlier rollback:** Safe only before the `VinuLatestEVM` seal. After the seal, older binaries do not consistently reject over-cap transactions across txpool, state transition, block execution, and `eth_estimateGas`.
+- **v2.0.34/v2.0.35 → earlier rollback:** Safe only before the `VinuLatestEVM` seal. After the seal, older binaries lack P256VERIFY, CLZ, MODEXP bounds/repricing, `eth_config` latest-EVM reporting, and the VinuLatestEVM RLP/config bits.
+- **v2.0.33 → earlier rollback:** Safe only before the `VinuBLS12381` seal. After the seal, older binaries lack the BLS12-381 precompile set, RLP bit, EVM chain-config mapping, and staged activation logic.
+- **v2.0.32 → earlier rollback:** Mainnet/staging rehearsal release for SfcV2/Podgorica/Shanghai/Cancun/Prague rule defaults and the mainnet Quota proxy pointer. Existing testnet datadirs are governed by the already-sealed testnet flags above.
 - **v2.0.28 → earlier rollback:** Safe only before the Prague seal. After Prague seals, older binaries lack EIP-7702 set-code transaction decoding, authorization-list validation, delegated EOA execution, event serialization, txpool policy, and RPC/signer support; downgrade can diverge on valid post-Prague transactions.
 - **v2.0.26 → earlier rollback:** Safe only before the relevant Shanghai/Cancun seal. After Shanghai seals, v2.0.21 and older lack Shanghai support, v2.0.22-v2.0.24 lack the fixed VinuChain-local Shanghai transaction checks, and v2.0.25 lacks the full event-admission, txpool reset, skipped-transaction accounting, and continuous Cancun-staging hardening. After Cancun seals, older binaries also lack the final Cancun opcode/`SELFDESTRUCT` behavior and downgrade can diverge on valid post-Cancun transactions or gas accounting.
 - **v2.0.25 → earlier rollback:** Safe only before the relevant Shanghai/Cancun seal. After Shanghai seals, v2.0.21 and older lack Shanghai support, and v2.0.22-v2.0.24 lack the fixed VinuChain-local Shanghai transaction checks. After Cancun seals, older binaries also lack the final Cancun opcode/`SELFDESTRUCT` behavior and downgrade can diverge on valid post-Cancun transactions or gas accounting.
@@ -496,7 +538,7 @@ Mainnet is currently unaffected because no `SfcV2*` flag has sealed there yet. D
 ### Node won't start after upgrade
 
 1. Check logs: `journalctl -u opera -f` (systemd) or your terminal / Docker output.
-2. Verify the binary: `opera version` must print `2.0.28-elemont`.
+2. Verify the binary: `opera version` must print `2.0.37-elemont`.
 3. If the database is reported as corrupted, restore from the chaindata snapshot below.
 
 ### Node starts but doesn't produce events
@@ -513,7 +555,7 @@ Mainnet is currently unaffected because no `SfcV2*` flag has sealed there yet. D
 Your locally-computed epoch state hash does not match the network's. The check rejects any event whose `PrevEpochHash` differs from the local store's `EpochState.Hash()`. There is no protocol-level recovery; chaindata must be replaced with a snapshot.
 
 {% hint style="danger" %}
-**Do not resync from genesis on testnet.** A fresh replay stages not-yet-sealed upgrade flags at replay time — at a different block from the live chain's historical activations — so the epoch state hash diverges immediately. Use the latest published post-seal snapshot below instead. Snapshots taken before the Prague, Shanghai, Cancun, SfcV2Patch6, or PaybackV2Patch seals are stale for fresh installs after those upgrades because they can re-fire edges at the wrong replay seal.
+**Do not resync from genesis on testnet.** A fresh replay stages not-yet-sealed upgrade flags at replay time — at a different block from the live chain's historical activations — so the epoch state hash diverges immediately. Use the latest published post-seal snapshot below instead. Snapshots taken before the Prague, Shanghai, Cancun, SfcV2Patch6, PaybackV2Patch, VinuBLS12381, or VinuLatestEVM seals are stale for fresh installs after those upgrades because they can re-fire edges at the wrong replay seal.
 {% endhint %}
 
 **Recovery procedure (testnet) — chaindata snapshot:**
@@ -529,7 +571,7 @@ Your locally-computed epoch state hash does not match the network's. The check r
    find go-opera -mindepth 1 -not -name nodekey -not -name 'static-nodes.json' -not -name 'trusted-nodes.json' -exec rm -rf {} +
    ```
 
-4. Download the latest testnet snapshot (`v2.0.31-elemont`) and extract it in-place over the datadir (the tar is written with relative paths, so extract at the datadir root; the tar excludes `nodekey`, `keystore/`, `opera.ipc`, `static-nodes.json`, `trusted-nodes.json` so your identity files are preserved). Always use the latest snapshot — older objects in the bucket are archival.
+4. Download the latest post-seal testnet snapshot and extract it in-place over the datadir (the tar is written with relative paths, so extract at the datadir root; published tarballs exclude `nodekey`, `keystore/`, `opera.ipc`, `static-nodes.json`, `trusted-nodes.json` so your identity files are preserved). Always use the latest snapshot — older objects in the bucket are archival.
 
    ```bash
    cd <datadir>
@@ -549,16 +591,18 @@ Your locally-computed epoch state hash does not match the network's. The check r
 
    The file lists the network, snapshot timestamp, binary version, tip block, tip epoch, and the full set of sealed upgrade flags. The tip block listed there is the minimum block number your first `New block` log line should show after restart. If `cat` returns nothing, the tarball did not extract correctly — do not start opera; re-extract at the datadir root.
 
-   Current snapshot listing (public, no AWS credentials required). If the listing still contains older objects, treat them as archival and use the exact v2.0.31 URL above:
+   Current snapshot listing (public, no AWS credentials required):
 
    ```text
    https://vinu-blockchain-genesis.s3.amazonaws.com/?list-type=2&prefix=chaindata-snapshots/
    ```
 
-   The tarball is flat (top-level is `chaindata/`, `go-opera/`, and `SNAPSHOT_INFO.txt` — no `datadir/` prefix to nest) and excludes `nodekey`, `keystore/`, `opera.ipc`, `static-nodes.json`, `trusted-nodes.json`, archived `chaindata.bak.*/`, and shell `history` files. New snapshots are published under `s3://vinu-blockchain-genesis/chaindata-snapshots/`; the current published object is `testnet-chaindata-v2.0.31-elemont-20260529T002920Z-clean`.
+   The tarball is flat (top-level is `chaindata/`, `go-opera/`, and `SNAPSHOT_INFO.txt` — no `datadir/` prefix to nest) and excludes `nodekey`, `keystore/`, `opera.ipc`, `static-nodes.json`, `trusted-nodes.json`, archived `chaindata.bak.*/`, and shell `history` files. New snapshots are published under `s3://vinu-blockchain-genesis/chaindata-snapshots/`. As of the v2.0.37 rollout, the last public object is `testnet-chaindata-v2.0.31-elemont-20260529T002920Z-clean`; publish a new snapshot after `VinuBLS12381` and again after `VinuLatestEVM` seal, or use a current validator-chaindata copy for internal RPC recovery.
 
 5. Ensure `--nat extip:<your_public_ip>` is set and `<datadir>/go-opera/static-nodes.json` contains the canonical bootnode list from the [Start your node](#start-your-node) section.
-6. Restart opera. The node resumes from the snapshot's tip (epoch 5875 / block 1,475,761 at snapshot time) and syncs forward. Expect `New DAG summary age=<few seconds>` within 1-2 minutes of restart.
+6. Restart opera. The node resumes from the snapshot's tip and syncs forward. Expect `New DAG summary age=<few seconds>` within 1-2 minutes of restart.
+
+**Trace/RPC recovery from a current validator datadir.** If no fresh public snapshot exists after a new seal, recover internal trace/RPC nodes from a current validator snapshot instead of replaying an old tarball. Stop one validator cleanly, archive only its active `<validator-datadir>/chaindata` directory, restart that validator, verify the archive checksum on the RPC host, then replace only the RPC node's `chaindata` while preserving `go-opera/nodekey` and static/trusted nodes. The 2026-06-03 trace RPC recovery used this path after an older May snapshot replayed historical forks under v2.0.37 and hit `wrong event epoch hash`; restoring current validator chaindata brought the trace node back at the current head with `eth_syncing=false` and working `trace_block("latest")`.
 
 ### Stuck at `net.peerCount == 1` with one stale peer
 
@@ -600,11 +644,11 @@ The recommended rollout:
 1. VinuChain team announces the patch window. Date: TBD.
 2. Pre-stage the binary on every validator before the window (Upgrade Steps step 2).
 3. During the window, each operator performs the binary swap.
-4. Confirm in the coordination channel that block production resumed and `opera version` reports `2.0.28-elemont`.
+4. Confirm in the coordination channel that block production resumed and `opera version` reports `2.0.37-elemont`.
 
 **Missed the window?** Patch6 sealed on testnet at block 1,460,329 in epoch 5801 on 2026-05-16. If your node was not already running v2.0.21 before that seal, a later binary swap will not replay the `SfcV2Patch6` edge and will not apply the automatic backfill. Stop the node, preserve `keystore/` and `go-opera/nodekey`, and restore from the latest post-seal chaindata snapshot in [Troubleshooting](#warn-incoming-event-rejected-err-wrong-event-epoch-hash) before rejoining.
 
-After Shanghai, Cancun, or Prague seals, the same rule applies to v2.0.28: nodes that missed the activation window should restore from the newest post-seal snapshot instead of replaying the edge at a different block.
+After Shanghai, Cancun, Prague, VinuBLS12381, or VinuLatestEVM seals, the same rule applies to v2.0.37: nodes that missed the activation window should restore from the newest post-seal snapshot instead of replaying the edge at a different block.
 
 ---
 
@@ -628,12 +672,14 @@ The codebase uses several internal upgrade names. The base SfcV2, Podgorica, and
 | **Shanghai**               | EVM execution compatibility with Ethereum Shanghai changes that apply to VinuChain: EIP-3651 warm coinbase, EIP-3855 `PUSH0`, and EIP-3860 initcode metering plus the 49,152-byte initcode limit.                                                                                                                                                                                                                                                                                                                             |
 | **Cancun**                 | Selected Cancun/Dencun EVM compatibility that applies without blob transactions: EIP-1153 transient storage (`TLOAD` / `TSTORE`), EIP-5656 `MCOPY`, and EIP-6780 `SELFDESTRUCT` behavior.                                                                                                                                                                                                                                                                                                                                      |
 | **Prague**                 | Scoped Prague/EIP-7702 compatibility for abstract-account delegation: set-code transaction type `0x04`, authorization lists, `0xef0100 || address` delegation designators, delegated EOA execution, and Prague-specific sender/txpool/event admission rules. Blob transaction type `0x03` remains unsupported.                                                                                                                                                                                                                 |
+| **VinuBLS12381**           | VinuChain-specific EIP-2537/BLS12-381 precompile fork. Adds `BLS12_G1ADD`, `BLS12_G1MSM`, `BLS12_G2ADD`, `BLS12_G2MSM`, `BLS12_PAIRING_CHECK`, `BLS12_MAP_FP_TO_G1`, and `BLS12_MAP_FP2_TO_G2` at `0x0b`-`0x11` without coupling the rollout to upstream Prague/KZG behavior.                                                                                                                                                                                       |
+| **VinuLatestEVM**          | VinuChain-specific latest-EVM compatibility fork. Adds P256VERIFY at `0x0100`, CLZ, MODEXP bounds/repricing, and EIP-7825 per-transaction gas-cap enforcement. This flag is intentionally separate from `VinuBLS12381` so BLS can bake first.                                                                                                                                                                                                                                                                                |
 | **PaybackV2**              | Binary-level swap of `Economy.QuotaCacheAddress` from the original `TransparentUpgradeableProxy`-based Quota proxy to a freshly-deployed non-proxy `QuotaContractV2` whose owner is a recoverable EOA. Activates at the first epoch seal after the v2.0.18+ binary boots. Designed to escape the lost-ProxyAdmin-key state on the original proxy without losing access to existing depositor stake (V1 `unstake`/`withdrawStake` remain permissionless after activation; only the protocol-side backing balance is orphaned). |
 | **PaybackV2Patch**         | One-shot testnet repair edge that rebinds an already-active PaybackV2 chain from the superseded V2 address to corrected `QuotaContractV2` `0x89D1cBD9DEAaB4dFf6f800a336FBDd9A5c6829e4`.                                                                                                                                                                                                                                                                                                                                       |
 | **SfcV2Patch6**            | One-shot testnet SFC bytecode re-flash to Cycle-162, adding orphan-delegation registration/backfill and an undelegate-to-zero fix for legacy orphaned stake pairs. v2.0.21 also performs the known live testnet delegation backfill in node state at the seal.                                                                                                                                                                                                                                                                |
 | **Mainnet SfcV2 backfill** | Future mainnet `SfcV2` activation installs the latest Cycle-162 bytecode directly and now has a mainnet-only node-state backfill hook for the 82 live mainnet delegation rows audited on 2026-05-17. The list must be refreshed immediately before a mainnet activation release so newly-created missing rows are not missed.                                                                                                                                                                                                 |
 
-Testnet has Shanghai, Cancun, Prague, the earlier SFC re-flashes (`SfcV2Patch2` / `SfcV2Patch3` / `SfcV2Patch4` / `SfcV2Patch5`), the `ElemontPubkeyValidation` sealer guard, PaybackV2, PaybackV2Patch, and the `SfcV2Patch6` edge. Mainnet has Shanghai/Cancun/Prague disabled and no `SfcV2*` patch flags active yet — when it activates `SfcV2`, the latest Cycle-162 bytecode is installed directly without separate `Patch*` events, and the mainnet-only activation hook backfills the audited missing delegation rows. Mainnet `PaybackV2` is staged for a separate release after testnet bake-in completes.
+Testnet has Shanghai, Cancun, Prague, the earlier SFC re-flashes (`SfcV2Patch2` / `SfcV2Patch3` / `SfcV2Patch4` / `SfcV2Patch5`), the `ElemontPubkeyValidation` sealer guard, PaybackV2, PaybackV2Patch, and the `SfcV2Patch6` edge. As of the v2.0.37 rollout, `VinuBLS12381` is staged on testnet and waiting for the next epoch seal; `VinuLatestEVM` stages after BLS is sealed. Current source enables mainnet SfcV2, Podgorica, ElemontPubkeyValidation, Shanghai, Cancun, and Prague for the planned hard fork and points fresh mainnet rules at the live Quota proxy. Mainnet still has no `SfcV2*` patch flags, no `PaybackV2`, no `VinuBLS12381`, and no `VinuLatestEVM` active in v2.0.37.
 
 Recent execution-layer seal points on testnet:
 
@@ -642,11 +688,19 @@ Recent execution-layer seal points on testnet:
 | `Shanghai` | v2.0.22    | 2026-05-17, block 1,461,622 | EIP-3651, EIP-3855, and EIP-3860 active     |
 | `Cancun`   | v2.0.24    | 2026-05-18, block 1,461,786 | EIP-1153, EIP-5656, and EIP-6780 active     |
 | `Prague`   | v2.0.28    | 2026-05-18, block 1,462,637 | EIP-7702 set-code transactions              |
+| `VinuBLS12381` | v2.0.33 | Staged 2026-06-03; seal pending | BLS12-381 precompile fork                   |
+| `VinuLatestEVM` | v2.0.34 | Deferred until `VinuBLS12381` seals | P256VERIFY, CLZ, MODEXP updates, tx gas cap |
 
 ### Release overview
 
 | Version             | Type                                                                    | What changed                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | ------------------- | ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **v2.0.37-elemont** | **Release hygiene + precompile vectors**                                | Bumps the release to `2.0.37-elemont` and consumes go-vinu `v1.20.24-quota`, carrying the broader precompile and MODEXP vector-test coverage used to validate the BLS12-381 / P256 / CLZ / MODEXP / gas-cap hard-fork surface. Deployed to testnet RPC + V1-V4 on 2026-06-03.                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| **v2.0.36-elemont** | **VinuLatestEVM gas-cap enforcement**                                   | Enforces the VinuLatestEVM per-transaction gas cap in txpool, state transition, block execution, and `eth_estimateGas`, with focused tests for each path. This is the consensus-critical release for the latest-EVM gas-cap behavior.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| **v2.0.35-elemont** | **Release bump**                                                        | Release hygiene bump after the latest-EVM implementation landed. Functional behavior is the v2.0.34 latest-EVM surface plus dependency/version updates.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| **v2.0.34-elemont** | **Vinu latest-EVM fork + `eth_config`**                                  | Adds the `VinuLatestEVM` rule bit, RLP serialization, staged activation after `VinuBLS12381`, P256VERIFY / CLZ / MODEXP latest-EVM behavior via go-vinu, and the public `eth_config` RPC that reports sealed execution configuration and active precompiles.                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| **v2.0.33-elemont** | **Vinu BLS12-381 fork**                                                 | Adds the `VinuBLS12381` rule bit, RLP serialization, staged activation after Prague, and BLS12-381 precompile activation at `0x0b`-`0x11`. Mainnet stays false for this flag until a separate activation release.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| **v2.0.32-elemont** | **Mainnet hard-fork staging defaults**                                  | Stages the planned mainnet/staging SfcV2, Podgorica, ElemontPubkeyValidation, Shanghai, Cancun, and Prague defaults, and fixes the hardcoded mainnet Quota proxy pointer for fresh mainnet rule construction. Testnet consensus behavior is governed by its already-sealed flags plus later BLS/latest-EVM releases.                                                                                                                                                                                                                                                                                                                                                                                                  |
 | **v2.0.31-elemont** | **Unprotected-tx guard hardening (non-consensus)**                      | Extracts the mainnet `AllowUnprotectedTxs` refusal from `NewService` into a tested `checkUnprotectedTxsPolicy` helper with all-network regression coverage so the guard cannot be silently dropped or separated from the flag, adds an `ethapi` call-site test proving the Arachnid carve-out is admitted only on mainnet (NetworkID 207) and refused elsewhere, and corrects the `--rpc.allow-unprotected-txs` usage string. No consensus or persisted-state change; activates no flag. Deployed to testnet RPC + V1-V4 on 2026-05-28.                                                                                                                                                                                                                                                                          |
 | **v2.0.30-elemont** | **Mainnet Arachnid deployer allowlist (ERC-4337 enablement)**           | Adds `opera/unprotected_allowlist.go`, allowlisting exactly one pre-EIP-155 transaction on mainnet — the canonical Arachnid deterministic-deployment-proxy tx, pinned by exact hash `0xeddf9e61…033d26` — so the deterministic deployer (`0x4e59b448…4956C`) and, via CREATE2, the canonical ERC-4337 EntryPoint v0.7 (`0x0000000071727De…f37da032`) can eventually land on mainnet. Replay-benign (deploys a stateless, fund-less factory) and independent of `AllowUnprotectedTxs`, which stays refused on mainnet. Not yet deployed to mainnet.                                                                                                                                                                                                                                            |
 | **v2.0.29-elemont** | **`--rpc.allow-unprotected-txs` flag (testnet AA enabler)**             | Exposes a `--rpc.allow-unprotected-txs` CLI flag wiring `gossip.Config.AllowUnprotectedTxs`, letting non-mainnet operators admit pre-EIP-155 (chain-id-less) transactions over RPC — the testnet enabler for the Arachnid deployer and the canonical EntryPoint. The existing `gossip/service.go` guard refuses the flag on mainnet (NetworkID 207). This release is what unlocked ERC-4337 account abstraction on testnet; keeps go-vinu at `v1.20.19-quota`.                                                                                                                                                                                                                                                                                                                          |
@@ -678,7 +732,7 @@ Recent execution-layer seal points on testnet:
 Mainnet has not yet activated Shanghai, Cancun, Prague, or any `SfcV2*` flag — when it activates `SfcV2`, the latest bytecode (Cycle-162) installs directly and the mainnet-only node hook backfills the audited missing delegation rows; the testnet patch flags do not fire on mainnet.
 
 {% hint style="info" %}
-**Activation timing.** Consensus flags and seal-bound rebinding (`SfcV2`, `Podgorica`, `Elemont`, `Shanghai`, `Cancun`, `Prague`, `SfcV2Patch2/3/4/5/6`, `ElemontPubkeyValidation`, `PaybackV2`, `PaybackV2Patch`, and v2.0.2 rules) activate at the **next epoch seal** after the binary is first installed or the pending `DirtyRules` edge is staged (up to `MaxEpochDuration = 4h`). On skipped-binary boots, v2.0.28 deliberately stages Shanghai before Cancun and Cancun before Prague; each follow-up flag is staged by the same continuous node after its predecessor seals, without a restart. All other changes — RPC caps, RPC additions, peer-quota resize, drift-cap removal, `eth_feeHistory.gasUsedRatio` fix, lachesis-base internals — are **immediate on restart**, no epoch-seal wait.
+**Activation timing.** Consensus flags and seal-bound rebinding (`SfcV2`, `Podgorica`, `Elemont`, `Shanghai`, `Cancun`, `Prague`, `VinuBLS12381`, `VinuLatestEVM`, `SfcV2Patch2/3/4/5/6`, `ElemontPubkeyValidation`, `PaybackV2`, `PaybackV2Patch`, and v2.0.2 rules) activate at the **next epoch seal** after the binary is first installed or the pending `DirtyRules` edge is staged (up to `MaxEpochDuration = 4h`). On skipped-binary boots, v2.x deliberately stages Shanghai before Cancun, Cancun before Prague, Prague before VinuBLS12381, and VinuBLS12381 before VinuLatestEVM; each follow-up flag is staged by the same continuous node after its predecessor seals, without a restart. RPC caps, RPC additions, peer-quota resize, drift-cap removal, `eth_feeHistory.gasUsedRatio` fix, lachesis-base internals, and non-consensus release hygiene are **immediate on restart**, no epoch-seal wait.
 {% endhint %}
 
 ### `feeRefund` receipt field
@@ -727,6 +781,25 @@ Important boundaries:
 - EIP-3607 sender validation is relaxed only after Prague and only for accounts whose code is a valid EIP-7702 delegation designator.
 - JSON-RPC transaction objects include `authorizationList` for set-code transactions. Existing non-set-code transaction responses are unchanged.
 - No contracts, ABIs, token lists, SFC bytecode, or deployed-address registries change for this upgrade.
+
+### BLS12-381 and latest-EVM surfaces
+
+`VinuBLS12381` and `VinuLatestEVM` are intentionally separate VinuChain fork flags. BLS activates first; latest-EVM activates only after BLS is already sealed. This avoids bundling every new precompile, opcode, and gas-rule change into one epoch seal.
+
+After `VinuBLS12381` is active:
+
+- `eth_config.current.precompiles` includes `BLS12_G1ADD`, `BLS12_G1MSM`, `BLS12_G2ADD`, `BLS12_G2MSM`, `BLS12_PAIRING_CHECK`, `BLS12_MAP_FP_TO_G1`, and `BLS12_MAP_FP2_TO_G2`.
+- The active precompile addresses are `0x0b` through `0x11`.
+- Mainnet remains false for this flag in v2.0.37.
+
+After `VinuLatestEVM` is active:
+
+- `eth_config.current.precompiles` includes `P256VERIFY` at `0x0000000000000000000000000000000000000100`.
+- CLZ and MODEXP bounds/repricing are active through the go-vinu EVM.
+- Transactions above the per-transaction gas cap are rejected consistently in txpool, state transition, and block execution; `eth_estimateGas` caps estimates at the same limit.
+- Mainnet remains false for this flag in v2.0.37.
+
+Before either flag seals, `eth_config` continues to show the last sealed configuration. Use `vc_getRules("latest")` after each epoch seal to verify the rule bit, then re-run precompile/opcode smoke checks.
 
 ### 30% base fee burn
 
@@ -815,4 +888,4 @@ Operator-facing controls for managing chaindata size on long-lived nodes.
 
 ---
 
-_Last updated: 2026-05-29 · latest guide target `v2.0.31-elemont` · ERC-4337 account abstraction live on testnet · latest snapshot `testnet-chaindata-v2.0.31-elemont-20260529T002920Z-clean.tar.gz` · corrected PaybackV2 address `0x89D1cBD9DEAaB4dFf6f800a336FBDd9A5c6829e4` · SFC Cycle-162 `version() = 3.0.5` · go-vinu `v1.20.19-quota` · lachesis-base `v0.1.6-elemont`_
+_Last updated: 2026-06-03 · latest guide target `v2.0.37-elemont` · ERC-4337 account abstraction live on testnet · latest public pre-v2.0.37 snapshot `testnet-chaindata-v2.0.31-elemont-20260529T002920Z-clean.tar.gz` · corrected PaybackV2 address `0x89D1cBD9DEAaB4dFf6f800a336FBDd9A5c6829e4` · `VinuBLS12381` staged and `VinuLatestEVM` pending after BLS seal · SFC Cycle-162 `version() = 3.0.5` · go-vinu `v1.20.24-quota` · lachesis-base `v0.1.6-elemont`_
