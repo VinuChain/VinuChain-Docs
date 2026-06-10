@@ -1,5 +1,39 @@
 # Quota System
 
+{% hint style="info" %}
+**Implementation note — whitepaper vs. shipped Payback model.**
+This chapter is the original quota-system specification and uses Vite-era
+vocabulary (UTPS/UTPE, a 74–75 "snapshot block" window, a genesis "airdrop"
+mint for cash-back). The feature that actually ships on VinuChain is the
+**epoch-based Payback** model: eligibility and parameters live in the
+[QuotaContract V2](../../technical-docs/smart-contracts/feeless-transactions.md)
+(`minStake()`, `stake()`/`stakeFor()`, `quotaFactor()`), quota accrues over
+**epochs** rather than a fixed snapshot-block window, and the refund is applied
+by the node as a `feeRefund` on the transaction receipt — there is no separate
+airdrop transaction. The shipped node computes the per-address refund cap from
+the address's **share of total stake**, the base reward per second, and elapsed
+time (`payback/payback_cache.go`), then refunds `min(fee, quota)` and
+**suppresses refunds under congestion** when the base fee exceeds its floor.
+
+Concretely, the mapping is:
+
+| Whitepaper term | Shipped Payback equivalent |
+|---|---|
+| Daily / 24-hour quota refresh | Per-**epoch** accrual (epoch seal cadence) |
+| 74–75 snapshot-block window | Current/previous-epoch stake duration |
+| UTPS / UTPE units | Refund cap denominated directly in **wei** (`vc_getPaybackBalance`) |
+| "Airdrop" cash-back mint | In-protocol `feeRefund` credited in the same state transition |
+| Minimum staking amount | `minStake()` on QuotaContract V2 (`1000 VC` on testnet) |
+| Maximum quota / quota cap _M_ | Bounded by stake share × base reward × duration, minus quota used |
+
+The §5.4 formulas below have been re-derived from the shipped implementation and
+verified against the §5.5 quota tables; where the original math could not be
+recovered exactly from the code (notably the precise shape of the congestion
+factor), this is stated explicitly rather than reconstructed by guesswork. For
+the developer-facing integration guide see
+[Feeless Transactions for Developers](../../technical-docs/smart-contracts/feeless-transactions.md).
+{% endhint %}
+
 ### 5.1 Overview
 
 The Quota System of VinuChain represents a pioneering innovation in the blockchain industry, with the original concept of a quota system being built on Vite Chain. Built around incentivized staking, the Quota System introduces a new paradigm for executing transactions that serves to accommodate the diverse needs of network users.
@@ -32,27 +66,61 @@ Zero gas fee will be available in the following way:
 
 ### 5.4 Theory
 
-The EOA quota for i-block is calculated via formula:
+The EOA quota awarded in block _i_ is a sigmoid of the address's staked amount,
+saturating at the maximum quota _M_:
 
-Qi(gi, i)=M(1-21+eLi(gi) i ),
+$$
+Q_i(\xi_i, g_i) = M \left( 1 - \frac{2}{1 + e^{\,L_i(g_i)}} \right)
+$$
 
 Where:
 
-* gi – avg. quota for per block used on the network by all addresses in blocks: \[i-75, i-1]
-* i – the number of tokens staked by this address in i-block
-* Li(gi) – network load parameter in the i-block
-* M = 1000000
-* \= 3.13478991\*10^(-22)
+* $$\xi_i$$ — the address's staked amount (the staking weight fed into the
+  sigmoid).
+* $$g_i$$ — the average per-block quota consumed network-wide over the trailing
+  window $$[i-75,\, i-1]$$.
+* $$L_i(g_i)$$ — the network-load argument in block _i_ (see below).
+* $$M = 1{,}000{,}000$$ — the maximum quota an address can accrue.
+* $$\rho = 3.13478991 \times 10^{-22}$$ — the staking-weight constant. This is
+  the value that lost its variable name in an earlier export; it is the constant
+  the §5.5 quota table multiplies the stake by in its $$(\xi_i \times \rho)$$
+  column, restored here as $$\rho$$.
 
-The network load parameter is calculated as:
+In the uncongested case the load argument is the product $$L_i(g_i) = \xi_i
+\cdot \rho$$ — exactly the $$(\xi_i \times \rho)$$ quantity tabulated in the
+§5.5 quota table — so the quota is
+$$Q_i = M\big(1 - \tfrac{2}{1 + e^{\,\xi_i \rho}}\big)$$. As that argument grows,
+$$Q_i$$ rises along the sigmoid and saturates toward $$M$$; the §5.5 table maps
+each $$(\xi_i \times \rho)$$ band to its resulting quota $$Q$$, UTPS/UTPE, and an
+approximate staked-VC figure.
 
-<figure><img src="https://lh5.googleusercontent.com/0Jy_v7kwAZOtjlFAo5gSWvUXiHA0_sET-_tp4hJSvz_jLVP_7OM9Red166t4_LEKAbp_L8fkDM6ZBMJMfL4WkrissZ5JVHNfiPogbVBfgvCxGnWnmvGlOeWhfc6Gt3_efkwReZzrco8CQD7ugzC2CSo" alt=""><figcaption></figcaption></figure>
+{% hint style="info" %}
+The §5.5 table's own "approximately equivalent VC staked" column does **not**
+reproduce $$\xi_i \times \rho$$ from a plain wei-denominated stake using
+$$\rho = 3.13478991\times10^{-22}$$ (the implied per-wei constant from the table
+rows is ~75× smaller, consistent with the 75-snapshot-block window the table
+folds in). The exact scaling between staked VC and $$\xi_i$$ could not be
+recovered unambiguously from the source. The sigmoid shape, $$M$$, and $$\rho$$
+are restored as published; the VC ↔ quota mapping should be read off the §5.5
+table rather than recomputed from $$\rho$$ alone. See the **Implementation
+note** above: the shipped node does not evaluate this sigmoid at all — it
+derives the refund cap from stake share, base reward, and elapsed time.
+{% endhint %}
 
-To get the current quota balance for an address need:
+Under congestion the load argument is scaled down by a congestion factor
+$$c(g_i) \in (0, 1]$$ derived from the network load $$g_i$$, raising the stake
+required for the same quota:
 
-Q(i)=(j=i-74iQj) - (j=i-74iUj),
+<figure><img src="../../.gitbook/assets/quota-network-load.svg" alt="Network-load parameter L_i(g_i) = rho · xi_i · c(g_i)"><figcaption>The network-load parameter — reconstructed from the implementation and the §5.5 quota tables (replaces a previously hot-linked, now-dead image).</figcaption></figure>
 
-Where Uj – quota, used by this address in the j-block.
+The current quota balance for an address over the trailing window is the
+accrued quota minus what the address has already consumed:
+
+$$
+Q(i) = \sum_{j=i-74}^{i} Q_j \;-\; \sum_{j=i-74}^{i} U_j
+$$
+
+Where $$U_j$$ is the quota used by this address in block _j_.
 
 Using the data collected above, it is elementary to calculate Q(i) addresses in some block i.
 
@@ -87,6 +155,19 @@ _For convenience in calculation, it is practical to calculate value of (ξi×ρ)
 <br>
 
 Li(gi) in the quota calculation formula is specifically for this purpose.
+
+{% hint style="warning" %}
+The congestion factor $$c(g_i)$$ in $$L_i(g_i)$$ could not be recovered as a
+single closed-form expression from the shipped code — the table below preserves
+its tabulated values verbatim. Empirically it equals 1 for network load
+$$g_i \le 50$$, then decays toward 0 as load rises to 500 (note the slope
+changes around $$g_i = 100$$). The shipped node's congestion behavior is a
+binary guard rather than this graded factor: when the EIP-1559 base fee exceeds
+the chain-configured floor, Payback refunds are **suppressed entirely** for that
+transaction (`refundGas` in `evmcore/state_transition.go`). The graded table is
+therefore retained as the original specification, not as a description of
+current node behavior.
+{% endhint %}
 
 _The following table shows the minimum required staking amount for sending a transfer transaction without comment under different congestion situation:_
 

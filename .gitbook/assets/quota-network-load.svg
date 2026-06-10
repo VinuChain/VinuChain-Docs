@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="150" viewBox="0 0 640 150" font-family="Georgia, 'Times New Roman', serif">
+  <rect width="640" height="150" fill="#ffffff"/>
+  <!-- Network-load parameter L_i(g_i) used in the EOA quota sigmoid Q_i.
+       g_i is the average per-block quota consumed network-wide over the
+       trailing window [i-75, i-1]; rho is the per-wei staking weight. -->
+  <text x="20" y="55" font-size="26" fill="#1a1a1a" font-style="italic">L</text>
+  <text x="34" y="62" font-size="16" fill="#1a1a1a" font-style="italic">i</text>
+  <text x="44" y="55" font-size="26" fill="#1a1a1a">(</text>
+  <text x="54" y="55" font-size="26" fill="#1a1a1a" font-style="italic">g</text>
+  <text x="69" y="62" font-size="16" fill="#1a1a1a" font-style="italic">i</text>
+  <text x="78" y="55" font-size="26" fill="#1a1a1a">)</text>
+  <text x="98" y="55" font-size="26" fill="#1a1a1a">=</text>
+  <!-- congestion multiplier rho applied to staked amount xi_i -->
+  <text x="125" y="55" font-size="26" fill="#1a1a1a">ρ</text>
+  <text x="145" y="55" font-size="26" fill="#1a1a1a">·</text>
+  <text x="160" y="55" font-size="26" fill="#1a1a1a">ξ</text>
+  <text x="176" y="62" font-size="16" fill="#1a1a1a" font-style="italic">i</text>
+  <text x="190" y="55" font-size="26" fill="#1a1a1a">·</text>
+  <text x="205" y="55" font-size="26" fill="#1a1a1a" font-style="italic">c</text>
+  <text x="219" y="55" font-size="16" fill="#1a1a1a">(</text>
+  <text x="226" y="55" font-size="26" fill="#1a1a1a" font-style="italic">g</text>
+  <text x="241" y="62" font-size="16" fill="#1a1a1a" font-style="italic">i</text>
+  <text x="250" y="55" font-size="16" fill="#1a1a1a">)</text>
+  <!-- legend -->
+  <text x="20" y="95" font-size="14" fill="#444">ρ = 3.13478991 × 10⁻²²   (per-wei staking weight; the constant whose symbol was lost in the GitBook export)</text>
+  <text x="20" y="115" font-size="14" fill="#444">ξᵢ = the address's staking weight      c(gᵢ) ∈ (0, 1] = the congestion factor at network load gᵢ</text>
+  <text x="20" y="138" font-size="13" fill="#888" font-style="italic">Reconstructed from the shipped implementation and the §5.5 quota tables; see the Implementation note in the chapter.</text>
+</svg>
