@@ -82,7 +82,7 @@ Note that
 
 ### **3.0 Multi-opera safety** <a href="#id-3.0-multi-opera-safety" id="id-3.0-multi-opera-safety"></a>
 
-The testnet validator box (`i-029476269e84beb4a`) runs four opera processes (V1–V4) simultaneously against a shared on-disk `build/opera` binary. Any operation that affects "opera" on this box must treat the four as **independent processes**, not as one unit.
+The testnet validator box runs four opera processes (V1–V4) simultaneously against a shared on-disk `build/opera` binary. Any operation that affects "opera" on this box must treat the four as **independent processes**, not as one unit.
 
 **Never use `pkill -f opera` or `pkill opera.*vinu-testnet`.** Both kill all four validators at once. With 4-of-4 BFT quorum required for block production, a simultaneous stop halts the testnet. `systemctl stop vinu-validators` internally calls `pkill opera.*vinu-testnet` — **do not use it** for routine restarts.
 
@@ -95,7 +95,7 @@ Correct rolling-restart pattern:
 5. Relaunch the stopped one via `nohup opera … &` with the snapshotted argv.
 6. Verify peer count and tip alignment before touching the next validator.
 
-The same principle applies on the mainnet RPC box (`i-083fffeeb03583a18`): one opera process per host, signalled with SIGINT, never pkill.
+The same principle applies on the mainnet RPC box: one opera process per host, signalled with SIGINT, never pkill.
 
 ### **3.1 How to rerun a node if it is stopped** <a href="#how-to-rerun-a-node-if-it-is-stopped" id="how-to-rerun-a-node-if-it-is-stopped"></a>
 

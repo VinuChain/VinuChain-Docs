@@ -28,7 +28,7 @@ addresses are listed under "Legacy contracts" below for provenance only.
 | Name Wrapper | `0x7e82c20DB1E128F73D0370Ea05CA98d0CCDB5E26` |
 | VinuUsdOracle | `0xde7931dCA452Be9647e4AF13C92edCFac1f26d52` |
 | Exponential Premium Price Oracle | `0xf165a2a7858C6E215e56B27a3Bf4565Bcf16e226` |
-| VNS Registrar Controller | `0x313b4C7CDe49a74983205c938f904b4a488bDb14` |
+| VNS Registrar Controller (pausable) | `0x67f98dD44B88bE9fAB06e3b94C77EB2444E81695` |
 | VNS Bulk Renewal | `0xC3E55936B1014c41370A678ea22F986C1Ef57288` |
 | VNS Public Resolver | `0x4A48039E378d7a29A27BC737d9D6E303D46A6620` |
 | Gateway Provider | `0xbd3D532604cDC469aF0C69e7D8fbC11420eB7BaC` |
@@ -53,6 +53,7 @@ live VC/USD rate.
 | Previous Exponential Premium Price Oracle | `0x46f987cb963122BdF172Af1CA81AC7dF0616d11F` |
 | Previous VNS Registrar Controller | `0xe793903D6C81ED9E907f3B8EaD820deBEDf63C21` |
 | Previous VNS Bulk Renewal | `0x810e4C552Db16c83009a03F135A646BeBeEcc20b` |
+| Retired VNS Registrar Controller (replaced 2026-05-21 by the pausable controller; pending commits there must be re-committed on the new address) | `0x313b4C7CDe49a74983205c938f904b4a488bDb14` |
 
 Network details:
 
@@ -125,10 +126,11 @@ rent curve into the VC amount enforced at registration and renewal time.
    `0xf165a2a7858C6E215e56B27a3Bf4565Bcf16e226` holds the owner-governed USD
    rent curve for 1-, 2-, 3-, 4-, and 5+ character names and converts that
    curve into VC at quote time using the live `VinuUsdOracle` answer.
-3. VNS Registrar Controller at `0x313b4C7CDe49a74983205c938f904b4a488bDb14`
+3. VNS Registrar Controller at `0x67f98dD44B88bE9fAB06e3b94C77EB2444E81695`
    stores commitments in `commit(bytes32)`, computes pricing inside
    `register` and `renew`, and rejects underpayment against the current
-   `rentPrice(...)`.
+   `rentPrice(...)`. The controller has owner-gated `pause()`/`unpause()`;
+   while paused, `commit`/`register`/`renew` revert with `EnforcedPause`.
 
 Active oracle parameters (from the 2026-05-18 testnet redeploy):
 
@@ -155,44 +157,47 @@ past the hour.
 
 ### Key management
 
-Every state-changing surface on the VNS testnet stack is currently owned by a
-single deployer EOA, `0xf9c82B1117e8BeA97843042521B8FBC93044f347`. That EOA is
-the recoverable NodeDriverAuth-owner used elsewhere on VinuChain and is the
-same key recorded as the `Root` owner, the registrar/wrapper controller-set
-administrator, and the `VinuUsdOracle` and Exponential Premium Price Oracle
-owners in `deployment-testnet.json` and `info.json`.
+VNS administration is split across per-role owner keys (role split executed
+2026-05-21; owners verifiable on-chain via `owner()`):
+
+* **VNS namespace admin** — `0x9214C638e240eda8D47AAc4A01C57b08C10fcdCd` —
+  owns `Root`, Base Registrar, Name Wrapper, Owned Resolver, Gateway
+  Provider, the VNS Registrar Controller, and the reverse registrars.
+* **VNS oracle updater** — `0xD77b037c1F6F8Eb0D21629C97F6E330a7816557e` —
+  owns `VinuUsdOracle` and the Exponential Premium Price Oracle. The
+  scheduled oracle-update workflow's `VNS_ORACLE_PRIVATE_KEY` secret is this
+  key, so the 4-hourly cron never touches namespace or chain-governance
+  surfaces.
+* Chain governance (NodeDriverAuth, QuotaContract V2) remains with a
+  separate Foundation EOA that holds no VNS roles.
 
 Operationally this means:
 
 * `VinuUsdOracle.setLatestAnswer`, `setMaxAge`, `setBounds`, and
-  `setMaxChangeBps` are all guarded by `onlyOwner` against that EOA. If the
-  oracle key is compromised an attacker can move the VC/USD answer inside the
-  configured bounds and max-change cap, which lets them inflate or deflate
-  VNS prices up to those limits per update.
+  `setMaxChangeBps` are guarded by `onlyOwner` against the oracle-updater
+  EOA. If the oracle key is compromised an attacker can move the VC/USD
+  answer inside the configured bounds and max-change cap — but cannot touch
+  the namespace or registrar surfaces.
 * If the oracle key is lost the feed will freeze. Registrations and renewals
   will keep clearing at the last accepted price for up to 24 hours and then
   start reverting in `latestAnswer()` once the staleness window elapses.
 * `Root` ownership lets the holder reassign top-level VNS subnodes such as
-  `.vinu` and `addr.reverse`. Loss or compromise of this key has the largest
-  blast radius of any VNS administrator on testnet.
-* There is currently no on-chain pause method, no multi-signature wallet, and
-  no time-locked owner rotation on any of the VNS administrator surfaces.
+  `.vinu` and `addr.reverse`. Loss or compromise of the namespace-admin key
+  has the largest blast radius of any VNS administrator on testnet.
+* The registrar controller has an owner-gated on-chain `pause()` for
+  emergencies (halts `commit`/`register`/`renew`), but there is no
+  multi-signature wallet and no time-locked owner rotation on any of the
+  VNS administrator surfaces.
 
-This is the same shape of risk that played out on the Quota
-`ProxyAdmin` owner key `0x07b4ef…b9a5`, which was deployed in 2024 and is
-unrecoverable in-house. That incident is the reason VNS public registration
-is currently disabled on `vinuchain.org` until the full stack is reviewed and
-approved for public launch. Recommended (not yet executed) follow-ups before
-public launch and before any mainnet rollout:
+VNS public registration is currently disabled on `vinuchain.org` until the
+full stack is reviewed and approved for public launch. Remaining follow-ups
+before public launch and before any mainnet rollout:
 
-* Split the registrar-administrator role from the oracle-updater role so the
-  scheduled oracle-update workflow runs under a key that does not also own
-  `Root` or the registrar/wrapper controller-set.
 * Move the registrar-administrator role behind a multi-signature wallet with
-  a time-locked owner rotation procedure.
-* Document the key-rotation playbook (covering both the `VNS_ORACLE_PRIVATE_KEY`
-  repository secret and on-chain owner rotation) in this page before public
-  launch.
+  a time-locked owner rotation procedure, or document the accepted
+  single-key custody procedure for it.
+* Keep the key-rotation playbook (covering both the `VNS_ORACLE_PRIVATE_KEY`
+  repository secret and on-chain owner rotation) current in this page.
 
 ## Security status
 
@@ -290,23 +295,19 @@ The mainnet rollout gate has five criteria, each of which must land before
 any wallet, explorer, or DEX integration treats mainnet `.vinu` as
 authoritative. Summary:
 
-- **P0** — `Root.lock(vinu)` on testnet, and split the deployer EOA
-  `0xf9c82B11…f347` into per-role keys.
+- **P0** — `Root.lock(vinu)` on testnet. (The per-role key split of the
+  original deployer EOA is done — see Key management above.)
 - **P1** — deploy the VNS stack on mainnet with the split-owner keys,
   then generalise `Explorer.Chain.Token.Instance.VNSMetadata` to dispatch
   on chain-id (chain 207 alongside chain 206).
 - **P2** — publish a chaindata snapshot, register mainnet addresses in
-  `~/vinuchain-lists/contracts/vns/deployment-mainnet.json`, surface a
+  `vinuchain-lists` (`contracts/vns/deployment-mainnet.json`), surface a
   "Mainnet deployment" section here, and announce that the testnet
   `1.vinu` allocation does not carry over.
 
-The full criteria (including helper-script paths, the "Why not bundle with
-a consensus release" rationale, and open testnet audit items) are
-maintained in the VinuChain repo's operational rules under
-`.claude/rules/deployment-log.md` → "VNS Mainnet Rollout Criteria". That
-file is gitignored so the source-of-truth deltas live at
-`.claude/audit/vns-G001-2026-05-21/g006-docs-deltas.md` on the
-VinuChain `elemont` branch.
+The full criteria (including the "Why not bundle with a consensus release"
+rationale and open testnet audit items) are maintained in the VinuChain
+team's internal deployment log.
 
 ## Oracle refresh runbook
 
@@ -338,7 +339,7 @@ Common failure modes and their fixes:
 
 | Failure error | Cause | Fix |
 |---|---|---|
-| `Set VNS_ORACLE_PRIVATE_KEY` | Secret missing from `vns-oracle-prod` env | `gh secret set VNS_ORACLE_PRIVATE_KEY --env vns-oracle-prod --repo VinuChain/vinuchain-lists` (key for EOA `0xf9c82B…f347`) |
+| `Set VNS_ORACLE_PRIVATE_KEY` | Secret missing from `vns-oracle-prod` env | `gh secret set VNS_ORACLE_PRIVATE_KEY --env vns-oracle-prod --repo VinuChain/vinuchain-lists` (key for the oracle-updater EOA `0xD77b…557e`) |
 | `CoinGecko/V3 TWAP deviation … bps exceeds N` | Pool TWAP and CoinGecko prices diverge by more than the cap | Set repo variable `VNS_ORACLE_MAX_DEVIATION_BPS` to widen the cap (e.g. `750`). Walking past `1000` requires script-level review. |
 | `Answer update deviation … bps exceeds N` | Trying to set an answer that moves the price more than `maxChangeBps` (default 20 %) in one step | Wait for the next cron tick (the script computes a fresh price each run); or manually call `setLatestAnswer` with a value within the cap. |
 | `Unable to price VC from CoinGecko or guarded V3 TWAP pools` | Both price sources unreachable | Trigger workflow_dispatch with `allow_single_source: true` if one source is up; otherwise wait for upstream recovery. |
@@ -398,7 +399,7 @@ printf '%s' "$YOUR_KEY" | gh secret set VNS_ORACLE_PRIVATE_KEY \
 
 | Date | Cause | Resolution |
 |---|---|---|
-| 2026-05-21 | `VNS_ORACLE_PRIVATE_KEY` secret missing from `vns-oracle-prod` env from creation (2026-05-20T04:39Z) onwards; all 5 subsequent cron runs failed silently. Compounding factor: thin VinuSwap V3 pool TWAP froze at `0.0003878450641267948` across multiple runs, so the CoinGecko-vs-pool deviation exceeded the default `500 bps` cap. | Owner key located in `~/vinu-quotacontract/.env::PRIVATE_TEST` (EOA `0xf9c82B…f347`). Local refresh broadcast at tx `0xe28ffd8a0e3af57f34f0cc9af724bfb14a451e68d0a4cb1e55649d2f9aa4dac2` block `1,465,168` (`latestAnswer = 41382` = $0.00041382/VC). Secret subsequently added to GH env. Workflow patched to expose `VNS_ORACLE_MAX_DEVIATION_BPS` as a repo variable, and the script's `Set VNS_ORACLE_PRIVATE_KEY` throw was replaced with an actionable error pointing at this runbook. |
+| 2026-05-21 | `VNS_ORACLE_PRIVATE_KEY` secret missing from `vns-oracle-prod` env from creation (2026-05-20T04:39Z) onwards; all 5 subsequent cron runs failed silently. Compounding factor: thin VinuSwap V3 pool TWAP froze at `0.0003878450641267948` across multiple runs, so the CoinGecko-vs-pool deviation exceeded the default `500 bps` cap. | Manual refresh broadcast by the oracle owner at tx `0xe28ffd8a0e3af57f34f0cc9af724bfb14a451e68d0a4cb1e55649d2f9aa4dac2` block `1,465,168` (`latestAnswer = 41382` = $0.00041382/VC). Secret subsequently added to GH env. Workflow patched to expose `VNS_ORACLE_MAX_DEVIATION_BPS` as a repo variable, and the script's `Set VNS_ORACLE_PRIVATE_KEY` throw was replaced with an actionable error pointing at this runbook. |
 
 ## Mainnet preparation
 

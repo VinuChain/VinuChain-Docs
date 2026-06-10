@@ -1,0 +1,14 @@
+name: docs-checks
+
+on:
+  push:
+    branches: [Main]
+  pull_request:
+
+jobs:
+  consistency:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Docs consistency gate
+        run: bash scripts/check-docs-consistency.sh

@@ -19,7 +19,83 @@ For acquiring testnet VC tokens, you can utilize the testnet faucet.
 
 ## Example of smart contract deployment
 
-Coming soon
+### Deployment using Hardhat
+
+A minimal [Hardhat](https://hardhat.org/) setup for VinuChain:
+
+```bash
+mkdir my-contract && cd my-contract
+npm init -y
+npm install --save-dev hardhat@2 @nomicfoundation/hardhat-toolbox@5
+npx hardhat init   # choose "Create a JavaScript project"
+```
+
+(The walkthrough below uses Hardhat 2. Hardhat 3 changes both the init
+command — `npx hardhat --init` — and the config format; if you use
+Hardhat 3, follow the [Hardhat docs](https://hardhat.org/docs) for project
+setup and add the two VinuChain networks with the same URLs and chain IDs
+shown here.)
+
+Configure the VinuChain networks in `hardhat.config.js`:
+
+```js
+require("@nomicfoundation/hardhat-toolbox");
+
+module.exports = {
+  solidity: "0.8.24",
+  networks: {
+    vinuchainTestnet: {
+      url: "https://vinufoundation-rpc.com",
+      chainId: 206,
+      accounts: [process.env.DEPLOYER_PRIVATE_KEY].filter(Boolean),
+    },
+    vinuchain: {
+      url: "https://vinuchain-rpc.com",
+      chainId: 207,
+      accounts: [process.env.DEPLOYER_PRIVATE_KEY].filter(Boolean),
+    },
+  },
+};
+```
+
+Never hardcode your private key — export it as an environment variable
+(`export DEPLOYER_PRIVATE_KEY=0x...`) or use a secret manager.
+
+Add a minimal contract at `contracts/Greeter.sol` (the template's own sample
+contract and Ignition modules work too; this walkthrough is self-contained):
+
+```solidity
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.24;
+
+contract Greeter {
+    string public greeting = "Hello, VinuChain!";
+}
+```
+
+…and a deploy script at `scripts/deploy.js`:
+
+```js
+const hre = require("hardhat");
+
+async function main() {
+  const greeter = await hre.ethers.deployContract("Greeter");
+  await greeter.waitForDeployment();
+  console.log(`Greeter deployed to ${greeter.target}`);
+}
+
+main().catch((e) => { console.error(e); process.exitCode = 1; });
+```
+
+Deploy it to testnet:
+
+```bash
+npx hardhat run scripts/deploy.js --network vinuchainTestnet
+```
+
+Once it confirms, look the contract address up on the testnet explorer at
+[testnet.vinuexplorer.org](https://testnet.vinuexplorer.org) (for mainnet
+deployments, use [vinuexplorer.org](https://vinuexplorer.org)).
 
 ### Deployment using Remix
 
@@ -27,7 +103,7 @@ To deploy a smart contract using **Remix** on the **VinuChain Testnet**, follow 
 
 1. Connect your Metamask wallet to the VinuChain Testnet.
 2. In the Environment option, select 'Injected Provider - Metamask.'
-3. Set the **network id** to **26**, which corresponds to the VinuChain Testnet's network id.
+3. Set the **network id** to **206**, which corresponds to the VinuChain Testnet's network id (mainnet is **207**).
 4. Once you initiate the smart contract deployment, it will be successfully deployed to the VinuChain Testnet.
 
 ## **Additional resources**

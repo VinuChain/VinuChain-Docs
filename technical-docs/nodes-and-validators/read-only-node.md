@@ -161,16 +161,14 @@ A genesis file is a configuration file that contains the initial settings and pa
 
 The genesis file is a crucial component of any blockchain network, as it defines the initial state of the network, including information about the initial block, accounts, validators, and other network-specific parameters.
 
-Drive: [Genesis Files](https://drive.google.com/drive/folders/1_LKq9ljXYwH4LkxO-6e8UnVgiWncGCBH?usp=sharing)
-
-You can download a genesis file from the Drive above, or from the following commands:
+You can download the genesis file with the following command:
 
 **Mainnet:**
 
 ```
 # Download Mainnet genesis file
-(validator)$ curl https://vinu-blockchain-mainnet-genesis.s3.amazonaws.com/vitainu-genesis-mainnet-20240524.g
---output vinuchain-genesis.g
+(validator)$ curl https://vinu-blockchain-mainnet-genesis.s3.amazonaws.com/vitainu-genesis-mainnet-20240524.g \
+    --output vinuchain-genesis.g
 ```
 
 **Testnet:**
@@ -194,10 +192,10 @@ First, start the **Opera read-only node** to interact with it and to create a va
 ```
 # Start opera node (Mainnet)
 (validator)$ cd build/
-(validator)$ nohup ./opera --port 3000 --nat any 
---genesis ../vinuchain-genesis.g
---bootnodes enode://0281626c7d7fc8696300688cbb19f3781aabd981d74cd16f3f5cd7885a32da4d1d9d64afbb2416b93654935a3088afbe1a4a05d823ff2146e5d1d0c2cbdeca46@188.165.195.122:3000
-> opera.log &
+(validator)$ nohup ./opera --port 3000 --nat any \
+    --genesis ../vinuchain-genesis.g \
+    --bootnodes enode://0281626c7d7fc8696300688cbb19f3781aabd981d74cd16f3f5cd7885a32da4d1d9d64afbb2416b93654935a3088afbe1a4a05d823ff2146e5d1d0c2cbdeca46@188.165.195.122:3000 \
+    > opera.log &
 ```
 
 **Testnet:**
@@ -210,8 +208,6 @@ First, start the **Opera read-only node** to interact with it and to create a va
     --bootnodes enode://e2a95c1b8d85b018b8e88133bec342801b42e19b59a52e030462d04a5549f02fc57215b4ca97771ec6b3a0d30a78603fdccd2b5091c44f6ac439d6c8be8bc539@44.239.129.39:3000 \
     > opera.log &
 ```
-
-* Replace `GENESIS_FILENAME` with the actual Genesis file's filename you are using.
 
 There are different ways to Run your read-only node.
 

@@ -29,8 +29,8 @@ API nodes are useful for building applications that require querying historical 
 
 ```
 #Download genesis file
-(validator)$ curl https://vinu-blockchain-mainnet-genesis.s3.us-east-1.amazonaws.com/vitainu-genesis-mainnet-with-contracts.g 
---output vitainu-genesis-mainnet-with-contracts.g
+(validator)$ curl https://vinu-blockchain-mainnet-genesis.s3.us-east-1.amazonaws.com/vitainu-genesis-mainnet-with-contracts.g \
+    --output vitainu-genesis-mainnet-with-contracts.g
 ```
 
 ### **Run node**

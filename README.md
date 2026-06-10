@@ -20,8 +20,8 @@ description: Determinably Feeless, Lightning Fast, L1 EVM Network.
 
 ### Docs🔗
 
-* [Whitepaper](whitepaper/whitepaper/) [🌐](https://vinuscan.com)
-* [Mainnet](technical-docs/vinuchain-mainnet/) [🌐](https://emojiguide.com/travel-places/globe-with-meridians/)
+* [Whitepaper](whitepaper/whitepaper/) 🌐
+* [Mainnet](technical-docs/vinuchain-mainnet/) 🌐
 * [Testnet](technical-docs/vinuchain-testnet/) 🌐
 * [Stake on VinuChain 🌐](technical-docs/staking/stake-vc-on-vinuchain.md)
 * [Run a Node](technical-docs/nodes-and-validators/) 🌐

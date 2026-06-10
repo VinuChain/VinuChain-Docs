@@ -12,7 +12,7 @@ description: Public Nodes / Public API Endpoints
 https://vinuchain-rpc.com
 ChainID: 207
 Symbol: VC
-Explorer: https://mainnet.vinuscan.com
+Explorer: https://vinuexplorer.org
 ```
 
 ```
