@@ -45,6 +45,7 @@
   * [FAQ - Staking](technical-docs/staking/faq-staking.md)
 * [Smart Contracts](technical-docs/smart-contracts/README.md)
   * [Deploy a Smart Contract](technical-docs/smart-contracts/deploy-a-smart-contract.md)
+  * [Feeless Transactions for Developers](technical-docs/smart-contracts/feeless-transactions.md)
   * [Account Abstraction (ERC-4337)](technical-docs/smart-contracts/account-abstraction.md)
   * [VinuChain Name Service](technical-docs/smart-contracts/vinuchain-name-service.md)
   * [Master Contracts Reference](technical-docs/smart-contracts/contracts-master-list.md)
