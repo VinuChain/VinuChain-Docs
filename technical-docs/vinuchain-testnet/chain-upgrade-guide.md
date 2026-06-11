@@ -6,10 +6,11 @@
 
 | Version           | Network | Status                                                                 |
 | ----------------- | ------- | ---------------------------------------------------------------------- |
-| `v2.0.38-elemont` | Testnet | Non-consensus EvmWriter log-noise patch; latest-EVM active             |
+| `v2.0.39-elemont` | Testnet | **Deployed fleet-wide 2026-06-11.** PaybackCache restart warm-up (consensus A1 fix) + v2.0.38 EvmWriter log patch; latest-EVM active |
 
 ## What's new
 
+- **Fixes the mid-epoch restart consensus divergence (A1).** v2.0.39 rebuilds the volatile PaybackCache on startup by replaying epochs E−1 and E from raw stored receipts, so a restarted node seals the same FeeRefund / `block.Root` as never-restarted peers. The warm-up is fail-closed: an unreadable tx-bearing block inside the replay window (e.g. TxIndex disabled) refuses to start instead of silently diverging; leading gaps on pruned/genesis-imported nodes are tolerated with a Warn. Operational rule: do **not** restart validators within two epochs after a `QuotaCacheAddress`-changing upgrade (see `docs/payback-cache-restart-determinism.md` in the VinuChain repo).
 - **Stages VinuChain-specific BLS12-381 and latest-EVM forks on testnet.** `VinuBLS12381` enables the EIP-2537/BLS12-381 precompile family at `0x0b`-`0x11` as an explicit VinuChain fork flag. `VinuLatestEVM` then enables P256VERIFY at `0x0100`, CLZ, MODEXP bounds/repricing, and the EIP-7825 per-transaction gas cap. These are staged in order and activate only at epoch seals.
 - **Adds `eth_config` support.** The public RPC now reports the sealed execution configuration, chain ID, fork ID, activation block/time, and active precompile set. `eth_config` does not expose pending `DirtyRules`; use `vc_getRules("latest")` after each seal to confirm fork activation.
 - **Adds explicit gas-cap enforcement and tests.** v2.0.36 rejects transactions above the `VinuLatestEVM` per-transaction gas cap in txpool, state transition, and block execution, and caps `eth_estimateGas` once the fork is active.
@@ -24,11 +25,13 @@
 
 ## Current Testnet Rollout State
 
+`v2.0.39-elemont` was built on the validator host and deployed on **2026-06-11** to the public trace RPC and validators V1-V4 (sequential one-at-a-time restarts; the chain stayed live throughout). Deployed client string `go-opera/v2.0.39-elemont-af41ca7e-1781149783/linux-amd64/go1.26.3`; binary sha256 `6853d004b0e8c5d3a6c1931e8452f24909c889edbc2ba68bfce5c706a4c9fc5a` (byte-identical across all five nodes). Every node logged the new startup warm-up (`Warmed payback cache for current epoch … epoch=5954`, 337-350 blocks replayed) with zero Crit lines; post-rollout the fleet agrees on head with `eth_syncing=false`. The previous binary is preserved as `opera.v2.0.37.bak` beside each deployed binary, and the exact per-validator relaunch command lines are captured in `/home/ubuntu/restart_v{1..4}.sh` on the validator host.
+
 `v2.0.37-elemont` was built on the testnet hosts and deployed to the public trace RPC plus validators V1-V4 on 2026-06-03. The deployed client string is `go-opera/v2.0.37-elemont-df23f245-1780458226/linux-amd64/go1.26.3`. The trace RPC and validator host binaries are byte-identical (`sha256 89b63f226d9621f11fd8a3ad979563895c57555bdf7b8a0e3440cc215d826edb`).
 
 `v2.0.38-elemont` is a source/tag patch release on top of the sealed testnet state. It only cleans up the false-positive SFC `EvmWriter setBalance: unusually large balance` warning seen during valid restake flows; it does not require a new epoch seal or snapshot.
 
-Post-deploy verification confirmed:
+Post-deploy verification of the **2026-06-03 v2.0.37 rollout** (historical — superseded by the v2.0.39 rollout above) confirmed:
 
 - All four validator services are active on `v2.0.37-elemont`, at the same live head, with `eth_syncing=false`.
 - The testnet trace RPC serves `v2.0.37-elemont`, exposes `trace` and `debug`, returns `eth_syncing=false`, and `trace_block("latest")` succeeds.
@@ -58,7 +61,7 @@ It was produced from the trace RPC datadir under the `20260603T150430Z` object n
 | Network | Chain ID   | RPC                              | Status          |
 | ------- | ---------- | -------------------------------- | --------------- |
 | Mainnet | 207 (0xcf) | `https://vinuchain-rpc.com`      | Upgrade pending |
-| Testnet | 206 (0xce) | `https://vinufoundation-rpc.com` | v2.0.37 deployed; v2.0.38 available; PaybackV2 active; BLS active; latest-EVM active |
+| Testnet | 206 (0xce) | `https://vinufoundation-rpc.com` | v2.0.39 deployed; PaybackV2 active; BLS active; latest-EVM active |
 
 ---
 
@@ -150,7 +153,7 @@ The build directory is independent of your node's `--datadir`. The build process
 ```bash
 git clone https://github.com/VinuChain/VinuChain.git $HOME/vinuchain-upgrade
 cd $HOME/vinuchain-upgrade
-git checkout v2.0.38-elemont
+git checkout v2.0.39-elemont
 make opera
 # Binary is at $HOME/vinuchain-upgrade/build/opera
 ```
@@ -160,7 +163,7 @@ make opera
 Substitute `/opt/vinuchain-upgrade` (or any other path) if `$HOME` is not the right partition for your setup — every later command in this guide that references `$HOME/vinuchain-upgrade` should be adjusted to match.
 
 {% hint style="info" %}
-**Dependency pins.** `v2.0.38-elemont` uses go-vinu `v1.20.24-quota` (Shanghai, selected Cancun execution support, Prague/EIP-7702 set-code transactions, VinuBLS12381, VinuLatestEVM, and precompile/ModExp vector tests) and lachesis-base `v0.1.6-elemont`. `make opera` fetches dependencies on first build.
+**Dependency pins.** `v2.0.39-elemont` uses go-vinu `v1.20.24-quota` (Shanghai, selected Cancun execution support, Prague/EIP-7702 set-code transactions, VinuBLS12381, VinuLatestEVM, and precompile/ModExp vector tests) and lachesis-base `v0.1.6-elemont`. `make opera` fetches dependencies on first build.
 {% endhint %}
 {% endstep %}
 
@@ -173,11 +176,11 @@ The newly-built binary is at `vinuchain-upgrade/build/opera`. Move into that dir
 ```bash
 cd $HOME/vinuchain-upgrade/build
 ./opera version
-# Expected: Version: 2.0.38-elemont
+# Expected: Version: 2.0.39-elemont
 ```
 
 {% hint style="info" %}
-`opera version` prints `2.0.38-elemont` — this matches the git tag `v2.0.38-elemont`. See the note at the top of this page.
+`opera version` prints `2.0.39-elemont` — this matches the git tag `v2.0.39-elemont`. See the note at the top of this page.
 {% endhint %}
 {% endstep %}
 
@@ -307,7 +310,7 @@ For testing or development, you can run in the foreground:
 
 What to expect:
 
-**Startup banner.** Every v2.x build prints the VinuChain banner. This is the first visual confirmation that you are running v2.0.38-elemont and not the previous binary:
+**Startup banner.** Every v2.x build prints the VinuChain banner. This is the first visual confirmation that you are running v2.0.39-elemont and not the previous binary:
 
 ```text
  ██╗   ██╗██╗███╗   ██╗██╗   ██╗ ██████╗██╗  ██╗ █████╗ ██╗███╗   ██╗
@@ -319,7 +322,7 @@ What to expect:
 
                         v2.0  -  ELEMONT
 
-  Version: 2.0.38-elemont
+  Version: 2.0.39-elemont
 ```
 
 **Staging logs (testnet only, first-time Shanghai/Cancun/Prague/BLS/latest-EVM install).** On the first boot of a node that has not yet sealed Shanghai (e.g. a genesis replay rather than a snapshot restore), you will see Shanghai staged while later forks are deferred:
@@ -407,7 +410,7 @@ After the mainnet seal, `vc_getRules` must report `Upgrades.SfcV2 = true`, SFC `
 | Check                                                     | Expected                                                                                                                                              |
 | --------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Startup banner                                            | `VINUCHAIN v2.0 - ELEMONT` ASCII art printed to stderr                                                                                                |
-| `opera version`                                           | `Version: 2.0.38-elemont`                                                                                                                             |
+| `opera version`                                           | `Version: 2.0.39-elemont`                                                                                                                             |
 | Block production                                          | Resumes within seconds of startup; block numbers advance                                                                                              |
 | Peer count                                                | Returns to prior steady-state within minutes                                                                                                          |
 | Shanghai staging logs (testnet, first pre-Shanghai boot) | 1× `Staged Shanghai upgrade …`; Cancun and Prague may log as deferred until predecessors are active                                                    |
@@ -497,6 +500,7 @@ No datadir changes are needed for a pre-seal rollback. A post-seal rollback must
 {% hint style="info" %}
 **Per-version rollback deltas.** Each bullet describes the only functional difference between the two versions.
 
+- **v2.0.39 → v2.0.38/v2.0.37 rollback:** v2.0.39's only delta is the startup PaybackCache warm-up (consensus A1 fix) — no fork flag, rules, snapshot, SFC, or dependency change — so a binary-only rollback is state-compatible at any point. **But it reintroduces the divergence the fix closes:** a rolled-back node that restarts mid-epoch can seal FeeRefund/`block.Root` values that differ from never-restarted peers. If you must roll back, avoid any further restart of the rolled-back node until it is re-upgraded; treat an unplanned mid-epoch restart on the old binary as a potential-fork incident and compare the node's latest state root against a healthy peer before letting it emit.
 - **v2.0.37 → earlier rollback:** v2.0.37 consumes the go-vinu precompile/ModExp vector-test release. Treat rollback like v2.0.36: safe only before the relevant BLS/latest-EVM seal, and never below the binary that sealed an already-active flag without operator coordination.
 - **v2.0.36 → earlier rollback:** Safe only before the `VinuLatestEVM` seal. After the seal, older binaries do not consistently reject over-cap transactions across txpool, state transition, block execution, and `eth_estimateGas`.
 - **v2.0.34/v2.0.35 → earlier rollback:** Safe only before the `VinuLatestEVM` seal. After the seal, older binaries lack P256VERIFY, CLZ, MODEXP bounds/repricing, `eth_config` latest-EVM reporting, and the VinuLatestEVM RLP/config bits.
@@ -542,7 +546,7 @@ Mainnet is currently unaffected because no `SfcV2*` flag has sealed there yet. D
 ### Node won't start after upgrade
 
 1. Check logs: `journalctl -u opera -f` (systemd) or your terminal / Docker output.
-2. Verify the binary: `opera version` must print `2.0.38-elemont`.
+2. Verify the binary: `opera version` must print `2.0.39-elemont`.
 3. If the database is reported as corrupted, restore from the chaindata snapshot below.
 
 ### Node starts but doesn't produce events
@@ -650,11 +654,11 @@ The recommended rollout:
 1. VinuChain team announces the patch window. Date: TBD.
 2. Pre-stage the binary on every validator before the window (Upgrade Steps step 2).
 3. During the window, each operator performs the binary swap.
-4. Confirm in the coordination channel that block production resumed and `opera version` reports `2.0.38-elemont`.
+4. Confirm in the coordination channel that block production resumed and `opera version` reports `2.0.39-elemont`.
 
 **Missed the window?** Patch6 sealed on testnet at block 1,460,329 in epoch 5801 on 2026-05-16. If your node was not already running v2.0.21 before that seal, a later binary swap will not replay the `SfcV2Patch6` edge and will not apply the automatic backfill. Stop the node, preserve `keystore/` and `go-opera/nodekey`, and restore from the latest post-seal chaindata snapshot in [Troubleshooting](#warn-incoming-event-rejected-err-wrong-event-epoch-hash) before rejoining.
 
-After Shanghai, Cancun, Prague, VinuBLS12381, or VinuLatestEVM seals, the same rule applies to v2.0.38: nodes that missed the activation window should restore from the newest post-seal snapshot instead of replaying the edge at a different block.
+After Shanghai, Cancun, Prague, VinuBLS12381, or VinuLatestEVM seals, the same rule applies to v2.0.39: nodes that missed the activation window should restore from the newest post-seal snapshot instead of replaying the edge at a different block.
 
 ---
 
@@ -685,12 +689,13 @@ The codebase uses several internal upgrade names. The base SfcV2, Podgorica, and
 | **SfcV2Patch6**            | Introduced in v2.0.20 and sealed with v2.0.21 on 2026-05-16 at block `1,460,329`                | One-shot testnet SFC bytecode re-flash to Cycle-162, adding orphan-delegation registration/backfill and an undelegate-to-zero fix for legacy orphaned stake pairs. v2.0.21 also performs the known live testnet delegation backfill in node state at the seal.                                                                                                                                                                                                                                                                |
 | **Mainnet SfcV2 backfill** | Mainnet-only future hook; not a testnet seal point                                             | Future mainnet `SfcV2` activation installs the latest Cycle-162 bytecode directly and now has a mainnet-only node-state backfill hook for the 82 live mainnet delegation rows audited on 2026-05-17. The list must be refreshed immediately before a mainnet activation release so newly-created missing rows are not missed.                                                                                                                                                                                                 |
 
-Testnet has Shanghai, Cancun, Prague, the earlier SFC re-flashes (`SfcV2Patch2` / `SfcV2Patch3` / `SfcV2Patch4` / `SfcV2Patch5`), the `ElemontPubkeyValidation` sealer guard, PaybackV2, PaybackV2Patch, the `SfcV2Patch6` edge, `VinuBLS12381`, and `VinuLatestEVM` active. Current source enables mainnet SfcV2, Podgorica, ElemontPubkeyValidation, Shanghai, Cancun, and Prague for the planned hard fork and points fresh mainnet rules at the live Quota proxy. Mainnet still has no `SfcV2*` patch flags, no `PaybackV2`, no `VinuBLS12381`, and no `VinuLatestEVM` active in v2.0.38.
+Testnet has Shanghai, Cancun, Prague, the earlier SFC re-flashes (`SfcV2Patch2` / `SfcV2Patch3` / `SfcV2Patch4` / `SfcV2Patch5`), the `ElemontPubkeyValidation` sealer guard, PaybackV2, PaybackV2Patch, the `SfcV2Patch6` edge, `VinuBLS12381`, and `VinuLatestEVM` active. Current source enables mainnet SfcV2, Podgorica, ElemontPubkeyValidation, Shanghai, Cancun, and Prague for the planned hard fork and points fresh mainnet rules at the live Quota proxy. Mainnet still has no `SfcV2*` patch flags, no `PaybackV2`, no `VinuBLS12381`, and no `VinuLatestEVM` active in v2.0.39.
 
 ### Release overview
 
 | Version             | Type                                                                    | What changed                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | ------------------- | ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **v2.0.39-elemont** | **PaybackCache restart warm-up (consensus A1 fix)** | Rebuilds the volatile PaybackCache at startup by replaying epochs E−1 and E from raw stored receipts, so a mid-epoch restart seals the same FeeRefund/`block.Root` as never-restarted peers. Fail-closed on unreadable tx-bearing blocks in the replay window (TxIndex required); leading-gap tolerant on pruned/genesis-imported datadirs. No consensus-rule, fork-flag, snapshot, SFC, or dependency change — the fix changes startup behavior only. |
 | **v2.0.38-elemont** | **EvmWriter SFC warning hygiene**                                       | Raises the non-system `setBalance` large-balance warning threshold to `10,000,000 VC` and exempts the SFC contract, preventing valid restake calls from logging scary false positives. Log-only release; no consensus, SFC bytecode, snapshot, fork flag, or dependency change.                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 | **v2.0.37-elemont** | **Release hygiene + precompile vectors**                                | Bumps the release to `2.0.37-elemont` and consumes go-vinu `v1.20.24-quota`, carrying the broader precompile and MODEXP vector-test coverage used to validate the BLS12-381 / P256 / CLZ / MODEXP / gas-cap hard-fork surface. Deployed to testnet RPC + V1-V4 on 2026-06-03.                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 | **v2.0.36-elemont** | **VinuLatestEVM gas-cap enforcement**                                   | Enforces the VinuLatestEVM per-transaction gas cap in txpool, state transition, block execution, and `eth_estimateGas`, with focused tests for each path. This is the consensus-critical release for the latest-EVM gas-cap behavior.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
@@ -787,14 +792,14 @@ After `VinuBLS12381` is active:
 
 - `eth_config.current.precompiles` includes `BLS12_G1ADD`, `BLS12_G1MSM`, `BLS12_G2ADD`, `BLS12_G2MSM`, `BLS12_PAIRING_CHECK`, `BLS12_MAP_FP_TO_G1`, and `BLS12_MAP_FP2_TO_G2`.
 - The active precompile addresses are `0x0b` through `0x11`.
-- Mainnet remains false for this flag in v2.0.38.
+- Mainnet remains false for this flag in v2.0.39.
 
 After `VinuLatestEVM` is active:
 
 - `eth_config.current.precompiles` includes `P256VERIFY` at `0x0000000000000000000000000000000000000100`.
 - CLZ and MODEXP bounds/repricing are active through the go-vinu EVM.
 - Transactions above the per-transaction gas cap are rejected consistently in txpool, state transition, and block execution; `eth_estimateGas` caps estimates at the same limit.
-- Mainnet remains false for this flag in v2.0.38.
+- Mainnet remains false for this flag in v2.0.39.
 
 Before either flag seals, `eth_config` continues to show the last sealed configuration. Use `vc_getRules("latest")` after each epoch seal to verify the rule bit, then re-run precompile/opcode smoke checks.
 
@@ -885,4 +890,4 @@ Operator-facing controls for managing chaindata size on long-lived nodes.
 
 ---
 
-_Last updated: 2026-06-04 · latest guide target `v2.0.38-elemont` · ERC-4337 account abstraction live on testnet · latest public post-latest-EVM snapshot `testnet-chaindata-v2.0.37-elemont-post-vinulatestevm-20260603T150430Z-clean.tar.gz` · corrected PaybackV2 address `0x89D1cBD9DEAaB4dFf6f800a336FBDd9A5c6829e4` · `VinuBLS12381` active and `VinuLatestEVM` active · SFC Cycle-162 `version() = 3.0.5` · go-vinu `v1.20.24-quota` · lachesis-base `v0.1.6-elemont`_
+_Last updated: 2026-06-11 · latest guide target `v2.0.39-elemont` · ERC-4337 account abstraction live on testnet · latest public post-latest-EVM snapshot `testnet-chaindata-v2.0.37-elemont-post-vinulatestevm-20260603T150430Z-clean.tar.gz` · corrected PaybackV2 address `0x89D1cBD9DEAaB4dFf6f800a336FBDd9A5c6829e4` · `VinuBLS12381` active and `VinuLatestEVM` active · SFC Cycle-162 `version() = 3.0.5` · go-vinu `v1.20.24-quota` · lachesis-base `v0.1.6-elemont`_
