@@ -10,7 +10,7 @@ $VC is native to VinuChain and bridged to BNB Chain (BSC).
 
 Here are the addresses:
 
-1. **VC (VinuChain):** [**native gas coin does not have a contract.**](https://mainnet.vinuscan.com/)
+1. **VC (VinuChain):** [**native gas coin does not have a contract.**](https://vinuexplorer.org)
 
 * As it is the native gas coin of the VinuChain protocol, it does not have a contract address.
 * For applications that require its contract address, you can simply omit it / leave it blank.

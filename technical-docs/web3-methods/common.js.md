@@ -20,7 +20,7 @@ const signTransaction = async (tx, myContract, contractGas = false) => {
     gas,
     gasPrice,
     nonce,
-    chainId: 4002
+    chainId: 207 // VinuChain mainnet; use 206 for testnet
   };
 
   if (contractGas) {

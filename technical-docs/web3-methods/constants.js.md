@@ -11,7 +11,7 @@ Notes:
 ```
 const TESTNET_RPC = 'https://vinufoundation-rpc.com';
 const RPC2 = 'wss://vinufoundation-rpc.com:4100'; //or mainnet: 'wss://vinuchain-rpc.com:4100';
-const MAINNET_RPC = 'https:vinuchain-rpc.com';
+const MAINNET_RPC = 'https://vinuchain-rpc.com';
 
 const TXHASH =
   '0x3595d3619ef3feef4ebdf25151dfbe8faf7f441d8b23c54c9639762b3dae9dd9';

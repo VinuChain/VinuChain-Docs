@@ -13,7 +13,7 @@ Latest public post-latest-EVM snapshot: `https://vinu-blockchain-genesis.s3.amaz
 
 ## 1. Supported go-opera version <a href="#id-1.-current-version-of-go-opera" id="id-1.-current-version-of-go-opera"></a>
 
-The current supported version is **go-opera 2.0.38-elemont** for testnet. Mainnet is still on `v2.0.0-rc.1` pending the next coordinated upgrade window. The legacy "1.1.2-rc.3" line that previously appeared here referred to the pre-elemont fork and is no longer current.
+The current node release is **v2.0.39-elemont** for both mainnet and testnet. Mainnet runs the ELEMONT feature set now. Build it from the `v2.0.39-elemont` tag with Go 1.25+ (see [Read-Only Node](read-only-node.md)).
 
 ### **1.0 Pre-flight checklist** <a href="#id-1.0-pre-flight-checklist" id="id-1.0-pre-flight-checklist"></a>
 
@@ -125,7 +125,7 @@ Note that, after your node is stopped, if you want to rerun it again, don't run 
 
 If your validator node is down for more than **5 days**, then it will become offline (i.e., pruned from the network).&#x20;
 
-For an offline node, you can [undelegate](delegation-calls.md) and wait for **3 days** to withdraw (bonding time). After that, you can transfer funds to a new wallet and make a new validator if you wish.&#x20;
+For an offline node, you can [undelegate](delegation-calls.md) and wait the validator self-stake withdrawal period — **180 epochs and 3 days** (both must elapse) — before you can withdraw. After that, you can transfer funds to a new wallet and make a new validator if you wish.&#x20;
 
 Note that, if [undelegating](delegation-calls.md) a locked stake or locked delegation before the locked period is expired, it will incur a penalty.
 
@@ -143,7 +143,7 @@ If your node stake is locked, you will first need to call [unlockStake()](lockup
 
 Then you can call [undelegate()](delegation-calls.md), to unstake your stake.
 
-Then there is a **waiting period of 3 days** (so-called bonding time) after undelegation. This is required before you can call [withdraw()](delegation-calls.md) to take out your stake.
+Then there is a validator self-stake bonding period — **180 epochs and 3 days** (both must elapse) — after undelegation. This is required before you can call [withdraw()](delegation-calls.md) to take out your stake.
 
 <figure><img src="../../.gitbook/assets/image (1).png" alt="" width="375"><figcaption><p>Withdrawal Times</p></figcaption></figure>
 
@@ -151,15 +151,11 @@ Then there is a **waiting period of 3 days** (so-called bonding time) after unde
 
 ### **4.1 Syncing error** <a href="#id-4.1-syncing-error" id="id-4.1-syncing-error"></a>
 
-If your node is in dirty state (it may happen occasionally), please run:&#x20;
-
-`opera --db.preset legacy-ldb db heal --experimental`&#x20;
-
-alternatively, you may do a fresh resync as follows:
+If your node is in dirty state (it may happen occasionally), do a fresh resync as follows:
 
 * Stop the node
 * Remove the current (broken) datadir (the default datadir is located at \~/.opera)
-* Download and build go-opera 1.1.2-rc3
+* Rebuild the current binary: `git clone https://github.com/VinuChain/VinuChain.git && cd VinuChain && git checkout v2.0.39-elemont && make opera` (requires Go 1.25+)
 * Run your node again in read mode
 
 ### **4.2 Slow syncing** <a href="#id-4.2-slow-syncing" id="id-4.2-slow-syncing"></a>
@@ -183,7 +179,7 @@ You can also increase the value of `ulimit` on your machine.
 
 You can check your current limit value on Linux with the command `ulimit -n`.&#x20;
 
-The default value of 1024, which may be not enough in some cases.You can adjust the value to the recommended 500.000 open files limit by either:&#x20;
+The default value of 1024 may not be enough in some cases. You can adjust the value to the recommended 500,000 open files limit by either:&#x20;
 
 * `ulimit -n 500000`&#x20;
 * change it in `/etc/security/limits.conf` configuration file, limit type nofile.
@@ -268,4 +264,4 @@ The reward-stashing cursor is bounded by `MAX_CORRUPTION_CHECK_EPOCHS = 100` per
 
 ### Future prevention
 
-`v2.0.14-elemont` (testnet) / Cycle-161 SFC bytecode rejects malformed pubkeys at `createValidator` ingress, so this condition cannot recur for new admissions. The `ElemontPubkeyValidation` upgrade flag also ejects already-admitted malformed validators from the active set at the next epoch seal. See [Become a Validator](become-a-validator.md#register-your-validator) and [Validator Calls → Create validator](validator-calls.md#create-validator) for the canonical pubkey format requirements.
+The current SFC bytecode rejects malformed pubkeys at `createValidator` ingress, so this condition cannot recur for new admissions. The `ElemontPubkeyValidation` upgrade flag also ejects already-admitted malformed validators from the active set at the next epoch seal. See [Become a Validator](become-a-validator.md#register-your-validator) and [Validator Calls → Create validator](validator-calls.md#create-validator) for the canonical pubkey format requirements.

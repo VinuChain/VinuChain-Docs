@@ -13,7 +13,7 @@ description: Roadmap for VinuChain $VC
 ### 2026
 
 * **Development**:
-  * VinuChain 2.0 - "ELEMONT" Network Upgrade
+  * VinuChain 2.0 - "ELEMONT" Network Upgrade ✅
   * dApp: VinuGames (Gaming Platform)
   * dApp: VinuNFT (NFT Marketplace)
   * VinuSwap DEX 2.0 - UI Upgrade

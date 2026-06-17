@@ -20,9 +20,9 @@ The canonical way to obtain a correctly-shaped pubkey is to run `./opera validat
 
 **Do not** construct the pubkey by other means. Submitting a 65-byte payload that begins with `0x04` (the bare uncompressed key without the `0xc0` type-byte) is the most common failure mode — it superficially looks like an ECDSA pubkey but is not the format lachesis-base verifies signatures against. A validator admitted with that shape produces no verifiable consensus events, earns zero uptime, and any stake delegated to it earns zero rewards.
 
-As of `v2.0.14-elemont` (testnet) / Cycle-161 SFC bytecode, `createValidator` rejects `pubkey.length != 66` with `"invalid pubkey length"` and `pubkey[0] != 0xc0` with `"invalid pubkey type"`.
+`createValidator` rejects `pubkey.length != 66` with `"invalid pubkey length"` and `pubkey[0] != 0xc0` with `"invalid pubkey type"`.
 
-The call creates a self-delegation with the specified amount. Validator uses the same calls as other delegators. Visit [delegation calls](https://vita-inu.gitbook.io/vinuchain/technical-guides/validators-nodes/delegation-calls), [reward calls](https://vita-inu.gitbook.io/vinuchain/technical-guides/validators-nodes/reward-calls), [stake lockup calls](https://vita-inu.gitbook.io/vinuchain/technical-guides/validators-nodes/stake-lockup-calls) for additional details.
+The call creates a self-delegation with the specified amount. Validator uses the same calls as other delegators. Visit [delegation calls](./delegation-calls.md), [reward calls](./reward-calls.md), [stake lockup calls](./lockup-calls.md) for additional details.
 
 ```
 sfcc.createValidator("0xc004...", {from:"0xAddress", value: web3.toWei("amount", "vc")})

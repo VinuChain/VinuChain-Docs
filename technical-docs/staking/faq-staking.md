@@ -13,7 +13,7 @@ Please note that the total annual rewards are divided by all active stakers; hen
 
 ### How are Staking Rewards Calculated? <a href="#can-others-access-my-staked-tokens" id="can-others-access-my-staked-tokens"></a>
 
-[How are staking rewards calculated?](https://vinu.gitbook.io/vinuchain/technical-docs/staking/stake-vc-on-vinuchain#staking-parameters-2)
+[How are staking rewards calculated?](./stake-vc-on-vinuchain.md#how-staking-rewards-are-calculated)
 
 ### Can others access my staked tokens? <a href="#can-others-access-my-staked-tokens" id="can-others-access-my-staked-tokens"></a>
 

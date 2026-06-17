@@ -1,5 +1,7 @@
 # package.json
 
+> **Note:** These examples are pinned to ethers v5 and web3 v1, which match the code in this directory. Newer majors (ethers v6, web3 v4) have breaking API changes and require code updates before use.
+
 ```
 {
   "dependencies": {

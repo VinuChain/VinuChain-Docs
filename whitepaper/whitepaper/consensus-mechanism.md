@@ -18,7 +18,7 @@ The Validators on the VinuChain network are incentivized not only by block rewar
 
 The Lachesis Consensus protocol, integral to this mechanism, uses Elliptic Curve Encryption Technology (ECC) for signing and verifying messages within the network. This technology enhances the security measures and ensures the integrity of all transactions processed within the network.
 
-For a more detailed insight into the workings of this mechanism, readers are encouraged to refer to the in-depth description of the Lachesis Consensus protocol available at [https://blog.fantom.foundation/how-consensus-works-on-fantom/](https://blog.fantom.foundation/how-consensus-works-on-fantom/).
+For a more detailed insight into the workings of this mechanism, readers are encouraged to refer to the Lachesis consensus research paper ("OPERA: Reasoning about continuous common knowledge in asynchronous distributed systems", Cheng et al.), which describes the DAG-based BFT protocol underlying VinuChain's consensus layer.
 
 ### 4.4 Byzantine Fault Tolerance
 

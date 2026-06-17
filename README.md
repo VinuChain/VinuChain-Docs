@@ -12,7 +12,7 @@ description: Determinably Feeless, Lightning Fast, L1 EVM Network.
 ### Explorers 🔗
 
 * [VinuExplorer🌐](https://vinuexplorer.org)
-* [VinuScan 🌐](https://mainnet.vinuscan.com)
+* [VinuScan 🌐](https://vinuexplorer.org)
 
 ### Bridge 🔗
 

@@ -58,8 +58,6 @@ It is recommended that you make sure to submit transactions with a reasonable ga
 
 This is because transactions with excessive gas limits will have less chance to be included, due to a gas limit for each block, and the originating power of validators.\
 \
-There is penalty of 10% for unspent gas. This penalty is introduced as a disincentive against excessive transaction gas limits.
+There is a penalty of 10% for unspent gas. This penalty is a disincentive against excessive transaction gas limits.
 
-The disincentive is required because Fantom is leaderless decentralized aBFT and blocks are not known in advance to a validator (unlike Ethereum miner) until blocks are created from confirmed events. There is no single proposer, who can originate transactions for a whole block and so validators don't know the used gas in advance.
-
-This penalty will be increased shortly (upto 50%) to prevent transactions with excessive transaction gas limit.
+The disincentive is necessary because VinuChain (Lachesis DAG-BFT) is leaderless — blocks are not known in advance to a validator (unlike an Ethereum miner) until blocks are created from confirmed events. There is no single proposer who can originate transactions for a whole block, so validators do not know the used gas in advance.

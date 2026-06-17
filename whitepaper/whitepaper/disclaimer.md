@@ -22,4 +22,4 @@ This whitepaper is an information paper subject to updates pending final regulat
 
 This paper is not a prospectus, product disclosure statement, or any other regulated offer document. It has not been endorsed by, or registered with, any governmental authority or regulator. The distribution and use of this paper, including any related advertisement or marketing material, and the eventual sale of tokens, may be restricted by law in certain jurisdictions, and potential purchasers of tokens must inform themselves about those laws and observe any such restrictions. If you come into possession of this paper, you should seek advice on, and observe any such restrictions relevant to your jurisdiction. Restrictions are subject to rapid change. If you fail to comply with such restrictions, that failure may constitute a violation of applicable law. By accessing this paper, you agree to be bound by this requirement.
 
-© 2023 Vinu Ltd. All Rights Reserved.
+© 2023–2026 Vinu Ltd. All Rights Reserved.

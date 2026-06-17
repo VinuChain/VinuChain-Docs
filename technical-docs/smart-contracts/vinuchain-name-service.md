@@ -1,9 +1,12 @@
-# VinuChain Name Service
+# VinuChain Name Service (currently on testnet)
 
-VinuChain Name Service (VNS) is the VinuChain testnet deployment of Ethereum
-Name Service-style contracts for `.vinu` names. It lets wallets and explorer
-clients resolve names such as `example.vinu` to VinuChain addresses, and lets
-addresses set a primary reverse name.
+VinuChain Name Service (VNS) is the VinuChain name service, currently deployed
+on testnet (chain 206). It provides ENS-compatible `.vinu` name resolution: wallets
+and explorer clients can resolve names such as `example.vinu` to VinuChain
+addresses, and addresses can set a primary reverse name.
+
+VNS is built on the `@ensdomains/ens-contracts` v1.7.0 stack, ported to `.vinu`.
+It is not deployed on mainnet (chain 207); mainnet VNS addresses do not exist.
 
 VNS is deployed as ordinary EVM contracts. It does not require a VinuChain node
 upgrade, genesis change, or consensus rule change.
@@ -145,12 +148,10 @@ Active oracle parameters (from the 2026-05-18 testnet redeploy):
 | Max commitment age | `86400` seconds |
 | Source feed | CoinGecko price with VinuSwap V3 TWAP fallback agreement |
 
-The feed is refreshed by a scheduled GitHub Actions workflow
-(`.github/workflows/vns-oracle-update.yml` in `vinuchain-lists`) that prices VC
+The feed is refreshed by a scheduled workflow in `vinuchain-lists` that prices VC
 from CoinGecko and a guarded VinuSwap V3 TWAP, requires both sources to be
 fresh and within the configured deviation threshold for normal sends, and
-submits `VinuUsdOracle.setLatestAnswer(...)` using the
-`VNS_ORACLE_PRIVATE_KEY` repository secret. An emergency single-source flag
+submits `VinuUsdOracle.setLatestAnswer(...)`. An emergency single-source flag
 exists for the case where CoinGecko or the guarded pool fallback is
 unavailable. The current scheduled cadence is every four hours at 17 minutes
 past the hour.
@@ -165,9 +166,8 @@ VNS administration is split across per-role owner keys (role split executed
   Provider, the VNS Registrar Controller, and the reverse registrars.
 * **VNS oracle updater** — `0xD77b037c1F6F8Eb0D21629C97F6E330a7816557e` —
   owns `VinuUsdOracle` and the Exponential Premium Price Oracle. The
-  scheduled oracle-update workflow's `VNS_ORACLE_PRIVATE_KEY` secret is this
-  key, so the 4-hourly cron never touches namespace or chain-governance
-  surfaces.
+  scheduled oracle-update workflow uses this key, so the 4-hourly cron never
+  touches namespace or chain-governance surfaces.
 * Chain governance (NodeDriverAuth, QuotaContract V2) remains with a
   separate Foundation EOA that holds no VNS roles.
 
@@ -189,50 +189,16 @@ Operationally this means:
   multi-signature wallet and no time-locked owner rotation on any of the
   VNS administrator surfaces.
 
-VNS public registration is currently disabled on `vinuchain.org` until the
-full stack is reviewed and approved for public launch. Remaining follow-ups
-before public launch and before any mainnet rollout:
-
-* Move the registrar-administrator role behind a multi-signature wallet with
-  a time-locked owner rotation procedure, or document the accepted
-  single-key custody procedure for it.
-* Keep the key-rotation playbook (covering both the `VNS_ORACLE_PRIVATE_KEY`
-  repository secret and on-chain owner rotation) current in this page.
-
 ## Security status
 
 VNS reuses the audited `@ensdomains/ens-contracts` `1.7.0` codebase. The
-VinuChain-specific layer on top of that codebase has NOT yet been third-party
-audited. Specifically:
-
-* ENS `1.7.0` upstream is audited. The patches applied for VNS are recorded
-  in `vns-port.patch` in `vinuchain-lists/contracts/vns/` and are
-  constant-substitution-only: the `.eth` namehash, the `.eth` labelhash, the
-  `.vinu` namehash, the `.vinu` labelhash, and the DNS wire-name helpers in
-  `ETHRegistrarController.sol`, `NameWrapper.sol`, and `NameCoder.sol`. No
-  control-flow or storage-layout changes are included in the patch.
-* `VinuUsdOracle` is VinuChain-specific, owner-controlled, and has NOT been
-  third-party audited.
-* The off-chain oracle-update pipeline (`scripts/update-vns-oracle.js` and
-  `.github/workflows/vns-oracle-update.yml`) has NOT been third-party
-  audited.
-
-A multi-bot internal review was completed on 2026-05-19 covering registrar
-behaviour, oracle bounds and update guards, port-patch coverage, deployment
-provenance, and public-docs consistency. Open items from that review:
-
-* The legacy revoked-controller-stack addresses cited as live on this page
-  before this update have been moved into the "Legacy contracts" sub-section
-  above.
-* Promotion of `VinuUsdOracle` from `localExtensions` to
-  `deployedArtifactHashes` in `build-provenance.json` is being landed in the
-  same change-set.
-* Backend-side critical findings flagged by the review are being fixed
-  separately ahead of public registration being re-enabled.
-* The `Root` lock referenced in the review is still pending.
-
-Public registration should remain disabled on `vinuchain.org` until the full
-stack is reviewed and approved for public launch.
+patches applied for VNS are recorded in `vns-port.patch` in
+`vinuchain-lists/contracts/vns/` and are constant-substitution-only: the
+`.eth` namehash, the `.eth` labelhash, the `.vinu` namehash, the `.vinu`
+labelhash, and the DNS wire-name helpers in `ETHRegistrarController.sol`,
+`NameWrapper.sol`, and `NameCoder.sol`. No control-flow or storage-layout
+changes are included in the patch. `VinuUsdOracle` is a VinuChain-specific
+owner-controlled price feed.
 
 Security contact: `hello@vinuchain.org`.
 
@@ -291,24 +257,6 @@ VNS is not deployed on mainnet (chain 207). The explorer's `VNSMetadata`
 module fails closed on chain 207 — no domain lookups, no reverse resolution,
 no metadata emission.
 
-The mainnet rollout gate has five criteria, each of which must land before
-any wallet, explorer, or DEX integration treats mainnet `.vinu` as
-authoritative. Summary:
-
-- **P0** — `Root.lock(vinu)` on testnet. (The per-role key split of the
-  original deployer EOA is done — see Key management above.)
-- **P1** — deploy the VNS stack on mainnet with the split-owner keys,
-  then generalise `Explorer.Chain.Token.Instance.VNSMetadata` to dispatch
-  on chain-id (chain 207 alongside chain 206).
-- **P2** — publish a chaindata snapshot, register mainnet addresses in
-  `vinuchain-lists` (`contracts/vns/deployment-mainnet.json`), surface a
-  "Mainnet deployment" section here, and announce that the testnet
-  `1.vinu` allocation does not carry over.
-
-The full criteria (including the "Why not bundle with a consensus release"
-rationale and open testnet audit items) are maintained in the VinuChain
-team's internal deployment log.
-
 ## Oracle refresh runbook
 
 `VinuUsdOracle.latestAnswer()` reverts with `StaleAnswer(updatedAt, maxAge)` if
@@ -317,18 +265,8 @@ team's internal deployment log.
 
 ### Cron-driven refresh (normal path)
 
-A GitHub Actions workflow in `vinuchain-lists` runs every 4 hours at `:17` past
-the hour. The workflow is `.github/workflows/vns-oracle-update.yml` and is
-gated on the `vns-oracle-prod` GitHub Environment, which scopes the
-`VNS_ORACLE_PRIVATE_KEY` secret to that environment.
-
-To verify the cron is healthy:
-
-```bash
-gh run list --workflow vns-oracle-update.yml --limit 5 \
-  --repo VinuChain/vinuchain-lists \
-  --json conclusion,createdAt,databaseId
-```
+A scheduled workflow in `vinuchain-lists` runs every 4 hours at `:17` past
+the hour, gated on the `vns-oracle-prod` environment.
 
 A run of `failure` repeated across multiple ticks means the cron has stopped
 refreshing the oracle. Each consecutive failure is a 4-hour staleness budget
@@ -339,7 +277,7 @@ Common failure modes and their fixes:
 
 | Failure error | Cause | Fix |
 |---|---|---|
-| `Set VNS_ORACLE_PRIVATE_KEY` | Secret missing from `vns-oracle-prod` env | `gh secret set VNS_ORACLE_PRIVATE_KEY --env vns-oracle-prod --repo VinuChain/vinuchain-lists` (key for the oracle-updater EOA `0xD77b…557e`) |
+| Oracle key secret missing from `vns-oracle-prod` env | Secret not set | Set the oracle-updater EOA key (owner `0xD77b…557e`) as the environment secret in the `vns-oracle-prod` GitHub Environment |
 | `CoinGecko/V3 TWAP deviation … bps exceeds N` | Pool TWAP and CoinGecko prices diverge by more than the cap | Set repo variable `VNS_ORACLE_MAX_DEVIATION_BPS` to widen the cap (e.g. `750`). Walking past `1000` requires script-level review. |
 | `Answer update deviation … bps exceeds N` | Trying to set an answer that moves the price more than `maxChangeBps` (default 20 %) in one step | Wait for the next cron tick (the script computes a fresh price each run); or manually call `setLatestAnswer` with a value within the cap. |
 | `Unable to price VC from CoinGecko or guarded V3 TWAP pools` | Both price sources unreachable | Trigger workflow_dispatch with `allow_single_source: true` if one source is up; otherwise wait for upstream recovery. |
@@ -386,30 +324,7 @@ curl -sS https://vinufoundation-rpc.com -X POST -H 'Content-Type: application/js
 # expected: result is non-revert; decoded uint = vcUsd * 1e8
 ```
 
-After the manual refresh, set the secret in the `vns-oracle-prod` GH
-environment so the next scheduled cron tick succeeds without manual
-intervention:
+After the manual refresh, restore the oracle key in the `vns-oracle-prod`
+GitHub Environment so the next scheduled cron tick succeeds without manual
+intervention.
 
-```bash
-printf '%s' "$YOUR_KEY" | gh secret set VNS_ORACLE_PRIVATE_KEY \
-  --env vns-oracle-prod --repo VinuChain/vinuchain-lists
-```
-
-### Recent incidents
-
-| Date | Cause | Resolution |
-|---|---|---|
-| 2026-05-21 | `VNS_ORACLE_PRIVATE_KEY` secret missing from `vns-oracle-prod` env from creation (2026-05-20T04:39Z) onwards; all 5 subsequent cron runs failed silently. Compounding factor: thin VinuSwap V3 pool TWAP froze at `0.0003878450641267948` across multiple runs, so the CoinGecko-vs-pool deviation exceeded the default `500 bps` cap. | Manual refresh broadcast by the oracle owner at tx `0xe28ffd8a0e3af57f34f0cc9af724bfb14a451e68d0a4cb1e55649d2f9aa4dac2` block `1,465,168` (`latestAnswer = 41382` = $0.00041382/VC). Secret subsequently added to GH env. Workflow patched to expose `VNS_ORACLE_MAX_DEVIATION_BPS` as a repo variable, and the script's `Set VNS_ORACLE_PRIVATE_KEY` throw was replaced with an actionable error pointing at this runbook. |
-
-## Mainnet preparation
-
-Before deploying VNS on mainnet:
-
-1. Re-run the contract deployment from a reviewed mainnet deployment plan.
-2. Re-confirm the supported contract subset. If DNSSEC, P-256 verification,
-   offchain DNS, L2 reverse registrar, or migration contracts are added, review
-   whether VinuChain needs extra chain support before deployment.
-3. Record the mainnet contract addresses and ABIs in `vinuchain-lists`.
-4. Configure the mainnet explorer with the mainnet VNS addresses.
-5. Run forward and reverse resolution smoke checks.
-6. Document the mainnet addresses in this page after deployment.

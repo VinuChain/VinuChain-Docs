@@ -5,7 +5,7 @@
 > source / ABI live. Use this as the first stop before any operation that
 > touches a core contract.
 >
-> Last refreshed: 2026-06-10.
+> Last refreshed: 2026-06-17.
 
 ## Networks
 
@@ -22,13 +22,28 @@ These are predeploy / genesis-installed contracts that exist on every VinuChain 
 
 | Contract | Address | Owner / Administrator | Role |
 |---|---|---|---|
-| **SFC (Staking)** | `0xFC00FACE00000000000000000000000000000000` | mainnet: `0xF39257…16c1`; testnet: `0x7f9076…dbfd` | Validator staking, delegation, lockups, epoch rewards, slashing. V1 bytecode on mainnet; V2 Cycle-161 on testnet (active since v2.0.14-elemont). |
+| **SFC (Staking)** | `0xFC00FACE00000000000000000000000000000000` | mainnet: `0xF39257…16c1`; testnet: `0x7f9076…dbfd` | Validator staking, delegation, lockups, epoch rewards, slashing. **V2 SFC bytecode (latest cycle, version 3.0.5) on both networks** — mainnet activated SfcV2 with the ELEMONT upgrade; SfcV2 burns 30% of the validator base-fee share. |
 | **NodeDriverAuth** | `0xD100ae0000000000000000000000000000000000` | mainnet & testnet: `0xf9c82B1117e8BeA97843042521B8FBC93044f347` | Owner-controlled governance — queues and executes time-locked migrations, network rule updates, epoch advances. Owner key controls the chain's administrative surface. |
 | **NodeDriver** | `0xd100A01E00000000000000000000000000000000` | (delegated by NodeDriverAuth) | EVM-facing relay between NodeDriverAuth and EvmWriter. Emits canonical events for validator weight/pubkey changes, rule updates, epoch advances. |
 | **EvmWriter** *(Go precompile)* | `0xd100ec0000000000000000000000000000000000` | n/a (precompile) | State-write precompile (`setBalance`, `copyCode`, `swapCode`, `setStorage`, `incNonce`). Only callable from `NodeDriver`. |
 | **NetInit** *(genesis-only)* | `0xd1005eed00000000000000000000000000000000` | n/a | Bootstraps SFC + drivers during genesis. No bytecode after init. |
-| **QuotaContract V1 (proxy)** | mainnet: `0x1c4269fbbd4a8254f69383eef6af720bcd0acda6` · testnet: `0x824B93dE7221cf8a35FBd29d5202f6eFa3A29C5D` | VinuChain Foundation — contact team | Original payback / fee-refund proxy. **Superseded on testnet by QuotaContract V2.** Stakers retain permissionless access to `unstake()`/`withdrawStake()` on V1. |
-| **QuotaContract V2** (testnet, PaybackV2 active) | testnet: `0x89D1cBD9DEAaB4dFf6f800a336FBDd9A5c6829e4` | `0xf9c82B1117e8BeA97843042521B8FBC93044f347` | Non-proxy replacement; the active testnet Quota contract — the address `vc_getRules("latest")` reports as `Economy.QuotaCacheAddress`. Same ABI as V1 plus `stakeFor(address)` / `unstakeFor(address,uint256)`. |
+| **QuotaContract (Payback proxy)** | mainnet: `0x1c4269fbbd4a8254f69383eef6af720bcd0acda6` · testnet: `0x824B93dE7221cf8a35FBd29d5202f6eFa3A29C5D` | VinuChain Foundation — contact team | Payback / fee-refund Quota contract. **Active on mainnet** (the address `vc_getRules("latest")` reports as `Economy.QuotaCacheAddress` on chain 207). On testnet this proxy is **legacy** — superseded by QuotaContract V2. Stakers retain permissionless `unstake()`/`withdrawStake()` access. |
+| **QuotaContract V2** (testnet, PaybackV2 active) | testnet: `0x89D1cBD9DEAaB4dFf6f800a336FBDd9A5c6829e4` | `0xf9c82B1117e8BeA97843042521B8FBC93044f347` | Non-proxy replacement; the active **testnet** Quota contract (`Economy.QuotaCacheAddress` on chain 206). Same ABI as the proxy plus `stakeFor(address)` / `unstakeFor(address,uint256)` receiver-funded staking. Testnet only. |
+| **Staker Info** | mainnet: `0xb914a0b16111BaB228ae6214e6E1FD4a5EaE877C` · testnet: `0x6b39bcd174DddF5A17d065822BDC43353eB6112A` | VinuChain Foundation | Off-chain validator metadata registry (name / logo / website) read by explorers and staking UIs. See [Update Validator Info](../nodes-and-validators/update-validator-info.md). |
+
+## Tokens (mainnet, chain 207)
+
+The canonical token registry (with logos and metadata) lives in
+[Vinuchain-Lists](https://github.com/VinuChain/Vinuchain-Lists) under `tokens/`.
+The most-referenced entries:
+
+| Token | Symbol | Address | Decimals |
+|---|---|---|---|
+| Wrapped VC | WVC | `0xEd8c5530a0A086a12f57275728128a60DFf04230` | 18 |
+| Vita Inu (bridged) | VINU | `0x00c1E515EA9579856304198EFb15f525A0bb50f6` | 18 |
+| USDT@VinuChain (bridged) | USDT | `0xC0264277fcCa5FCfabd41a8bC01c1FcAF8383E41` | 6 |
+| ETH@VinuChain (bridged) | ETH | `0xDd4b9b3Ce03faAbA4a3839c8B5023b7792be6e2C` | 18 |
+| BTC@VinuChain (bridged) | BTC | `0x69120197b77b51d32fFA5eAfe16b3d78115640c6` | 8 |
 
 ## VNS — VinuChain Name Service (chain 206 testnet only)
 

@@ -1,21 +1,39 @@
 # Deploy a Smart Contract
 
-VinuChain leverages a significant portion of the Ethereum Virtual Machine (EVM) on its backend. Smart contracts, coded in Solidity, can seamlessly operate on the VinuChain network, just as they do on Ethereum.
+VinuChain is a full EVM-compatible chain. Smart contracts written in Solidity
+deploy and run on VinuChain mainnet (chain 207) exactly as they do on Ethereum.
 
-Deploying a smart contract involves sending a VinuChain transaction containing your bytecode without specifying any recipients. It's essential to have VC tokens to cover the gas fees for the deployment process.
+Deploying a smart contract involves sending a VinuChain transaction containing
+your compiled bytecode with no recipient address. You need VC to cover gas fees.
 
-For acquiring testnet VC tokens, you can utilize the [testnet faucet](https://faucet.vinuscan.com).
+**Mainnet** (chain 207, `https://vinuchain-rpc.com`) is the primary deployment
+target. **Testnet** (chain 206, `https://vinufoundation-rpc.com`) is available
+for testing before mainnet deployment; use the [testnet faucet](https://faucet.vinuscan.com)
+to obtain testnet VC.
 
-Once the contract is successfully deployed, it becomes accessible to all users within the VinuChain network. Smart contracts are assigned a VinuChain address, similar to other accounts on the platform.
+## EVM target support
+
+Mainnet supports the full ELEMONT EVM feature set, including Shanghai, Cancun,
+and Prague hard-fork opcodes. You can use:
+
+* `evmVersion: "cancun"` or `"prague"` in your Solidity/Hardhat compiler config
+* `PUSH0` (EIP-3855), transient storage `TLOAD`/`TSTORE` (EIP-1153), and blob
+  base-fee opcode `BLOBBASEFEE` (EIP-7516)
+* EIP-7702 set-code transactions for smart-account delegation
+* ERC-4337 account abstraction via the canonical EntryPoint v0.7
+  (`0x0000000071727De22E5E9d8BAf0edAc6f37da032`) deployed on mainnet via the
+  Arachnid deterministic deployer
+
+Testnet runs the same EVM feature set and additionally includes EIP-2537
+BLS12-381 precompiles and the P256VERIFY precompile (EIP-7212) — these are
+testnet-only features not yet on mainnet.
 
 ## **Requirements**
 
 * Bytecode (compiled code) of your smart contract
-* VC for gas costs
-* Deployment script/plugin
-* Access to a VinuChain node, by either running your own node or obtaining API access to a node.
-
-For acquiring testnet VC tokens, you can utilize the testnet faucet.
+* VC for gas costs (mainnet VC for mainnet deployment; testnet VC from the [faucet](https://faucet.vinuscan.com) for testing)
+* Deployment script or plugin (Hardhat, Foundry, Remix, etc.)
+* Access to a VinuChain node — use the public RPC endpoints or run your own node
 
 ## Example of smart contract deployment
 

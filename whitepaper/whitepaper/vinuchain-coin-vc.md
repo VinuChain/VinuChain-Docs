@@ -35,7 +35,20 @@ The gas fees (denominated in VC) within each validated block on VinuChain are di
 1. 70% VC to Validators
 2. 30% VC Burned
 
-Users who stake to receive feeless transactions receive their eligible gas costs back within 24 hours, from a pool separate to the above.
+Users who stake to receive feeless transactions receive their eligible gas costs back per epoch, via the Payback fee-refund system.
+
+{% hint style="info" %}
+**Implementation note — fee-refund timing.**
+The original whitepaper described a 24-hour cash-back window. The live
+implementation uses the **epoch-based Payback** model: stakers accrue a
+refund quota each epoch (proportional to their share of total stake), and
+the refund is applied in-protocol as a `feeRefund` on the transaction receipt
+rather than from a separate pool. Refunds are suppressed when the EIP-1559
+base fee is above its configured floor (congestion guard). See the
+[Feeless Transactions](../../technical-docs/smart-contracts/feeless-transactions.md)
+page for current parameters (mainnet Quota proxy
+`0x1c4269fbbd4a8254f69383eef6af720bcd0acda6`, minStake 10 VC).
+{% endhint %}
 
 <br>
 

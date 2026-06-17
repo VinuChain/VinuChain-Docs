@@ -4,13 +4,14 @@
 **Implementation note — whitepaper vs. shipped Payback model.**
 This chapter is the original quota-system specification and uses Vite-era
 vocabulary (UTPS/UTPE, a 74–75 "snapshot block" window, a genesis "airdrop"
-mint for cash-back). The feature that actually ships on VinuChain is the
-**epoch-based Payback** model: eligibility and parameters live in the
-[QuotaContract V2](../../technical-docs/smart-contracts/feeless-transactions.md)
-(`minStake()`, `stake()`/`stakeFor()`, `quotaFactor()`), quota accrues over
+mint for cash-back). The **epoch-based Payback** model is live on VinuChain
+mainnet today: eligibility and parameters live in the Quota contract
+(mainnet proxy `0x1c4269fbbd4a8254f69383eef6af720bcd0acda6`;
+see [Feeless Transactions for Developers](../../technical-docs/smart-contracts/feeless-transactions.md)
+for `minStake()`, `stake()`/`stakeFor()`, `quotaFactor()`), quota accrues over
 **epochs** rather than a fixed snapshot-block window, and the refund is applied
 by the node as a `feeRefund` on the transaction receipt — there is no separate
-airdrop transaction. The shipped node computes the per-address refund cap from
+airdrop transaction. The node computes the per-address refund cap from
 the address's **share of total stake**, the base reward per second, and elapsed
 time (`payback/payback_cache.go`), then refunds `min(fee, quota)` and
 **suppresses refunds under congestion** when the base fee exceeds its floor.
@@ -23,7 +24,7 @@ Concretely, the mapping is:
 | 74–75 snapshot-block window | Current/previous-epoch stake duration |
 | UTPS / UTPE units | Refund cap denominated directly in **wei** (`vc_getPaybackBalance`) |
 | "Airdrop" cash-back mint | In-protocol `feeRefund` credited in the same state transition |
-| Minimum staking amount | `minStake()` on QuotaContract V2 (`1000 VC` on testnet) |
+| Minimum staking amount | `minStake()` on the Quota contract (mainnet: 10 VC) |
 | Maximum quota / quota cap _M_ | Bounded by stake share × base reward × duration, minus quota used |
 
 The §5.4 formulas below have been re-derived from the shipped implementation and

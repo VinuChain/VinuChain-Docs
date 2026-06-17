@@ -10,7 +10,7 @@
 | | Mainnet | Testnet |
 |---|---|---|
 | **Chain ID / Network ID** | `207` (`0xcf`) | `206` (`0xce`) |
-| **Currency** | VC | VC (testnet) |
+| **Currency** | VC | VC |
 | **Public RPC** | `https://vinuchain-rpc.com` | `https://vinufoundation-rpc.com` |
 | **Block explorer** | [vinuexplorer.org](https://vinuexplorer.org) | [testnet.vinuexplorer.org](https://testnet.vinuexplorer.org) |
 | **Alternate explorer** | [mainnet.vinuscan.com](https://mainnet.vinuscan.com) | — |
@@ -21,8 +21,10 @@
 | Contract | Network | Address |
 |---|---|---|
 | SFC (Staking) | both | `0xFC00FACE00000000000000000000000000000000` |
+| NodeDriverAuth | both | `0xD100ae0000000000000000000000000000000000` |
+| NodeDriver | both | `0xd100A01E00000000000000000000000000000000` |
+| QuotaContract (Payback, active) | mainnet | `0x1c4269fbbd4a8254f69383eef6af720bcd0acda6` |
 | QuotaContract V2 (Payback, active) | testnet | `0x89D1cBD9DEAaB4dFf6f800a336FBDd9A5c6829e4` |
-| QuotaContract V1 (superseded on testnet) | mainnet | `0x1c4269fbbd4a8254f69383eef6af720bcd0acda6` |
 
 The full contract table (including VNS) is in the
 [Master Contracts Reference](smart-contracts/contracts-master-list.md).

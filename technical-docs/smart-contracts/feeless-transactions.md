@@ -4,7 +4,7 @@ VinuChain is **determinably feeless**: eligible wallets get their gas fees
 **refunded** after a transaction is mined. This page is the developer-facing
 guide to integrating with that system — the Payback/Quota contract, the
 staking interface, the on-chain refund signal, and the `vc_` RPC namespace —
-with a copy-paste end-to-end example you can run against the public testnet.
+with a copy-paste end-to-end example you can run against mainnet (or testnet).
 
 > **"Feeless" means refunded, not zero-charge.** A Payback-eligible
 > transaction still debits the sender's balance for `gasUsed × gasPrice` when
@@ -46,12 +46,11 @@ refund is **partial**.
 ### The minimum stake
 
 A wallet only becomes refund-eligible once its Payback stake reaches the
-contract's `minStake()`. On the active testnet QuotaContract V2 this is
-`1000 VC` (verified live: `minStake()` returns
-`1000000000000000000000` wei). The value is owner-configurable via
-`setMinStake(uint256)`, so always read it from the contract rather than
-hard-coding it. Below the minimum, transactions pay normal gas and show
-`feeRefund: 0x0`.
+contract's `minStake()`. On **mainnet** the active Quota contract's `minStake()`
+is `10 VC`; on the **testnet** QuotaContract V2 it is `1000 VC`. The value is
+owner-configurable via `setMinStake(uint256)`, so always read it from the
+contract rather than hard-coding it. Below the minimum, transactions pay normal
+gas and show `feeRefund: 0x0`.
 
 ### Quota is dynamic (anti-spam)
 
@@ -74,49 +73,50 @@ would use as the refund cap for that wallet's next transaction.
 
 ## The Payback / Quota contract
 
-| | Value |
-|---|---|
-| **Active contract (testnet)** | `0x89D1cBD9DEAaB4dFf6f800a336FBDd9A5c6829e4` |
-| **Network** | VinuChain Testnet (chain ID `206`) |
-| **RPC** | `https://vinufoundation-rpc.com` |
-| **Explorer** | [testnet.vinuexplorer.org](https://testnet.vinuexplorer.org) |
+| | Mainnet | Testnet |
+|---|---|---|
+| **Active Quota contract** | `0x1c4269fbbd4a8254f69383eef6af720bcd0acda6` | `0x89D1cBD9DEAaB4dFf6f800a336FBDd9A5c6829e4` |
+| **Chain ID** | `207` | `206` |
+| **RPC** | `https://vinuchain-rpc.com` | `https://vinufoundation-rpc.com` |
+| **Explorer** | [vinuexplorer.org](https://vinuexplorer.org) | [testnet.vinuexplorer.org](https://testnet.vinuexplorer.org) |
 
-> The testnet contract address above supersedes an earlier 2026-05-15
-> deployment that had different `stakeFor` withdrawal semantics. Do not use the
-> older address. Confirm the address the node is actually enforcing at any time
-> with `vc_getRules("latest")` → `Economy.QuotaCacheAddress` (see below).
-> The mainnet PaybackV2 contract is part of a later rollout; until then,
-> integrate and test on testnet.
+> Feeless transactions are live on **both** networks. Mainnet runs Payback on
+> its original Quota proxy; testnet runs the newer `QuotaContractV2`, which adds
+> receiver-funded staking (`stakeFor`/`unstakeFor`). Confirm the address the node
+> is actually enforcing at any time with `vc_getRules("latest")` →
+> `Economy.QuotaCacheAddress` (see below).
 
 ### Getting the ABI
 
-The canonical ABI is published in the ecosystem registry
-[Vinuchain-Lists](https://github.com/VinuChain/Vinuchain-Lists) at
-`contracts/vinuchain/QuotaContractV2_abi.json`. The Solidity source lives in
-the same directory (`QuotaContractV2.sol`). For this guide you only need the
-four staking functions and the read-only views, so the inline minimal ABI in
-the example below is enough to get started.
+The canonical ABIs are published in the ecosystem registry
+[Vinuchain-Lists](https://github.com/VinuChain/Vinuchain-Lists) under
+`contracts/vinuchain/` — `QuotaContract_abi.json` for the mainnet Quota contract
+and `QuotaContractV2_abi.json` for the testnet V2 contract (with matching `.sol`
+sources). The node calls the same core methods on both, so the inline minimal ABI
+in the example below is enough to get started.
 
 ### Staking interface
 
-The QuotaContract V2 exposes the following developer-facing functions
-(selectors `stake()`, `stakeFor(address)`, `unstake(uint256)`, and
-`unstakeFor(address,uint256)` are the ones the node recognizes as
-Payback-staking transactions):
+The Quota contract exposes the following developer-facing functions (the node
+recognizes `stake()`, `stakeFor(address)`, `unstake(uint256)`, and
+`unstakeFor(address,uint256)` as Payback-staking transactions). The core
+self-staking functions (`stake`/`unstake`/`withdrawStake`) work on **both**
+networks; the receiver-funded `stakeFor`/`unstakeFor` pair is part of
+**testnet QuotaContractV2** only:
 
 | Function | Signature | Notes |
 |---|---|---|
-| Stake for yourself | `stake() payable` | Credits `msg.sender`; `msg.value` is the staked VC. |
-| Stake for another wallet | `stakeFor(address delegator) payable` | `msg.sender` funds and **keeps withdrawal ownership**; `delegator` receives the Payback quota credit. |
-| Unstake your own stake | `unstake(uint256 amount) → uint256 wrID` | Opens a withdrawal request; funds unlock after `holdTime()`. |
-| Unstake third-party-funded stake | `unstakeFor(address delegator, uint256 amount) → uint256 wrID` | Only the funding wallet (the original `stakeFor` caller) may call this for that `delegator`. |
-| Complete a withdrawal | `withdrawStake(uint256 wrID)` | Callable once `block.timestamp ≥ unlockTime`. |
+| Stake for yourself | `stake() payable` | Credits `msg.sender`; `msg.value` is the staked VC. Both networks. |
+| Stake for another wallet | `stakeFor(address delegator) payable` | **Testnet V2 only.** `msg.sender` funds and **keeps withdrawal ownership**; `delegator` receives the Payback quota credit. |
+| Unstake your own stake | `unstake(uint256 amount) → uint256 wrID` | Opens a withdrawal request; funds unlock after `holdTime()`. Both networks. |
+| Unstake third-party-funded stake | `unstakeFor(address delegator, uint256 amount) → uint256 wrID` | **Testnet V2 only.** Only the funding wallet (the original `stakeFor` caller) may call this for that `delegator`. |
+| Complete a withdrawal | `withdrawStake(uint256 wrID)` | Callable once `block.timestamp ≥ unlockTime`. Both networks. |
 
 Read-only views used by the node and useful to dapps: `minStake()`,
 `getStake(address)`, `totalStake()`, `quotaFactor()`, `feeRefundBlockCount()`,
 `holdTime()`.
 
-> **`stakeFor` ownership.** With `stakeFor(receiver)`, the *funding* wallet
+> **`stakeFor` ownership (testnet V2).** With `stakeFor(receiver)`, the *funding* wallet
 > supplies the VC and is the only party that can withdraw it (via
 > `unstakeFor(receiver, amount)`). The *receiver* gets the Payback quota for
 > transactions it signs but has **no claim** on the staked principal. This lets
@@ -129,7 +129,7 @@ field (a hex-encoded wei amount) to the transaction receipt. Read it with the
 standard `eth_getTransactionReceipt`:
 
 ```bash
-curl -s -X POST https://vinufoundation-rpc.com \
+curl -s -X POST https://vinuchain-rpc.com \
   -H 'Content-Type: application/json' \
   -d '{"jsonrpc":"2.0","method":"eth_getTransactionReceipt","params":["0xYOUR_TX_HASH"],"id":1}' \
   | python3 -c "import sys,json; print(json.load(sys.stdin)['result'].get('feeRefund'))"
@@ -166,42 +166,45 @@ for `vc_` specifically for `vc_getRules` and `vc_getPaybackBalance`.
 Verify the active contract and chain ID live:
 
 ```bash
-# Active Quota contract address the node is enforcing
-curl -s -X POST https://vinufoundation-rpc.com \
+# Active Quota contract address the node is enforcing (mainnet)
+curl -s -X POST https://vinuchain-rpc.com \
   -H 'Content-Type: application/json' \
   -d '{"jsonrpc":"2.0","method":"vc_getRules","params":["latest"],"id":1}' \
   | python3 -c "import sys,json; r=json.load(sys.stdin)['result']; print('chainId', r['NetworkID']); print('quota', r['Economy']['QuotaCacheAddress'])"
 
 # Available Payback quota (wei) for a wallet
-curl -s -X POST https://vinufoundation-rpc.com \
+curl -s -X POST https://vinuchain-rpc.com \
   -H 'Content-Type: application/json' \
   -d '{"jsonrpc":"2.0","method":"vc_getPaybackBalance","params":["0xYOUR_ADDRESS","latest"],"id":1}'
 ```
 
-## End-to-end example (ethers.js, testnet)
+## End-to-end example (ethers.js, mainnet)
 
 This script stakes the minimum for Payback, waits for the quota to accrue,
 sends an ordinary transaction, and reads the `feeRefund` from its receipt — all
-against the live testnet at `https://vinufoundation-rpc.com` (chain `206`).
+against mainnet at `https://vinuchain-rpc.com` (chain `207`).
 
 > **Prerequisites**
 > * Node 18+ and `ethers` v6: `npm i ethers@6`
-> * A funded testnet key with **more than `minStake()` VC plus gas headroom**
->   (≥ ~1001 VC). Get testnet VC from the
->   [faucet](https://faucet.vinuscan.com).
+> * A funded mainnet key with **more than `minStake()` VC plus gas headroom**
+>   (≈ 11 VC).
 > * Run with `PRIVATE_KEY=0x... node feeless.mjs` — never hard-code keys.
+>
+> To run against **testnet** instead, swap in `https://vinufoundation-rpc.com`,
+> the testnet QuotaContractV2 `0x89D1cBD9DEAaB4dFf6f800a336FBDd9A5c6829e4`,
+> chain `206`, and its `minStake` of 1000 VC (fund from the
+> [faucet](https://faucet.vinuscan.com)).
 
 ```javascript
-// feeless.mjs — stake -> send tx -> observe the Payback refund (testnet)
+// feeless.mjs — stake -> send tx -> observe the Payback refund (mainnet)
 import { ethers } from "ethers";
 
-const RPC = "https://vinufoundation-rpc.com";          // VinuChain testnet
-const QUOTA = "0x89D1cBD9DEAaB4dFf6f800a336FBDd9A5c6829e4"; // QuotaContract V2
+const RPC = "https://vinuchain-rpc.com";               // VinuChain mainnet
+const QUOTA = "0x1c4269fbbd4a8254f69383eef6af720bcd0acda6"; // Quota contract
 
 // Minimal ABI: the staking writes + the views we read.
 const QUOTA_ABI = [
   "function stake() payable",
-  "function stakeFor(address delegator) payable",
   "function unstake(uint256 amount) returns (uint256 wrID)",
   "function minStake() view returns (uint256)",
   "function getStake(address) view returns (uint256)",
@@ -219,7 +222,7 @@ const send = (method, params = []) =>
 
 async function main() {
   const me = await wallet.getAddress();
-  console.log("network:", (await provider.getNetwork()).chainId); // 206n
+  console.log("network:", (await provider.getNetwork()).chainId); // 207n
   console.log("wallet :", me);
 
   // 1) Ensure the wallet meets minStake() for Payback.
@@ -283,9 +286,9 @@ main().catch((e) => { console.error(e); process.exit(1); });
 Expected first-run output (abridged) once quota has accrued:
 
 ```
-network: 206n
-minStake: 1000.0 VC
-staking 1000.0 VC for Payback...
+network: 207n
+minStake: 10.0 VC
+staking 10.0 VC for Payback...
 available payback quota: ... wei
 sent tx 0x...
 gas paid   : 0.0000... VC

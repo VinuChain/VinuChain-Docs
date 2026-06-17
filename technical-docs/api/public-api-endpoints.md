@@ -15,6 +15,8 @@ Symbol: VC
 Explorer: https://vinuexplorer.org
 ```
 
+Alternate RPC:
+
 ```
 https://rpc.vinuchain.org
 ```
@@ -43,3 +45,54 @@ Explorer: https://testnet.vinuexplorer.org
 ```
 wss://vinufoundation-rpc.com:4100
 ```
+
+---
+
+### ELEMONT RPC Surface
+
+Both mainnet and testnet expose the ELEMONT RPC extensions introduced with
+the ELEMONT hard-fork.
+
+#### `vc_*` namespace
+
+The `vc_*` namespace mirrors the standard `eth_*` namespace and accepts the
+same arguments and returns the same types. Examples:
+
+| Method | Description |
+|---|---|
+| `vc_blockNumber` | Returns the current block number. |
+| `vc_call` | Executes a call without creating a transaction. |
+| `vc_getRules` | Returns the active consensus rules for the current epoch, including the staged fork flags and quota contract address. |
+
+Most common read/transaction `eth_*` methods have a `vc_*` equivalent (e.g.
+`vc_chainId`, `vc_getBalance`, `vc_getTransactionReceipt`,
+`vc_sendRawTransaction`). The mirror is **not** complete: filter and
+subscription methods (`eth_getLogs`, `eth_newFilter`, `eth_subscribe`) are
+registered only under `eth_*`, so their `vc_*` forms return
+method-not-found (`-32601`). Use the standard `eth_*` methods for normal
+tooling; reach for `vc_*` specifically for `vc_getRules` and
+`vc_getPaybackBalance`.
+
+#### `vc_getPaybackBalance`
+
+```
+vc_getPaybackBalance(address, blockNrOrHash) → quantity
+```
+
+Returns the accrued fee-refund (payback) balance for `address` at the given
+block. This call is rate-limited by the node; if the request queue is
+exhausted the node returns JSON-RPC error **-32005**.
+
+#### `eth_config` / `vc_config`
+
+```
+eth_config() → ForkConfig
+vc_config() → ForkConfig
+```
+
+Returns an object describing the current, next, and last applied fork
+configuration. Each fork entry includes `activationBlock`, `chainId`,
+`forkId`, and `precompiles`.
+
+For the full ELEMONT RPC reference and operator upgrade guide, see
+[VinuChain ELEMONT Upgrade](../vinuchain-mainnet/elemont-upgrade.md).

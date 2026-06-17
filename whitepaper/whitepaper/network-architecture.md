@@ -14,7 +14,18 @@ Ordinary nodes, while not directly involved in the consensus process, fulfill cr
 
 ### 6.3 Quota System
 
-The key divergence between VinuChain and Fantom lies in the introduction of the Quota System. This innovative solution eliminates the direct transaction fee for those who stake a certain amount of VC, replacing it with a quota that grants a specific number of feeless transactions based on the amount staked. This quota refreshes every 24 hours, providing a steady stream of feeless transactions for stakeholders.
+The key divergence between VinuChain and Fantom lies in the introduction of the Quota System. This innovative solution eliminates the direct transaction fee for those who stake a certain amount of VC, replacing it with a quota that grants a specific number of feeless transactions based on the amount staked. This quota accrues and refreshes per epoch, providing a steady stream of feeless transactions for stakeholders.
+
+{% hint style="info" %}
+**Implementation note — quota refresh cadence.**
+The original whitepaper described a 24-hour quota refresh window. The live
+system uses the **epoch-based Payback** model: quota accrues each epoch in
+proportion to the staker's share of total stake, and refunds are applied
+in-protocol as a `feeRefund` on the transaction receipt. See the
+[Quota System](quota-system.md) chapter and the
+[Feeless Transactions](../../technical-docs/smart-contracts/feeless-transactions.md)
+page for full details on the shipped parameters.
+{% endhint %}
 
 ### 6.4 Scalability and Security
 

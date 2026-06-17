@@ -59,7 +59,7 @@ go run ../cmd/opera attach http://localhost:4000
 * Check the balance to ensure that node0 has something to transfer (node0 js-console):
 
 ```
-ftm.getBalance(ftm.accounts[0]);
+vc.getBalance(vc.accounts[0]);
 ```
 
 output shows the balance value:
@@ -71,7 +71,7 @@ output shows the balance value:
 * Get node1 address:
 
 ```
-go run ../cmd/opera attach --exec "ftm.accounts[0]" http://localhost:4001
+go run ../cmd/opera attach --exec "vc.accounts[0]" http://localhost:4001
 ```
 
 output shows address:
@@ -83,8 +83,8 @@ output shows address:
 * Transfer some amount from node0 to node1 address as receiver (node0 js-console):
 
 ```
-ftm.sendTransaction(
-	{from: ftm.accounts[0], to: "0x02aff1d0a9ed566e644f06fcfe7efe00a3261d03", value:  "1000000000"},
+vc.sendTransaction(
+	{from: vc.accounts[0], to: "0x02aff1d0a9ed566e644f06fcfe7efe00a3261d03", value:  "1000000000"},
 	function(err, transactionHash) {
         if (!err)
             console.log(transactionHash + " success");
@@ -100,7 +100,7 @@ output shows unique hash of the outgoing transaction:
 * Check the transaction status by its unique hash (js-console):
 
 ```
-ftm.getTransactionReceipt("0x68a7c1daeee7e7ab5aedf0d0dba337dbf79ce0988387cf6d63ea73b98193adfd").blockNumber
+vc.getTransactionReceipt("0x68a7c1daeee7e7ab5aedf0d0dba337dbf79ce0988387cf6d63ea73b98193adfd").blockNumber
 ```
 
 output shows number of block, transaction was included in:
@@ -112,8 +112,8 @@ output shows number of block, transaction was included in:
 * As soon as transaction is included into a block you will see new balance of both node addresses:
 
 ```
-go run ../cmd/opera attach --exec "ftm.getBalance(ftm.accounts[0])" http://localhost:4000
-go run ../cmd/opera attach --exec "ftm.getBalance(ftm.accounts[0])" http://localhost:4001
+go run ../cmd/opera attach --exec "vc.getBalance(vc.accounts[0])" http://localhost:4000
+go run ../cmd/opera attach --exec "vc.getBalance(vc.accounts[0])" http://localhost:4001
 ```
 
 outputs:

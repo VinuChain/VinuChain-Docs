@@ -24,6 +24,7 @@
 * [Network Details](technical-docs/network-details.md)
 * [VinuChain Mainnet](technical-docs/vinuchain-mainnet/README.md)
   * [Connect to Mainnet](technical-docs/vinuchain-mainnet/connect-to-mainnet.md)
+  * [ELEMONT Upgrade](technical-docs/vinuchain-mainnet/elemont-upgrade.md)
 * [VinuChain Testnet](technical-docs/vinuchain-testnet/README.md)
   * [Connect to Testnet](technical-docs/vinuchain-testnet/connect-to-testnet.md)
   * [Private Network (Fakenet)](technical-docs/vinuchain-testnet/private-network-fakenet.md)

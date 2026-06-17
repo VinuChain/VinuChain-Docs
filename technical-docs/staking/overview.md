@@ -23,9 +23,9 @@ The rewards percentage increases linearly with time, rewarding the most committe
 
 ### Stake for Payback (zero gas fee transactions)
 
-When a user stakes for Payback, they are staking VC to be able to have their gas fees refunded for a number of transactions. The refunding wallet must meet the Payback contract's current `minStake()` before refunds are available. On the corrected testnet PaybackV2 deployment, `minStake()` starts at `1000 VC`; the Quota owner can update this parameter with `setMinStake(uint256)`. Below the current minimum, transactions still pay normal gas and show `feeRefund: 0x0`.
+When a user stakes for Payback, they are staking VC to have their gas fees refunded for a number of transactions. The refunding wallet must meet the Payback contract's current `minStake()` before refunds are available. On mainnet, the V1 Quota proxy (`0x1c4269fbbd4a8254f69383eef6af720bcd0acda6`) has `minStake = 10 VC`. On the testnet PaybackV2 deployment (`0x89D1cBD9DEAaB4dFf6f800a336FBDd9A5c6829e4`), `minStake()` starts at `1000 VC`. Below the current minimum, transactions still pay normal gas and show `feeRefund: 0x0`.
 
-On testnet PaybackV2, VinuChain supports staking VC from one funding wallet for
+On testnet (PaybackV2), VinuChain supports staking VC from one funding wallet for
 another receiver wallet. The receiver wallet receives Payback quota credit and
 gas refunds for transactions it signs once the receiver wallet's total Payback
 stake reaches `minStake()`. The funding wallet keeps ownership of the VC it
@@ -55,8 +55,8 @@ In the fluid staking model, your effective APR:
 
 There are two ways to participate in staking
 
-* [Delegate to a Validator](https://vinu.gitbook.io/vinuchain/technical-docs/staking/stake-vc-on-vinuchain)
-* [Run a Validator Node](https://vinu.gitbook.io/vinuchain/technical-docs/nodes-and-validators/become-a-validator)
+* [Delegate to a Validator](./stake-vc-on-vinuchain.md)
+* [Run a Validator Node](../nodes-and-validators/become-a-validator.md)
 
 | Comparison           | Delegation                                             | Validator Node                                          |
 | -------------------- | ------------------------------------------------------ | ------------------------------------------------------- |
@@ -65,4 +65,4 @@ There are two ways to participate in staking
 | Needed expertise     | None                                                   | DevOps                                                  |
 | Rewards              | Staking rewards minus a 15% fee to delegated validator | Staking rewards plus a 15% fee from delegators' rewards |
 
-[Running a validator node](https://vinu.gitbook.io/vinuchain/technical-docs/nodes-and-validators/become-a-validator) earns more rewards but requires active management and DevOps experience.
+[Running a validator node](../nodes-and-validators/become-a-validator.md) earns more rewards but requires active management and DevOps experience.
