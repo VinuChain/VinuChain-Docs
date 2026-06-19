@@ -8,8 +8,8 @@ your compiled bytecode with no recipient address. You need VC to cover gas fees.
 
 **Mainnet** (chain 207, `https://vinuchain-rpc.com`) is the primary deployment
 target. **Testnet** (chain 206, `https://vinufoundation-rpc.com`) is available
-for testing before mainnet deployment; use the [testnet faucet](https://faucet.vinuscan.com)
-to obtain testnet VC.
+for testing before mainnet deployment; request testnet VC in the
+[VinuChain Discord](https://discord.gg/vinu).
 
 ## EVM target support
 
@@ -35,7 +35,7 @@ testnet-only features not yet on mainnet.
 ## **Requirements**
 
 * Bytecode (compiled code) of your smart contract
-* VC for gas costs (mainnet VC for mainnet deployment; testnet VC from the [faucet](https://faucet.vinuscan.com) for testing)
+* VC for gas costs (mainnet VC for mainnet deployment; testnet VC requested in the [VinuChain Discord](https://discord.gg/vinu) for testing)
 * Deployment script or plugin (Hardhat, Foundry, Remix, etc.)
 * Access to a VinuChain node — use the public RPC endpoints or run your own node
 

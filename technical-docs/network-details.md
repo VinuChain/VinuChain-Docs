@@ -13,8 +13,8 @@
 | **Currency** | VC | VC |
 | **Public RPC** | `https://vinuchain-rpc.com` | `https://vinufoundation-rpc.com` |
 | **Block explorer** | [vinuexplorer.org](https://vinuexplorer.org) | [testnet.vinuexplorer.org](https://testnet.vinuexplorer.org) |
-| **Alternate explorer** | [mainnet.vinuscan.com](https://mainnet.vinuscan.com) | — |
-| **Faucet** | — | [faucet.vinuscan.com](https://faucet.vinuscan.com) |
+| **Alternate explorer** | [mainnet.vinuscan.com](https://mainnet.vinuscan.com) | [testnet.vinuscan.com](https://testnet.vinuscan.com) |
+| **Faucet** | — | [Request in Discord](https://discord.gg/vinu) |
 
 ## Key contracts
 

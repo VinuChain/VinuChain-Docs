@@ -192,8 +192,8 @@ against mainnet at `https://vinuchain-rpc.com` (chain `207`).
 >
 > To run against **testnet** instead, swap in `https://vinufoundation-rpc.com`,
 > the testnet QuotaContractV2 `0x89D1cBD9DEAaB4dFf6f800a336FBDd9A5c6829e4`,
-> chain `206`, and its `minStake` of 1000 VC (fund from the
-> [faucet](https://faucet.vinuscan.com)).
+> chain `206`, and its `minStake` of 1000 VC (request testnet VC in the
+> [VinuChain Discord](https://discord.gg/vinu)).
 
 ```javascript
 // feeless.mjs — stake -> send tx -> observe the Payback refund (mainnet)
