@@ -20,7 +20,7 @@ const signTransaction = async (tx, myContract, contractGas = false) => {
     gas,
     gasPrice,
     nonce,
-    chainId: 207 // VinuChain mainnet; use 206 for testnet
+    chainId: await web3.eth.getChainId() // matches the connected RPC (207 mainnet / 206 testnet)
   };
 
   if (contractGas) {

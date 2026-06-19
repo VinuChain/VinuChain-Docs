@@ -17,12 +17,16 @@ Mainnet supports the full ELEMONT EVM feature set, including Shanghai, Cancun,
 and Prague hard-fork opcodes. You can use:
 
 * `evmVersion: "cancun"` or `"prague"` in your Solidity/Hardhat compiler config
-* `PUSH0` (EIP-3855), transient storage `TLOAD`/`TSTORE` (EIP-1153), and blob
-  base-fee opcode `BLOBBASEFEE` (EIP-7516)
+* `PUSH0` (EIP-3855), transient storage `TLOAD`/`TSTORE` (EIP-1153), and `MCOPY`
+  (EIP-5656)
 * EIP-7702 set-code transactions for smart-account delegation
 * ERC-4337 account abstraction via the canonical EntryPoint v0.7
   (`0x0000000071727De22E5E9d8BAf0edAc6f37da032`) deployed on mainnet via the
   Arachnid deterministic deployer
+
+VinuChain implements **selected (non-blob) Cancun**: EIP-4844 blob transactions
+and the `BLOBBASEFEE` opcode (EIP-7516) are **not** supported. Avoid relying on
+`block.blobbasefee` or blob-carrying transactions in your contracts.
 
 Testnet runs the same EVM feature set and additionally includes EIP-2537
 BLS12-381 precompiles and the P256VERIFY precompile (EIP-7212) — these are

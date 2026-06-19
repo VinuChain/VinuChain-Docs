@@ -19,7 +19,7 @@ what node operators need to know.
 |---|---|
 | **SfcV2** | V2 SFC (staking) bytecode at `0xFC00FACE…0000`, with a **30% burn of the validator base-fee share**. |
 | **Shanghai** | `PUSH0`, warm coinbase, and Shanghai transaction rules. |
-| **Cancun** | Transient storage (`TLOAD`/`TSTORE`), `MCOPY`, `BLOBBASEFEE`, and the Cancun `SELFDESTRUCT` semantics. |
+| **Cancun** | Selected (non-blob) Cancun: transient storage (`TLOAD`/`TSTORE`), `MCOPY`, and the Cancun `SELFDESTRUCT` (EIP-6780) semantics. Blob transactions (EIP-4844) and the `BLOBBASEFEE` opcode (EIP-7516) are **not** enabled. |
 | **Prague** | **EIP-7702 set-code transactions** (type `0x04`) — EOAs can delegate to contract code, the foundation for account-abstraction UX on ordinary wallets. |
 | **Elemont** | Consensus-critical correctness fixes (merged no-cheaters view, full ABI decode of epoch advances, cheater-fee zeroing, deterministic vector-clock tie-breaking, stable median-time sort, empty-pubkey validator skip at epoch seal). |
 | **ElemontPubkeyValidation** | Validator pubkeys must be the canonical 66-byte `0xc0`-prefixed Secp256k1 form at every on-chain ingress (`createValidator`, `_rawCreateValidator`, `updateValidatorPubkey`). Malformed keys are rejected. |
