@@ -8,12 +8,12 @@
 - **Validator offline >1,000 epochs cannot rejoin** → upgrade to v2.0.8-elemont (removes the `validatePeerProgress` drift cap). See [Chain Upgrade Guide → stuck peercount](../vinuchain-testnet/chain-upgrade-guide.md#stuck-at-net-peercount-1-with-one-stale-peer).
 - **`WARN Incoming event rejected ... err="wrong event epoch hash"`** → fresh resync from genesis **does not work** on current binary rules. Use the latest post-seal chaindata snapshot at `s3://vinu-blockchain-genesis/chaindata-snapshots/` — see [Chain Upgrade Guide → wrong event epoch hash](../vinuchain-testnet/chain-upgrade-guide.md#warn-incoming-event-rejected-err-wrong-event-epoch-hash) for the recovery procedure.
 
-Latest public post-latest-EVM snapshot: `https://vinu-blockchain-genesis.s3.amazonaws.com/chaindata-snapshots/testnet-chaindata-v2.0.37-elemont-post-vinulatestevm-20260603T150430Z-clean.tar.gz` (published 2026-06-03, tip epoch 5909 / block 1,483,201). SHA256 `b3f2e104df0dde4f9f00c7624479d68aa89de2c9926c953535abd2c9d009e672`. Excludes `nodekey` / `keystore/` / `static-nodes.json` so your validator identity is preserved during extraction. It includes both `VinuBLS12381: active` and `VinuLatestEVM: active`.
+Latest public snapshot (post-`SfcV2Patch7`): `https://vinu-blockchain-genesis.s3.amazonaws.com/chaindata-snapshots/testnet-chaindata-v2.0.41-elemont-20260621T221749Z-clean.tar.gz` (published 2026-06-21, tip block 1,508,528 / epoch 6017). SHA256 `a7dcbd2abc720e0ea1c6582d74a82aef151d49ea5027491704b3e145099f36d1`. Excludes `nodekey` / `keystore/` / `static-nodes.json` so your validator identity is preserved during extraction. It includes `VinuBLS12381`, `VinuLatestEVM`, and `SfcV2Patch7` all active.
 {% endhint %}
 
 ## 1. Supported go-opera version <a href="#id-1.-current-version-of-go-opera" id="id-1.-current-version-of-go-opera"></a>
 
-The current node release is **v2.0.39-elemont** for both mainnet and testnet. Mainnet runs the ELEMONT feature set now. Build it from the `v2.0.39-elemont` tag with Go 1.25+ (see [Read-Only Node](read-only-node.md)).
+The current node release is **v2.0.41-elemont** for testnet (mainnet runs the ELEMONT feature set on the latest mainnet-compatible build). Build it from the `v2.0.41-elemont` tag with Go 1.25+ (see [Read-Only Node](read-only-node.md)).
 
 ### **1.0 Pre-flight checklist** <a href="#id-1.0-pre-flight-checklist" id="id-1.0-pre-flight-checklist"></a>
 
@@ -47,8 +47,8 @@ Context: the 2026-04-23 mainnet RPC recovery required exactly this sequence afte
 Chaindata snapshots from `s3://vinu-blockchain-genesis/chaindata-snapshots/` are typically ~1 GiB compressed. Long-running downloads over SSM can be cut short by an SSM session timeout (20 min default), CloudFlare connection drop, or a transient instance networking blip. To make the download resumable, always pass `curl -C - -o <file> <url>`:
 
 ```
-curl -C - -o testnet-chaindata-v2.0.37-elemont-post-vinulatestevm-20260603T150430Z-clean.tar.gz \
-  https://vinu-blockchain-genesis.s3.amazonaws.com/chaindata-snapshots/testnet-chaindata-v2.0.37-elemont-post-vinulatestevm-20260603T150430Z-clean.tar.gz
+curl -C - -o testnet-chaindata-v2.0.41-elemont-20260621T221749Z-clean.tar.gz \
+  https://vinu-blockchain-genesis.s3.amazonaws.com/chaindata-snapshots/testnet-chaindata-v2.0.41-elemont-20260621T221749Z-clean.tar.gz
 ```
 
 The `-C -` flag auto-resumes from the byte offset already on disk if the file exists, or starts from zero if it doesn't. Without it, an interrupted `curl` forces a full redownload and wastes the partial bytes.
@@ -155,7 +155,7 @@ If your node is in dirty state (it may happen occasionally), do a fresh resync a
 
 * Stop the node
 * Remove the current (broken) datadir (the default datadir is located at \~/.opera)
-* Rebuild the current binary: `git clone https://github.com/VinuChain/VinuChain.git && cd VinuChain && git checkout v2.0.39-elemont && make opera` (requires Go 1.25+)
+* Rebuild the current binary: `git clone https://github.com/VinuChain/VinuChain.git && cd VinuChain && git checkout v2.0.41-elemont && make opera` (requires Go 1.25+)
 * Run your node again in read mode
 
 ### **4.2 Slow syncing** <a href="#id-4.2-slow-syncing" id="id-4.2-slow-syncing"></a>
@@ -265,3 +265,23 @@ The reward-stashing cursor is bounded by `MAX_CORRUPTION_CHECK_EPOCHS = 100` per
 ### Future prevention
 
 The current SFC bytecode rejects malformed pubkeys at `createValidator` ingress, so this condition cannot recur for new admissions. The `ElemontPubkeyValidation` upgrade flag also ejects already-admitted malformed validators from the active set at the next epoch seal. See [Become a Validator](become-a-validator.md#register-your-validator) and [Validator Calls → Create validator](validator-calls.md#create-validator) for the canonical pubkey format requirements.
+
+## 7. Pending rewards shown, but Claim / Restake fails with "zero rewards"
+
+If your staking page shows a **non-zero pending rewards** balance for a validator, but `claimRewards` and `restakeRewards` revert with `"zero rewards"`, your delegation's reward cursor is stuck. This issue was **resolved in v2.0.41-elemont (deployed 2026-06-21)**: the `_rawDelegate` cursor-init fix prevents new first-delegations from stranding rewards, and a one-shot migration corrected the 12 known stuck delegator cursors at the `SfcV2Patch7` activation (block 1,508,211). Claims and restakes for those delegators now succeed.
+
+This is different from [§6](#6-delegated-stake-stuck-on-a-non-rewarding-validator): in §6 the validator genuinely never earned rewards, so the pending-rewards figure is zero. Here the validator **is** healthy and earning, the pending-rewards **view** over-reports a non-zero figure, and the claim path reverts because the cursor lags behind.
+
+### How to confirm
+
+* Your staking page (or `pendingRewards(yourAddress, <VID>)`) shows a non-zero amount.
+* `claimRewards(<VID>)` and `restakeRewards(<VID>)` both revert with `"zero rewards"`.
+* The validator is otherwise healthy — it has a canonical `0xc0…` pubkey (66 bytes) and `getEpochAccumulatedRewardPerToken(epoch, <VID>)` strictly increases over recent epochs (i.e. it is **not** the malformed-validator case in §6).
+
+### What to do — and what NOT to do
+
+* **Do NOT** attempt repeated `delegate` / `undelegate` calls to try to force the cursor forward. Unlike the §6 procedure, walking the cursor by hand on a **rewarding** validator can mint more than you are actually owed, so this path is unsafe here and must not be used.
+* If you were one of the 12 affected delegators: your cursor was corrected at block 1,508,211 — **retry Claim or Restake now**. It should succeed.
+* If you **still** see this symptom after the fix:
+  * **Check your node/RPC is past block 1,508,211 and running v2.0.41-elemont.** A non-upgraded node diverges with `wrong event epoch hash` and shows stale state — upgrade and re-sync from the [v2.0.41 snapshot](../vinuchain-testnet/chain-upgrade-guide.md).
+  * If your node is current and the revert persists, your delegation may be a newly surfaced case that was not among the 12 corrected by the migration. **Report it through the official VinuChain channels** — the permanent cursor-init fix prevents brand-new delegations from getting stuck, but the team can apply a targeted correction if a pre-existing delegation was missed.
