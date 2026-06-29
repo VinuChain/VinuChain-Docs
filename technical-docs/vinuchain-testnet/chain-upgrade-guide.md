@@ -457,10 +457,10 @@ Confirm your node is on the same chain as the network:
 curl -s -X POST http://localhost:18545/ \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc":"2.0","method":"eth_getBlockByNumber","params":["latest",false],"id":1}' \
-  | jq -r '"Block \(.result.number | tonumber): \(.result.hash)"'
+  | jq -r '"Block \(.result.number): \(.result.hash)"'
 ```
 
-Compare the block number and hash against the public RPC or another validator's node. If they match, you are on the correct chain.
+The block number is returned as a hex quantity (e.g. `0x1705f0`) — `jq`'s `tonumber` does not parse hex, so print it as-is. Compare the block number and hash against the public RPC or another validator's node; if they match, you are on the correct chain. (For a decimal value, run `printf '%d\n' 0x1705f0`.)
 {% endstep %}
 
 {% step %}
