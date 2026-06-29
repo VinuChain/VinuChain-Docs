@@ -123,7 +123,11 @@ Note that, after your node is stopped, if you want to rerun it again, don't run 
 
 ### **3.4 Offline node** <a href="#offline-node" id="offline-node"></a>
 
-If your validator node is down for more than **5 days**, then it will become offline (i.e., pruned from the network).&#x20;
+If your validator node stays down long enough to cross the SFC offline-penalty threshold — **more than 7,200 missed blocks _and_ at least ~5 days offline** (both conditions must be met) — the SFC deactivates it and drops it from the active validator set. Once that happens it cannot be reactivated in place (there is no on-chain reactivate call).&#x20;
+
+{% hint style="success" %}
+**Came back before the threshold tripped?** On testnet you can revive the **same** validator (same validator ID and stake) instead of recreating it — even if the node fell thousands of blocks/epochs behind. See [§8 Reviving a dead or long-offline validator (testnet)](#id-8.-reviving-a-dead-or-long-offline-validator-testnet). The recovery steps below apply only once the SFC has already deactivated the validator.
+{% endhint %}
 
 For an offline node, you can [undelegate](delegation-calls.md) and wait the validator self-stake withdrawal period — **180 epochs and 3 days** (both must elapse) — before you can withdraw. After that, you can transfer funds to a new wallet and make a new validator if you wish.&#x20;
 
@@ -285,3 +289,169 @@ This is different from [§6](#6-delegated-stake-stuck-on-a-non-rewarding-validat
 * If you **still** see this symptom after the fix:
   * **Check your node/RPC is past block 1,508,211 and running v2.0.41-elemont.** A non-upgraded node diverges with `wrong event epoch hash` and shows stale state — upgrade and re-sync from the [v2.0.41 snapshot](../vinuchain-testnet/chain-upgrade-guide.md).
   * If your node is current and the revert persists, your delegation may be a newly surfaced case that was not among the 12 corrected by the migration. **Report it through the official VinuChain channels** — the permanent cursor-init fix prevents brand-new delegations from getting stuck, but the team can apply a targeted correction if a pre-existing delegation was missed.
+
+## 8. Reviving a dead or long-offline validator (testnet) <a href="#id-8.-reviving-a-dead-or-long-offline-validator-testnet" id="id-8.-reviving-a-dead-or-long-offline-validator-testnet"></a>
+
+If your validator has been down, or fell so far behind that it can no longer catch up — the classic "dead validator" — you can in most cases bring **the same validator** (same validator ID, same stake) back to life on the public testnet (chain 206), provided you act before the SFC's on-chain offline-penalty threshold deactivates it. This section is the end-to-end runbook.
+
+{% hint style="warning" %}
+**There is a hard deadline.** Two separate clocks decide whether you revive in place or have to start over:
+
+1. **The node re-sync clock** — a node that has been offline a long time used to be permanently locked out of re-peering. That limit was removed in `v2.0.8-elemont` (see [8.2](#id-8-2)), so on a current binary a stale node can always re-peer and sync forward, no matter how far behind.
+2. **The on-chain SFC offline clock — this is the one that decides your fate.** The SFC deactivates an offline validator once it has missed **more than `offlinePenaltyThresholdBlocksNum` (7,200 blocks) _and_ been offline for at least `offlinePenaltyThresholdTime` (~5 days)** — _both_ conditions must hold. Until that trips, your validator keeps `status = 0` and you can revive it in place. After it trips, the validator is dropped from the active set and **there is no on-chain `reactivate` call** (see [8.5](#id-8-5)) — you must unwind the stake and create a brand-new validator with a new ID.
+{% endhint %}
+
+### 8.1 First, check your on-chain status <a href="#id-8-1" id="id-8-1"></a>
+
+The deciding fact is the SFC's view of your validator, not the state of your box. Attach to any synced node's Opera console and initialise the `sfcc` object exactly as in [Become a Validator → Initialize SFC](become-a-validator.md#initialize-sfc), then read (replace `<VID>` with your validator ID):
+
+```javascript
+sfcc.getValidator(<VID>)
+// returns (status, deactivatedTime, deactivatedEpoch, receivedStake, createdEpoch, createdTime, auth)
+```
+
+- **`status == 0` and `deactivatedEpoch == 0`** → your validator is still **active**. Proceed with [8.4](#id-8-4) — you keep your ID and stake.
+- **`status != 0`, or a non-zero `deactivatedEpoch` / `deactivatedTime`** → the SFC has already **deactivated** your validator (offline penalty, withdrawal, or double-sign). Skip to [8.5](#id-8-5); the node-level steps alone cannot put a deactivated validator back into the set.
+
+Confirm your stake is still committed (a fully undelegated/withdrawn self-stake is terminal):
+
+```javascript
+sfcc.getSelfStake(<VID>)   // must still be >= sfcc.minSelfStake()
+```
+
+### 8.2 Why a long-dead node can rejoin at all <a href="#id-8-2" id="id-8-2"></a>
+
+Earlier testnet binaries (`v1.0.0-elemont` … `v2.0.7-elemont`) carried a peer-progress sanity check that rejected any peer reporting progress **more than 1,000 epochs or 5,000 blocks ahead** of the local head. A validator offline long enough to fall past those bounds therefore rejected **every** current-tip peer on the handshake and could never catch up. The fingerprint, seen on the healthy (tip-side) peer, is a ~30-second churn loop:
+
+```text
+Adding p2p peer    conn=inbound ...
+Removing p2p peer  req=true err="subprotocol error"     (~175 ms later)
+```
+
+— while the stale node itself sits at `net.peerCount == 0/1` and never advances its head.
+
+`v2.0.8-elemont` removed those drift caps (`validatePeerProgress` now only rejects a structurally invalid zero-epoch progress), so a node re-peers with the tip regardless of how far behind it is — the deeper acceptance checks still gate actual state changes on epoch equality, so this is safe. **You must therefore be on `v2.0.8-elemont` or later to revive a long-dead validator; use the current release `v2.0.41-elemont`.** If you still see the `subprotocol error` churn above, you are on a pre-`v2.0.8` binary and must upgrade first.
+
+{% hint style="info" %}
+**Scope.** External validators run on the **public testnet**, and this runbook is written for testnet operators on the `v2.x-elemont` binary line — the drift-cap regression and its fix were confined to that lineage. The on-chain offline-deactivation behaviour in [8.1](#id-8-1) / [8.5](#id-8-5) is enforced by the SFC contract itself and is independent of the node binary.
+{% endhint %}
+
+### 8.3 Step 0 — double-sign safety (do this first) <a href="#id-8-3" id="id-8-3"></a>
+
+{% hint style="danger" %}
+**Never run two copies of the same validator key.** If a second process signs consensus events with your validator key while the first is (or comes back) online, you double-sign — which is slashed and **permanently** deactivates the validator. Before starting the revived node, make sure no other instance of this validator is running anywhere. If you are reviving on a **new** host, stop the old node and wait **at least 40 minutes** before starting validator mode on the new host (see [§3.2 Migration to a new server](#migration-to-a-new-server)).
+{% endhint %}
+
+### 8.4 Revival procedure <a href="#id-8-4" id="id-8-4"></a>
+
+{% stepper %}
+{% step %}
+
+#### Upgrade to the current binary
+
+Build and verify the current release tag, following [Chain Upgrade Guide → Download and build](../vinuchain-testnet/chain-upgrade-guide.md#download-and-build-the-new-binary):
+
+```bash
+git clone https://github.com/VinuChain/VinuChain.git $HOME/vinuchain-upgrade
+cd $HOME/vinuchain-upgrade && git checkout v2.0.41-elemont && make opera
+./build/opera version   # Expected: Version: 2.0.41-elemont
+```
+
+Anything `>= v2.0.8-elemont` clears the drift-cap lockout; `v2.0.41-elemont` is the current consensus release and the version your chaindata must match.
+{% endstep %}
+
+{% step %}
+
+#### Restore chain state
+
+- **Datadir intact and not past a missed consensus seal** → just restart in read mode; with the drift caps gone it peers with the tip and syncs forward on its own.
+- **Long-dead, corrupted, or stale across a fork seal** → a stale datadir replays historical forks under the wrong rules and halts with `WARN Incoming event rejected ... err="wrong event epoch hash"`. Restore from the latest chaindata snapshot per [Chain Upgrade Guide → wrong event epoch hash](../vinuchain-testnet/chain-upgrade-guide.md#warn-incoming-event-rejected-err-wrong-event-epoch-hash). For any validator dead more than a few hours this is the reliable path.
+
+{% hint style="warning" %}
+**Preserve your identity files.** Back up `<datadir>/keystore/` and `<datadir>/go-opera/nodekey` before deleting any chaindata. The published snapshots deliberately exclude `nodekey`, `keystore/`, `static-nodes.json`, and `trusted-nodes.json`, so extracting one over your datadir keeps your validator identity intact. **Do not resync from genesis on testnet** — it stages not-yet-sealed forks at the wrong heights and diverges immediately.
+{% endhint %}
+{% endstep %}
+
+{% step %}
+
+#### Bring it up as a read node and confirm it re-peers
+
+Start **without** the validator flags first and let it catch up. `--nat extip` is effectively required — without it your node advertises `127.0.0.1` and stalls at `net.peerCount == 1` (see [Stuck at net.peerCount == 1](../vinuchain-testnet/chain-upgrade-guide.md#stuck-at-net-peercount-1-with-one-stale-peer)):
+
+```bash
+cd $HOME/vinuchain-upgrade/build
+nohup ./opera \
+  --bootnodes "enode://e2a95c1b8d85b018b8e88133bec342801b42e19b59a52e030462d04a5549f02fc57215b4ca97771ec6b3a0d30a78603fdccd2b5091c44f6ac439d6c8be8bc539@44.239.129.39:3000,enode://7a45d086b9c82bd3677a76d36e003b9490066d56b612f33d05cb4d242212acd4e5cab4abbcb15a0df9aa499e41b4b4e868d82ba1c509c1990c9217dfe4607775@44.239.129.39:3001,enode://d8e37eeba79b2c52dcba6e396ff907f27a6a8f7db34528cb8636bc3271291657a01c5649bff53429cea8a23b03fac13a178813c34c6d17d14f7b810a988393b5@44.239.129.39:3002,enode://3f15b5ac22dea3e37a90cd9378cf0cd4ed9ea122851846c8108fcc7d2c7e709ea4a089cf3da93c0d3d3053250417cf0ea9ad9eff0aa77ff07d76b6cf267a2937@44.239.129.39:3003" \
+  --nat extip:<your_public_ipv4> \
+  --datadir <datadir> \
+  > sync.log &
+echo $! > opera.pid    # record THIS read node's PID for a targeted stop in step 4
+```
+
+`<datadir>` is the directory you restored the snapshot into in the previous step — the one holding your preserved `keystore/` and `go-opera/nodekey`. **Omit `--datadir` only if that directory is the default `~/.opera`**; otherwise the node will boot the wrong (default) database and fail to find your validator identity.
+
+Verify catch-up — attach with `./opera attach` (or `./opera attach <datadir>/opera.ipc` if you started with a custom `--datadir`):
+
+- `net.peerCount` climbs to 4+.
+- `New DAG summary` log lines show `age=` in seconds/milliseconds, not hours.
+- `eth_syncing` returns `false` and your tip matches the public RPC:
+
+```bash
+curl -s -X POST https://vinufoundation-rpc.com -H 'content-type: application/json' \
+  -d '{"jsonrpc":"2.0","method":"eth_getBlockByNumber","params":["latest",false],"id":1}' \
+  | jq -r '"Block \(.result.number): \(.result.hash)"'
+```
+
+The block number is returned as a hex quantity (e.g. `0x1705f0`); compare it (and the hash) against another node's `latest`. For a decimal value, run `printf '%d\n' 0x1705f0`.
+
+You should **not** see the `Removing p2p peer ... err="subprotocol error"` churn from [8.2](#id-8-2); if you do, you are still on a pre-`v2.0.8` binary.
+{% endstep %}
+
+{% step %}
+
+#### Restart in validator mode
+
+Once fully synced, stop **only the read node you started in step 3** (never `pkill opera` — on a host running more than one validator that stops every validator at once; see [§3.0 Multi-opera safety](#id-3.0-multi-opera-safety)) and relaunch with your validator flags — the **same** ID and pubkey you registered, and always an **absolute** path for the password file:
+
+```bash
+# Stop ONLY the read node started in step 3, by its recorded PID.
+kill -TERM "$(cat opera.pid)"
+# Wait for a clean exit (releases the datadir/IPC lock) before relaunch. If it never
+# exits, check the logs; only `kill -KILL "$(cat opera.pid)"` as a last resort.
+while kill -0 "$(cat opera.pid)" 2>/dev/null; do sleep 1; done
+
+nohup ./opera \
+  --bootnodes "<full canonical testnet bootnodes — copy the complete string from step 3>" \
+  --nat extip:<your_public_ipv4> \
+  --datadir <datadir> \
+  --validator.id <YOUR_VALIDATOR_ID> \
+  --validator.pubkey 0xYOUR_PUBKEY \
+  --validator.password /absolute/path/to/password.txt \
+  > validator.log &
+```
+
+The `--bootnodes` value is the **same complete four-enode string** shown in step 3 — copy it verbatim; truncated enodes will fail to peer. Your validator ID and stake are unchanged — you are **resuming the existing validator**, not creating a new one.
+{% endstep %}
+
+{% step %}
+
+#### Verify the revival
+
+- **Emitting again:** `validator.log` shows your node producing/confirming events and the chain head advancing.
+- **Still active on-chain:** `sfcc.getValidator(<VID>)` still returns `status == 0`, and at the next epoch seal `sfcc.getEpochValidatorIDs(sfcc.currentEpoch())` includes your `<VID>` — confirming you are back in the active set.
+- **Stake intact:** `sfcc.getSelfStake(<VID>)` is unchanged.
+{% endstep %}
+{% endstepper %}
+
+### 8.5 If your validator was already offline-deactivated <a href="#id-8-5" id="id-8-5"></a>
+
+If [8.1](#id-8-1) showed a non-zero `status` or `deactivatedEpoch`, the SFC has already removed your validator from the set. **There is no public `reactivate` function** — the only state-changing validator entrypoints are `createValidator`, `deactivateValidator`, and (genesis-only) `setGenesisValidator`. A deactivated validator ID is permanent.
+
+Recovery is the same as the [§3.4 Offline node](#offline-node) path:
+
+1. If your stake is locked, [`unlockStake()`](lockup-calls.md) first (an early-unlock penalty may apply).
+2. [`undelegate()`](delegation-calls.md) your self-stake and wait the validator bonding period — **180 epochs and 3 days** (both must elapse).
+3. [`withdraw()`](delegation-calls.md) your stake back to your wallet.
+4. Start over from [Become a Validator](become-a-validator.md) with a fresh `createValidator` — this mints a **new** validator ID.
+
+To avoid this next time, bring a downed node back **before** the offline-penalty threshold trips (see the deadline box at the top of this section), and keep `nodekey` + `keystore/` backed up so a fast snapshot-restore is always available.
