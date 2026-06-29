@@ -123,10 +123,10 @@ Note that, after your node is stopped, if you want to rerun it again, don't run 
 
 ### **3.4 Offline node** <a href="#offline-node" id="offline-node"></a>
 
-If your validator node stays down long enough to cross the SFC offline-penalty threshold — **more than 7,200 missed blocks _and_ at least ~5 days offline** (both conditions must be met) — the SFC deactivates it and drops it from the active validator set. Once that happens it cannot be reactivated in place (there is no on-chain reactivate call).&#x20;
+If your validator node stays down long enough to cross the SFC offline-penalty threshold — **more than 7,200 missed blocks _and_ at least ~5 days offline** (both conditions must be met) — the SFC deactivates it and drops it from the active validator set. Whether you can get that exact validator back depends on the network and the reason for deactivation (see [§8.5](#id-8-5)): on **testnet** an offline-deactivated validator can be reactivated in place by the SFC owner, but a **slashed** (double-sign) validator cannot, and **mainnet** has no reactivation path at all.&#x20;
 
 {% hint style="success" %}
-**Came back before the threshold tripped?** On testnet you can revive the **same** validator (same validator ID and stake) instead of recreating it — even if the node fell thousands of blocks/epochs behind. See [§8 Reviving a dead or long-offline validator (testnet)](#id-8.-reviving-a-dead-or-long-offline-validator-testnet). The recovery steps below apply only once the SFC has already deactivated the validator.
+**Came back before the threshold tripped?** On testnet you can revive the **same** validator (same validator ID and stake) instead of recreating it — even if the node fell thousands of blocks/epochs behind. See [§8 Reviving a dead or long-offline validator (testnet)](#id-8.-reviving-a-dead-or-long-offline-validator-testnet). If the SFC has **already** deactivated it, [§8.5](#id-8-5) covers the reactivate-vs-recreate decision; the undelegate/withdraw/recreate steps below are the path when reactivation isn't possible.
 {% endhint %}
 
 For an offline node, you can [undelegate](delegation-calls.md) and wait the validator self-stake withdrawal period — **180 epochs and 3 days** (both must elapse) — before you can withdraw. After that, you can transfer funds to a new wallet and make a new validator if you wish.&#x20;
@@ -292,13 +292,13 @@ This is different from [§6](#6-delegated-stake-stuck-on-a-non-rewarding-validat
 
 ## 8. Reviving a dead or long-offline validator (testnet) <a href="#id-8.-reviving-a-dead-or-long-offline-validator-testnet" id="id-8.-reviving-a-dead-or-long-offline-validator-testnet"></a>
 
-If your validator has been down, or fell so far behind that it can no longer catch up — the classic "dead validator" — you can in most cases bring **the same validator** (same validator ID, same stake) back to life on the public testnet (chain 206), provided you act before the SFC's on-chain offline-penalty threshold deactivates it. This section is the end-to-end runbook.
+If your validator has been down, or fell so far behind that it can no longer catch up — the classic "dead validator" — you can in most cases bring **the same validator** (same validator ID, same stake) back to life on the public testnet (chain 206). If it is still active on-chain you do this entirely yourself ([8.4](#id-8-4)); if the SFC has already offline-deactivated it, testnet's SFC — unlike mainnet's — lets the **owner** reactivate it in place ([8.5](#id-8-5)). This section is the end-to-end runbook.
 
 {% hint style="warning" %}
 **There is a hard deadline.** Two separate clocks decide whether you revive in place or have to start over:
 
 1. **The node re-sync clock** — a node that has been offline a long time used to be permanently locked out of re-peering. That limit was removed in `v2.0.8-elemont` (see [8.2](#id-8-2)), so on a current binary a stale node can always re-peer and sync forward, no matter how far behind.
-2. **The on-chain SFC offline clock — this is the one that decides your fate.** The SFC deactivates an offline validator once it has missed **more than `offlinePenaltyThresholdBlocksNum` (7,200 blocks) _and_ been offline for at least `offlinePenaltyThresholdTime` (~5 days)** — _both_ conditions must hold. Until that trips, your validator keeps `status = 0` and you can revive it in place. After it trips, the validator is dropped from the active set and **there is no on-chain `reactivate` call** (see [8.5](#id-8-5)) — you must unwind the stake and create a brand-new validator with a new ID.
+2. **The on-chain SFC offline clock.** The SFC deactivates an offline validator once it has missed **more than `offlinePenaltyThresholdBlocksNum` (7,200 blocks) _and_ been offline for at least `offlinePenaltyThresholdTime` (~5 days)** — _both_ conditions must hold. Until that trips, your validator keeps `status = 0` and you revive it entirely yourself ([8.4](#id-8-4)). After it trips it leaves the active set: on **testnet** the SFC owner can `reactivateValidator(<VID>)` to restore the **same** ID and stake (offline-deactivated case only), whereas **mainnet's SFC has no reactivation at all**, and a double-sign/slashed validator cannot be reactivated on either chain — those cases need a fresh validator (see [8.5](#id-8-5)).
 {% endhint %}
 
 ### 8.1 First, check your on-chain status <a href="#id-8-1" id="id-8-1"></a>
@@ -311,7 +311,7 @@ sfcc.getValidator(<VID>)
 ```
 
 - **`status == 0` and `deactivatedEpoch == 0`** → your validator is still **active**. Proceed with [8.4](#id-8-4) — you keep your ID and stake.
-- **`status != 0`, or a non-zero `deactivatedEpoch` / `deactivatedTime`** → the SFC has already **deactivated** your validator (offline penalty, withdrawal, or double-sign). Skip to [8.5](#id-8-5); the node-level steps alone cannot put a deactivated validator back into the set.
+- **`status != 0`, or a non-zero `deactivatedEpoch` / `deactivatedTime`** → the SFC has already **deactivated** your validator. Check **why** with `sfcc.isSlashed(<VID>)` and the status bits (`8` = offline, `128` = double-sign / cheater, `1` = withdrawn). Skip to [8.5](#id-8-5); the node-level steps alone cannot put a deactivated validator back into the set, and whether it can be reactivated at all depends on the reason and the network.
 
 Confirm your stake is still committed (a fully undelegated/withdrawn self-stake is terminal):
 
@@ -443,15 +443,48 @@ The `--bootnodes` value is the **same complete four-enode string** shown in step
 {% endstep %}
 {% endstepper %}
 
-### 8.5 If your validator was already offline-deactivated <a href="#id-8-5" id="id-8-5"></a>
+### 8.5 If your validator was already deactivated <a href="#id-8-5" id="id-8-5"></a>
 
-If [8.1](#id-8-1) showed a non-zero `status` or `deactivatedEpoch`, the SFC has already removed your validator from the set. **There is no public `reactivate` function** — the only state-changing validator entrypoints are `createValidator`, `deactivateValidator`, and (genesis-only) `setGenesisValidator`. A deactivated validator ID is permanent.
+If [8.1](#id-8-1) showed a non-zero `status` / `deactivatedEpoch`, the SFC has removed your validator from the active set. What you can do next depends on **why** it was deactivated and on **which network** you are on.
 
-Recovery is the same as the [§3.4 Offline node](#offline-node) path:
+{% hint style="info" %}
+**Testnet and mainnet run different SFC bytecode here.** The decisive difference is whether the deployed SFC at `0xFC00FACE…` exposes the VinuChain-custom `reactivateValidator(uint256)` entrypoint. As verified on-chain (2026-06-29), the **testnet** SFC (the Cycle-162 build) exposes it and the **mainnet** SFC does **not** — so in-place reactivation is currently a testnet-only capability.
+{% endhint %}
+
+Check the live deployment for either network directly — the `reactivateValidator(uint256)` selector is `0xfc1f4f51`:
+
+```bash
+cast code 0xFC00FACE00000000000000000000000000000000 --rpc-url <rpc> | grep -oq fc1f4f51 \
+  && echo "reactivateValidator available" || echo "no reactivateValidator — recreate path only"
+```
+
+#### Offline-deactivated (not slashed, not withdrawn) → reactivatable on testnet
+
+This path applies **only** when the validator was dropped for being **offline**: its `status` is the offline bit alone (`status == 8`, `OFFLINE_BIT`), `sfcc.isSlashed(<VID>)` is `false`, and its self-stake is still committed (`sfcc.getSelfStake(<VID>) >= sfcc.minSelfStake()`). A **withdrawn** validator (`status` bit `1`) has already pulled its stake and is **not** eligible — it fails the self-stake requirement and must use the recreate path below. When the offline conditions hold, the validator can be brought back **in place** — same validator ID, same stake — on testnet. The entrypoint is owner-gated:
+
+```solidity
+function reactivateValidator(uint256 validatorID) external onlyOwner
+```
+
+It requires that the validator exists, is currently deactivated (`status != OK`, `deactivatedEpoch != 0`), is **not** a cheater, still meets `minSelfStake()`, and is within the delegation limit; it then restores `status = OK`, clears `deactivatedEpoch`/`deactivatedTime`, re-adds the stake to the active set, and emits `ReactivatedValidator(<VID>)`.
+
+Because it is `onlyOwner`, **you cannot call it yourself.** The external-operator procedure is:
+
+1. Bring your node all the way back **in validator mode** first — run the full [8.4](#id-8-4) procedure (steps 1–4: upgrade, restore chaindata, re-peer and sync as a read node, then restart in validator mode with your `--validator.id` / `--validator.pubkey` / `--validator.password`), observing double-sign safety ([8.3](#id-8-3)). It must be synced and signing-ready **before** reactivation so it emits the moment the SFC re-adds it. Until the owner reactivates, a validator-mode node whose ID is not in the active set simply produces nothing — this is safe, not double-signing.
+2. Confirm self-stake still meets the minimum: `sfcc.getSelfStake(<VID>) >= sfcc.minSelfStake()`.
+3. **Request reactivation through the official VinuChain channels**, quoting your `<VID>`. The team (SFC owner) calls `reactivateValidator(<VID>)`; at the next epoch seal your ID is back in the active set and — because your node is already running in validator mode and synced — it resumes emitting and earning. Confirm with `sfcc.getValidator(<VID>)` returning `status == 0` and your `<VID>` appearing in `sfcc.getEpochValidatorIDs(sfcc.currentEpoch())`.
+
+On **mainnet** this option does not exist — use the recreate path below.
+
+#### Slashed / double-sign, withdrawn, or on mainnet → recreate
+
+If `sfcc.isSlashed(<VID>)` is `true` (`DOUBLESIGN_BIT = 128`), the validator **cannot be reactivated on either network** — `reactivateValidator` reverts with `"cheaters cannot be reactivated"`. The same recreate path applies to any deactivated validator on mainnet. Unwind and start over (same as the [§3.4 Offline node](#offline-node) path):
 
 1. If your stake is locked, [`unlockStake()`](lockup-calls.md) first (an early-unlock penalty may apply).
 2. [`undelegate()`](delegation-calls.md) your self-stake and wait the validator bonding period — **180 epochs and 3 days** (both must elapse).
 3. [`withdraw()`](delegation-calls.md) your stake back to your wallet.
 4. Start over from [Become a Validator](become-a-validator.md) with a fresh `createValidator` — this mints a **new** validator ID.
+
+(For a cheater, the SFC owner may separately refund a portion of slashed stake via the slashing-refund flow, but the validator ID itself stays dead.)
 
 To avoid this next time, bring a downed node back **before** the offline-penalty threshold trips (see the deadline box at the top of this section), and keep `nodekey` + `keystore/` backed up so a fast snapshot-restore is always available.
