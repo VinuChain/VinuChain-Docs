@@ -34,3 +34,21 @@ sfcc.createValidator("0xc004...", {from:"0xAddress", value: web3.toWei("amount",
 * This address wasn't used for other validator
 * `pubkey.length == 66` (rejects payloads of any other length)
 * `pubkey[0] == 0xc0` (rejects payloads with any other type-byte, including the 65-byte `0x04`-prefixed bare uncompressed-secp256k1 shape)
+
+### Reactivate validator (testnet owner-only)
+
+`reactivateValidator(uint256)` exists on the current testnet SFC deployment only. It is an SFC owner/admin operation, not a validator self-service call.
+
+```
+sfcc.reactivateValidator(<VID>, { from: sfcc.owner() })
+```
+
+#### **Checks**
+
+* Testnet only; mainnet does not expose this recovery path.
+* The transaction sender must be `sfcc.owner()`.
+* The validator must already exist and be deactivated.
+* The validator must not be slashed / double-sign marked.
+* Self-stake must still be greater than or equal to `sfcc.minSelfStake()`.
+
+If an external validator operator needs reactivation, they should first bring the node back online in synced validator mode, then request owner/admin reactivation through official VinuChain channels. See [Troubleshooting -> Reviving a dead or long-offline validator](troubleshooting.md#id-8.-reviving-a-dead-or-long-offline-validator-testnet).

@@ -474,6 +474,108 @@ Because it is `onlyOwner`, **you cannot call it yourself.** The external-operato
 2. Confirm self-stake still meets the minimum: `sfcc.getSelfStake(<VID>) >= sfcc.minSelfStake()`.
 3. **Request reactivation through the official VinuChain channels**, quoting your `<VID>`. The team (SFC owner) calls `reactivateValidator(<VID>)`; at the next epoch seal your ID is back in the active set and — because your node is already running in validator mode and synced — it resumes emitting and earning. Confirm with `sfcc.getValidator(<VID>)` returning `status == 0` and your `<VID>` appearing in `sfcc.getEpochValidatorIDs(sfcc.currentEpoch())`.
 
+{% hint style="warning" %}
+If you run `sfcc.reactivateValidator(<VID>)` from the validator wallet, it will not reactivate the validator. The call must be sent **from the SFC owner account**, not from the validator `auth` address. In the Opera console, a local `Error: invalid address` usually means Web3 could not find a transaction sender (`eth.defaultAccount` is unset, or no `{ from: ... }` was passed). If the transaction is sent from a non-owner account, the chain rejects it with `Ownable: caller is not the owner`.
+{% endhint %}
+
+#### SFC owner/admin reactivation runbook
+
+Use this only from the controlled SFC owner environment. Never paste the owner private key into a public terminal, ticket, chat, or validator operator instructions.
+
+Pre-flight checks:
+
+```javascript
+sfcc.getValidator(<VID>)
+sfcc.isSlashed(<VID>)
+sfcc.getSelfStake(<VID>)
+sfcc.minSelfStake()
+sfcc.owner()
+```
+
+Proceed only when:
+
+- `status == 8` (offline only), with non-zero `deactivatedEpoch` / `deactivatedTime`
+- `sfcc.isSlashed(<VID>) == false`
+- `sfcc.getSelfStake(<VID>) >= sfcc.minSelfStake()`
+- the sending wallet is exactly `sfcc.owner()`
+- the validator operator has already restarted the node in synced validator mode
+
+If using an unlocked owner keystore in an Opera console, set the sender explicitly:
+
+```javascript
+const owner = sfcc.owner()
+personal.unlockAccount(owner)
+eth.defaultAccount = owner
+sfcc.reactivateValidator(<VID>, { from: owner })
+```
+
+If using the owner private key from an admin environment, sign and send the transaction explicitly:
+
+```javascript
+// Requires ethers. Do not echo ADMIN_PRIVATE_KEY.
+const { ethers } = require("ethers")
+
+const rpcUrl = process.env.RPC_URL || "https://vinufoundation-rpc.com"
+const validatorId = process.env.VALIDATOR_ID
+const ownerKey = process.env.ADMIN_PRIVATE_KEY
+
+if (!validatorId) throw new Error("VALIDATOR_ID is required")
+if (!/^(0x)?[0-9a-fA-F]{64}$/.test(ownerKey || "")) {
+  throw new Error("ADMIN_PRIVATE_KEY must be a 32-byte hex private key")
+}
+
+const provider = new ethers.providers.JsonRpcProvider(rpcUrl)
+const wallet = new ethers.Wallet(ownerKey.startsWith("0x") ? ownerKey : `0x${ownerKey}`, provider)
+const sfc = new ethers.Contract(
+  "0xFC00FACE00000000000000000000000000000000",
+  [
+    "function owner() view returns (address)",
+    "function getValidator(uint256) view returns (uint256 status,uint256 deactivatedTime,uint256 deactivatedEpoch,uint256 receivedStake,uint256 createdEpoch,uint256 createdTime,address auth)",
+    "function isSlashed(uint256) view returns (bool)",
+    "function getSelfStake(uint256) view returns (uint256)",
+    "function minSelfStake() view returns (uint256)",
+    "function reactivateValidator(uint256)"
+  ],
+  wallet
+)
+
+async function main() {
+  const [owner, validator, slashed, selfStake, minSelfStake] = await Promise.all([
+    sfc.owner(),
+    sfc.getValidator(validatorId),
+    sfc.isSlashed(validatorId),
+    sfc.getSelfStake(validatorId),
+    sfc.minSelfStake()
+  ])
+
+  if (owner.toLowerCase() !== wallet.address.toLowerCase()) {
+    throw new Error(`wrong sender: ${wallet.address} is not SFC owner ${owner}`)
+  }
+  if (validator.status.toString() !== "8" || validator.deactivatedEpoch.isZero()) {
+    throw new Error("validator is not offline-deactivated")
+  }
+  if (slashed) throw new Error("slashed validators cannot be reactivated")
+  if (selfStake.lt(minSelfStake)) throw new Error("self-stake is below minSelfStake")
+
+  await sfc.callStatic.reactivateValidator(validatorId)
+  const tx = await sfc.reactivateValidator(validatorId)
+  console.log(`reactivation tx: ${tx.hash}`)
+  await tx.wait()
+}
+
+main().catch((error) => {
+  console.error(error)
+  process.exit(1)
+})
+```
+
+After the transaction confirms, verify:
+
+```javascript
+sfcc.getValidator(<VID>)                  // status == 0, deactivatedEpoch == 0
+sfcc.getEpochValidatorIDs(sfcc.currentEpoch()).includes(<VID>)
+```
+
 On **mainnet** this option does not exist — use the recreate path below.
 
 #### Slashed / double-sign, withdrawn, or on mainnet → recreate
