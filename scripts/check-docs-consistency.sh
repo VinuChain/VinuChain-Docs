@@ -38,7 +38,14 @@ if out=$(grep -rni 'emojiguide\.com' --include='*.md' . --exclude-dir=.git); the
   err "emojiguide paste-accident link found:"$'\n'"$out"
 fi
 
-# 5) Every relative link in SUMMARY.md must resolve to a file.
+# 5) Every relative link in the root README must resolve to a file or directory.
+while IFS= read -r target; do
+  target="${target%%#*}"
+  [ -n "$target" ] || continue
+  [ -e "$target" ] || err "README.md links to missing path: $target"
+done < <(grep -oE '\]\([^)]+\)' README.md | sed 's/^](//; s/)$//' | grep -Ev '^(https?:|mailto:|#)')
+
+# 6) Every relative link in SUMMARY.md must resolve to a file.
 while IFS= read -r target; do
   [ -f "$target" ] || err "SUMMARY.md links to missing file: $target"
 done < <(grep -oE '\]\([^)]+\)' SUMMARY.md | sed 's/^](//; s/)$//' | grep -v '^http')
