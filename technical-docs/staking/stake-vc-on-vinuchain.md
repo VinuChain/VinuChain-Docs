@@ -26,11 +26,11 @@ To stake, you do not need any dedicated special hardware or device. You can do i
 >
 > Assuming you earn 6.00% on a stake of 1,000,000 VC, you'll receive 1,000,000 \* 0.06 \* (1-0.15) = 51000 VC  per year.
 
-## How to Stake <a href="#staking-parameters" id="staking-parameters"></a>
+## How to Stake <a href="#how-to-stake" id="how-to-stake"></a>
 
 You can stake on [VinuScan](https://mainnet.vinuscan.com/staking).
 
-## How Staking Rewards are Calculated <a href="#staking-parameters" id="staking-parameters"></a>
+## How Staking Rewards are Calculated <a href="#how-staking-rewards-are-calculated" id="how-staking-rewards-are-calculated"></a>
 
 ### Validators
 

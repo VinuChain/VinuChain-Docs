@@ -2,7 +2,7 @@
 
 ## FAQ - Staking
 
-### How are staking rewards generated? <a href="#can-others-access-my-staked-tokens" id="can-others-access-my-staked-tokens"></a>
+### How are staking rewards generated? <a href="#how-are-staking-rewards-generated" id="how-are-staking-rewards-generated"></a>
 
 The Staking Rewards on VinuChain consist of both network rewards and fees:
 
@@ -11,7 +11,7 @@ The Staking Rewards on VinuChain consist of both network rewards and fees:
 
 Please note that the total annual rewards are divided by all active stakers; hence, as the amount of staked tokens goes up, the reward rate goes down.
 
-### How are Staking Rewards Calculated? <a href="#can-others-access-my-staked-tokens" id="can-others-access-my-staked-tokens"></a>
+### How are Staking Rewards Calculated? <a href="#how-are-staking-rewards-calculated" id="how-are-staking-rewards-calculated"></a>
 
 [How are staking rewards calculated?](./stake-vc-on-vinuchain.md#how-staking-rewards-are-calculated)
 
