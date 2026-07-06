@@ -12,11 +12,11 @@ description: Determinably Feeless, Lightning Fast, L1 EVM Network.
 ### Explorers 🔗
 
 * [VinuExplorer🌐](https://vinuexplorer.org)
-* [VinuScan 🌐](https://vinuexplorer.org)
+* [VinuScan 🌐](https://mainnet.vinuscan.com)
 
 ### Bridge 🔗
 
-* [WanBridge](https://bridge.wanchain.org/#/?asset=VC\&from=VinuChain)[🌐](https://vinuexplorer.org)&#x20;
+* [WanBridge 🌐](https://bridge.wanchain.org/#/?asset=VC\&from=VinuChain)
 
 ### Docs🔗
 
