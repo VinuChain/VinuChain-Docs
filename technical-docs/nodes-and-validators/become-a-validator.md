@@ -206,9 +206,9 @@ Look for the **status: “0x1”** at the bottom, which means the transaction wa
 
 <figure><img src="../../.gitbook/assets/bbabdba.png" alt=""><figcaption></figcaption></figure>
 
-You can also copy the `transactionHash` and go the VinuChain [BlockScanner](https://vinuscan.com) and check your transaction there:
+You can also copy the `transactionHash` and go to [VinuScan](https://mainnet.vinuscan.com) to check your transaction there:
 
-> https://vinuscan.com/transactions/\[YOURTX]
+> https://mainnet.vinuscan.com/tx/\[YOURTX]
 
 This would look something like the below:
 
