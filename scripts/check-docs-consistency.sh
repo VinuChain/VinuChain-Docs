@@ -4,9 +4,18 @@
 #  - known-stale contract addresses outside the historical upgrade log
 #  - the wrong-network-id regression
 #  - stale bare VinuScan domain links
+#  - duplicate manual anchor IDs
 #  - broken relative links in SUMMARY.md
 # Run from the repo root: ./scripts/check-docs-consistency.sh
 set -u
+
+for cmd in dirname grep sed sort uniq; do
+  if ! command -v "$cmd" >/dev/null 2>&1; then
+    echo "FAIL: required command not found: $cmd" >&2
+    exit 127
+  fi
+done
+
 cd "$(dirname "$0")/.."
 
 fail=0
@@ -44,14 +53,30 @@ if out=$(grep -rniE 'https?://(www\.)?vinuscan\.com([/?#)]|$)' --include='*.md' 
   err "bare vinuscan.com link found; use mainnet.vinuscan.com or testnet.vinuscan.com:"$'\n'"$out"
 fi
 
-# 6) Every relative link in the root README must resolve to a file or directory.
+# 6) Manual anchor IDs must be unique. Duplicate IDs can make GitBook route
+#    section links to the wrong heading or fail on generated anchors.
+duplicate_ids=$(grep -rhoE 'id="[^"]+"' --include='*.md' . --exclude-dir=.git \
+  | sed 's/^id="//; s/"$//' \
+  | sort \
+  | uniq -d)
+if [ -n "$duplicate_ids" ]; then
+  out=""
+  while IFS= read -r anchor_id; do
+    [ -n "$anchor_id" ] || continue
+    matches=$(grep -rniF "id=\"$anchor_id\"" --include='*.md' . --exclude-dir=.git)
+    out="${out}${anchor_id}"$'\n'"${matches}"$'\n'
+  done <<< "$duplicate_ids"
+  err "duplicate manual anchor id found:"$'\n'"$out"
+fi
+
+# 7) Every relative link in the root README must resolve to a file or directory.
 while IFS= read -r target; do
   target="${target%%#*}"
   [ -n "$target" ] || continue
   [ -e "$target" ] || err "README.md links to missing path: $target"
 done < <(grep -oE '\]\([^)]+\)' README.md | sed 's/^](//; s/)$//' | grep -Ev '^(https?:|mailto:|#)')
 
-# 7) Every relative link in SUMMARY.md must resolve to a file.
+# 8) Every relative link in SUMMARY.md must resolve to a file.
 while IFS= read -r target; do
   [ -f "$target" ] || err "SUMMARY.md links to missing file: $target"
 done < <(grep -oE '\]\([^)]+\)' SUMMARY.md | sed 's/^](//; s/)$//' | grep -v '^http')
