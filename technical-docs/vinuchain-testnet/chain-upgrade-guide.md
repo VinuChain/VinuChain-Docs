@@ -6,6 +6,7 @@
 
 | Version           | Network | Status                                                                 |
 | ----------------- | ------- | ---------------------------------------------------------------------- |
+| `v2.0.43-elemont` | Testnet | **Deployed fleet-wide 2026-07-08 (CONSENSUS).** Activates `SfcV2Patch8`: reflashes Cycle-163 SFC bytecode making `reactivateValidator` **self-service** — a validator's own (immutable) `auth` key may reactivate it from a pure-`OFFLINE` status after an anti-flap cooldown, without the contract owner (owner keeps the looser power for lost-key recovery). Doublesign/cheater validators stay permanently un-reactivatable for ALL callers. Two appended storage mappings capture the pre-gap reward rate at reactivation and carry it forward, so delegators are never frozen across the offline gap. Activation seals at the first epoch boundary after boot (`MaxEpochDuration` 240 min). **Requires the v2.0.43 chaindata snapshot** (published post-seal); fresh installs / non-upgraded nodes must re-sync from it. |
 | `v2.0.41-elemont` | Testnet | **Deployed fleet-wide 2026-06-21 (CONSENSUS).** Activates `SfcV2Patch7`: reflashes Cycle-162 SFC bytecode (initializes `stashedRewardsUntilEpoch` on first delegation in `_rawDelegate`, fixing the reward-cursor dead-zone where post-genesis delegators' `claimRewards`/`restakeRewards` reverted "zero rewards" while `pendingRewards` over-reported) + a testnet-only one-shot migration that raised 12 stuck delegator cursors to their join epochs. Activated at block 1,508,211 (epoch seal 6016→6017). **Requires the v2.0.41 chaindata snapshot** (below); fresh installs / non-upgraded nodes must re-sync from it. |
 | `v2.0.40-elemont` | Testnet | **Deployed fleet-wide 2026-06-19.** Non-consensus: bumps go-vinu to `v1.20.25-quota` (CVE-2023-40591 p2p ping-flood goroutine bound). No flag or state change; supersedes v2.0.39. |
 | `v2.0.39-elemont` | Testnet | Superseded 2026-06-19. PaybackCache restart warm-up (consensus A1 fix) + v2.0.38 EvmWriter log patch; latest-EVM active |
@@ -27,6 +28,8 @@
 - The ELEMONT hard fork is **live on mainnet (chain 207)**. Mainnet stages Berlin, London, Shanghai, Cancun, Prague, Llr, Podgorica, SfcV2, Elemont, and ElemontPubkeyValidation, and points mainnet rules at the live V1 Quota proxy `0x1c4269fbbd4a8254f69383eef6af720bcd0acda6`. Mainnet `PaybackV2`, `VinuBLS12381`, `VinuLatestEVM`, and the `SfcV2Patch*` testnet edges remain deliberately false — they are testnet-only today and arrive on mainnet, if at all, in separate later activation releases.
 
 ## Current Testnet Rollout State
+
+`v2.0.43-elemont` (**consensus**) was built once on the validator host and distributed byte-identically to all five nodes on **2026-07-08** (RPC first, then validators V1-V4 one-at-a-time with 20s spacing). Binary sha256 `615875cf00cb8d0e1cbbc10499278c4370235ddc85f13f2dad70058ee7ce6b78` (one build distributed to all five nodes via S3, byte-identical by construction). It activates `SfcV2Patch8` at the first epoch seal after boot, which **reflashes Cycle-163 SFC bytecode** (raw-bytes sha256 `0e6fd265ec21b15998c6d582e5b8cb9467e7ce954242bc346bc7b103a78ee164`, 48,147 bytes) making `reactivateValidator` self-service: the function drops `onlyOwner` for a `nonReentrant` owner-OR-self gate — a validator's own immutable `auth` key may reactivate it ONLY from a pure-`OFFLINE` status after an anti-flap cooldown (`offlinePenaltyThresholdTime`); the contract owner retains the looser power for lost-key recovery. Doublesign/cheater validators (`CHEATER_MASK`) stay permanently un-reactivatable for ALL callers. To avoid freezing delegators across the offline gap, two appended storage mappings (`reactivationHealFloor`, `reactivationHealFrom`) capture the pre-gap reward rate at reactivation and carry it forward across the gap epochs so the monotonic reward index never inverts and no owner correction is required. Because this is a persisted-state consensus change, **a fresh chaindata snapshot IS required** once the activation seals; fresh installs or any node that did not upgrade must re-sync from it (non-upgraded nodes diverge with `wrong event epoch hash`). The previous binary is preserved as `opera.v2.0.41.bak.<timestamp>` beside each deployed binary. *(The activation block/epoch and the replacement v2.0.43 chaindata snapshot are filled in below once the seal lands.)*
 
 `v2.0.41-elemont` (**consensus**) was built once on the validator host and deployed fleet-wide on **2026-06-21** to the public trace RPC and validators V1-V4 (RPC first, then validators one-at-a-time). Binary sha256 `d072ca612f3fe7db16a10be315344f5f0eaa7674d77aab6c624b11d5f91da801` (one build distributed to all five nodes, byte-identical by construction). It activates `SfcV2Patch7` at the first epoch seal after boot, which **reflashes Cycle-162 SFC bytecode** (adds the `_rawDelegate` reward-cursor initialization fix so post-genesis first-delegations no longer strand rewards in the zero-`accumulatedRewardPerToken` dead zone) and runs a **testnet-only, one-shot migration** that raised the 12 stuck delegator reward cursors to their join epochs. Activation sealed at block **1,508,211** (epoch 6016→6017); post-rollout `vc_getRules("latest")` reports `SfcV2Patch7=true` and `eth_getCode(0xFC00FACE…)` is the 47,299-byte Cycle-162. Because this is a persisted-state consensus change, **a fresh chaindata snapshot IS required** — the v2.0.41 object below is now current, and fresh installs or any node that did not upgrade must re-sync from it (non-upgraded nodes diverge with `wrong event epoch hash`). The previous binary is preserved as `opera.v2.0.40.bak.<timestamp>` beside each deployed binary.
 
@@ -68,7 +71,7 @@ It was produced under the `20260621T221749Z` object name; `SNAPSHOT_INFO.txt` re
 | Network | Chain ID   | RPC                              | Status          |
 | ------- | ---------- | -------------------------------- | --------------- |
 | Mainnet | 207 (0xcf) | `https://vinuchain-rpc.com`      | **ELEMONT live.** Shanghai, Cancun, Prague, SfcV2 (+30% base-fee burn), Elemont, ElemontPubkeyValidation, Podgorica, Llr, Berlin, London active; Quota proxy `0x1c4269fb…0acda6`. PaybackV2 / BLS12-381 / latest-EVM remain testnet-only |
-| Testnet | 206 (0xce) | `https://vinufoundation-rpc.com` | v2.0.41-elemont deployed; the above plus PaybackV2 active, BLS active, latest-EVM active, SfcV2Patch7 active; Quota proxy `0x89D1cBD9…29e4` |
+| Testnet | 206 (0xce) | `https://vinufoundation-rpc.com` | v2.0.43-elemont deployed; the above plus PaybackV2 active, BLS active, latest-EVM active, SfcV2Patch7 active, SfcV2Patch8 (self-service `reactivateValidator`) deployed and activating at the next epoch seal; Quota proxy `0x89D1cBD9…29e4` |
 
 ---
 
@@ -160,7 +163,7 @@ The build directory is independent of your node's `--datadir`. The build process
 ```bash
 git clone https://github.com/VinuChain/VinuChain.git $HOME/vinuchain-upgrade
 cd $HOME/vinuchain-upgrade
-git checkout v2.0.41-elemont
+git checkout v2.0.43-elemont
 make opera
 # Binary is at $HOME/vinuchain-upgrade/build/opera
 ```
@@ -170,7 +173,7 @@ make opera
 Substitute `/opt/vinuchain-upgrade` (or any other path) if `$HOME` is not the right partition for your setup — every later command in this guide that references `$HOME/vinuchain-upgrade` should be adjusted to match.
 
 {% hint style="info" %}
-**Dependency pins.** `v2.0.41-elemont` uses go-vinu `v1.20.25-quota` (the `v1.20.24-quota` precompile/ModExp/EVM-fork surface — Shanghai, selected Cancun execution support, Prague/EIP-7702 set-code transactions, VinuBLS12381, VinuLatestEVM — plus the cherry-picked CVE-2023-40591 p2p ping-flood goroutine bound) and lachesis-base `v0.1.6-elemont`. `make opera` fetches dependencies on first build.
+**Dependency pins.** `v2.0.43-elemont` uses go-vinu `v1.20.25-quota` (the `v1.20.24-quota` precompile/ModExp/EVM-fork surface — Shanghai, selected Cancun execution support, Prague/EIP-7702 set-code transactions, VinuBLS12381, VinuLatestEVM — plus the cherry-picked CVE-2023-40591 p2p ping-flood goroutine bound) and lachesis-base `v0.1.6-elemont`, unchanged from v2.0.41 (the SfcV2Patch8 change is SFC-bytecode-only, no dependency bump). `make opera` fetches dependencies on first build.
 {% endhint %}
 {% endstep %}
 
