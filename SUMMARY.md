@@ -2,7 +2,7 @@
 
 * [VinuChain | VC](README.md)
 
-## 📃 Whitepaper
+## Whitepaper
 
 * [Whitepaper](whitepaper/whitepaper/README.md)
   * [Disclaimer](whitepaper/whitepaper/disclaimer.md)
@@ -19,7 +19,7 @@
 * [Launchpads](whitepaper/launchpads.md)
 * [Roadmap](whitepaper/roadmap.md)
 
-## 🧑‍💻 Technical Docs
+## Technical Docs
 
 * [Network Details](technical-docs/network-details.md)
 * [VinuChain Mainnet](technical-docs/vinuchain-mainnet/README.md)
