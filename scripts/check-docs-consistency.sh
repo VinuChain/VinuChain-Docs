@@ -4,6 +4,7 @@
 #  - known-stale contract addresses outside the historical upgrade log
 #  - the wrong-network-id regression
 #  - stale bare VinuScan domain links
+#  - mojibake marker characters from mis-decoded UTF-8
 #  - duplicate manual anchor IDs
 #  - broken relative links in SUMMARY.md
 # Run from the repo root: ./scripts/check-docs-consistency.sh
@@ -48,12 +49,21 @@ if out=$(grep -rni 'emojiguide\.com' --include='*.md' . --exclude-dir=.git); the
   err "emojiguide paste-accident link found:"$'\n'"$out"
 fi
 
-# 5) VinuScan links must use the explicit mainnet/testnet hosts.
+# 5) Mojibake marker characters often appear when UTF-8 is decoded as a
+#    Windows code page and then committed as UTF-8. Keep this script ASCII by
+#    matching the UTF-8 byte sequences for U+00C2, U+00C3, U+00E2, U+00EF,
+#    and U+FFFD through ANSI-C quoted octal escapes.
+mojibake_pattern=$'\303\202|\303\203|\303\242|\303\257|\357\277\275'
+if out=$(grep -rniE "$mojibake_pattern" --include='*.md' . --exclude-dir=.git); then
+  err "mojibake marker found; re-save the affected text as UTF-8 or replace it with plain ASCII:"$'\n'"$out"
+fi
+
+# 6) VinuScan links must use the explicit mainnet/testnet hosts.
 if out=$(grep -rniE 'https?://(www\.)?vinuscan\.com([/?#)]|$)' --include='*.md' . --exclude-dir=.git); then
   err "bare vinuscan.com link found; use mainnet.vinuscan.com or testnet.vinuscan.com:"$'\n'"$out"
 fi
 
-# 6) Manual anchor IDs must be unique. Duplicate IDs can make GitBook route
+# 7) Manual anchor IDs must be unique. Duplicate IDs can make GitBook route
 #    section links to the wrong heading or fail on generated anchors.
 duplicate_ids=$(grep -rhoE 'id="[^"]+"' --include='*.md' . --exclude-dir=.git \
   | sed 's/^id="//; s/"$//' \
@@ -69,14 +79,14 @@ if [ -n "$duplicate_ids" ]; then
   err "duplicate manual anchor id found:"$'\n'"$out"
 fi
 
-# 7) Every relative link in the root README must resolve to a file or directory.
+# 8) Every relative link in the root README must resolve to a file or directory.
 while IFS= read -r target; do
   target="${target%%#*}"
   [ -n "$target" ] || continue
   [ -e "$target" ] || err "README.md links to missing path: $target"
 done < <(grep -oE '\]\([^)]+\)' README.md | sed 's/^](//; s/)$//' | grep -Ev '^(https?:|mailto:|#)')
 
-# 8) Every relative link in SUMMARY.md must resolve to a file.
+# 9) Every relative link in SUMMARY.md must resolve to a file.
 while IFS= read -r target; do
   [ -f "$target" ] || err "SUMMARY.md links to missing file: $target"
 done < <(grep -oE '\]\([^)]+\)' SUMMARY.md | sed 's/^](//; s/)$//' | grep -v '^http')
