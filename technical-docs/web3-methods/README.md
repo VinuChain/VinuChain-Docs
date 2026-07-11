@@ -47,13 +47,16 @@ Utility functions for Blockchain dapps and other web3.js packages.
 
 ### Build <a href="#user-content-build" id="user-content-build"></a>
 
-#### Add .env file <a href="#user-content-add-env-file" id="user-content-add-env-file"></a>
+#### Configure local environment <a href="#user-content-configure-local-environment" id="user-content-configure-local-environment"></a>
+
+Create a local `.env` file for these examples. Git ignores `.env` and other `.env.*` files; never commit a private key, wallet password, or funded-account credential. Use only a disposable test account and keep the values local:
 
 ```
 FROM_ADDRESS=
-PRIVATE_KEY = 
+PRIVATE_KEY=
 TO_ADDRESS=
 IBAN=
+WALLET_PASSWORD=
 ```
 
 ```

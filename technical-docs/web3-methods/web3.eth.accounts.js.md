@@ -11,69 +11,75 @@ const { TESTNET_RPC } = require('../constants');
 
 const web3 = new Web3(new Web3.providers.HttpProvider(TESTNET_RPC));
 
-let privateKey = process.env.PRIVATE_KEY;
-let password = 'xyz1234!!!';
+const privateKey = process.env.PRIVATE_KEY;
+const password = process.env.WALLET_PASSWORD;
+
+const requireWalletSecrets = () => {
+  if (!privateKey || !password) {
+    throw new Error(
+      'Set PRIVATE_KEY and WALLET_PASSWORD in a local .env file before running these examples.'
+    );
+  }
+};
 
 const createAccounts = () => {
-  console.log('Create an account: ', web3.eth.accounts.create());
-  console.log(
-    'Create an account with entropy',
-    web3.eth.accounts.create(
-      '2435@#@#@±±±±!!!!678543213456764321§34567543213456785432134567'
-    )
-  );
+  requireWalletSecrets();
 
-  console.log(
-    'Create an account with a Private key: ',
-    web3.eth.accounts.privateKeyToAccount(privateKey)
+  const generatedAccount = web3.eth.accounts.create();
+  console.log('Generated account address:', generatedAccount.address);
+
+  const entropyAccount = web3.eth.accounts.create(
+    '2435@#@#@±±±±!!!!678543213456764321§34567543213456785432134567'
   );
+  console.log('Generated account with entropy address:', entropyAccount.address);
+
+  const privateKeyAccount = web3.eth.accounts.privateKeyToAccount(privateKey);
+  console.log('Loaded account address:', privateKeyAccount.address);
 };
 
 const signAndRecoverMessage = () => {
+  requireWalletSecrets();
+
   let signedMessage = web3.eth.accounts.sign('Text', privateKey);
-  console.log('Sign a message: ', signedMessage);
+  console.log('Signed message hash:', signedMessage.messageHash);
 
   let recoveredMessage = web3.eth.accounts.recover(signedMessage);
 
-  console.log('Get address using Recover method: ', recoveredMessage);
+  console.log('Recovered address:', recoveredMessage);
 };
 
 const encryptAndDecrypt = () => {
+  requireWalletSecrets();
+
   let encryptedKey = web3.eth.accounts.encrypt(privateKey, password);
-  console.log('Encrypted Key: ', encryptedKey);
+  console.log('Encrypted key created; do not print keystore contents.');
 
   let decryptedKey = web3.eth.accounts.decrypt(encryptedKey, password);
-  console.log('Decrypted Key: ', decryptedKey);
+  console.log('Decrypted key address:', decryptedKey.address);
 };
 
 const wallets = () => {
-  console.log(
-    'Creating a wallet with 1 account: ',
-    web3.eth.accounts.wallet.create(1)
-  );
+  requireWalletSecrets();
 
-  console.log(
-    'Adding another account using private key: ',
-    web3.eth.accounts.wallet.add(privateKey)
-  );
+  web3.eth.accounts.wallet.create(1);
+  console.log('Created wallet with 1 account.');
 
-  console.log(
-    'Removing an account from wallet: ',
-    web3.eth.accounts.wallet.remove(process.env.FROM_ADDRESS)
-  );
+  const addedAccount = web3.eth.accounts.wallet.add(privateKey);
+  console.log('Added account address:', addedAccount.address);
+
+  const removedAccount = web3.eth.accounts.wallet.remove(process.env.FROM_ADDRESS);
+  console.log('Removed account:', removedAccount);
 
   let encryptedWallet = web3.eth.accounts.wallet.encrypt(password);
-
-  console.log('Encrypted Wallet: ', encryptedWallet);
+  console.log('Encrypted wallet created; do not print keystore contents.');
 
   let decryptedWallet = web3.eth.accounts.wallet.decrypt(
     encryptedWallet,
     password
   );
+  console.log('Decrypted wallet account count:', decryptedWallet.length);
 
-  console.log('Decrypted Wallet: ', decryptedWallet);
-
-  console.log('Clearing the wallet: ', web3.eth.accounts.wallet.clear());
+  console.log('Cleared wallet:', web3.eth.accounts.wallet.clear());
 };
 
 module.exports = {
