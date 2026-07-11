@@ -6,7 +6,7 @@
 **Testnet operators running or installing v2.x-elemont**: see the [Chain Upgrade Guide](../vinuchain-testnet/chain-upgrade-guide.md) first. Two failure modes need dedicated recovery steps that the legacy procedures on this page do not cover:
 
 - **Validator offline >1,000 epochs cannot rejoin** → upgrade to v2.0.8-elemont (removes the `validatePeerProgress` drift cap). See [Chain Upgrade Guide → stuck peercount](../vinuchain-testnet/chain-upgrade-guide.md#stuck-at-net-peercount-1-with-one-stale-peer).
-- **`WARN Incoming event rejected ... err="wrong event epoch hash"`** → fresh resync from genesis **does not work** on current binary rules. Use the latest post-seal chaindata snapshot at `s3://vinu-blockchain-genesis/chaindata-snapshots/` — see [Chain Upgrade Guide → wrong event epoch hash](../vinuchain-testnet/chain-upgrade-guide.md#warn-incoming-event-rejected-err-wrong-event-epoch-hash) for the recovery procedure.
+- **`WARN Incoming event rejected ... err="wrong event epoch hash"`** → resync from a **stale** genesis (the 2024-06-21 / 2026-04-19 files) **does not work** on current binary rules. Use the latest post-seal chaindata snapshot at `s3://vinu-blockchain-genesis/chaindata-snapshots/` — see [Chain Upgrade Guide → wrong event epoch hash](../vinuchain-testnet/chain-upgrade-guide.md#warn-incoming-event-rejected-err-wrong-event-epoch-hash) for the recovery procedure — or bootstrap a fresh datadir from the regenerated 2026-07-11 genesis (see the Chain Upgrade Guide's *Fresh install?* note).
 
 Latest public snapshot (post-`SfcV2Patch9`): `https://vinu-blockchain-genesis.s3.amazonaws.com/chaindata-snapshots/testnet-chaindata-v2.0.44-elemont-20260708T163957Z-clean.tar.gz` (published 2026-07-08, tip block 1,529,490 / epoch 6119). SHA256 `1e6baa4f1e932b7a51cb77d173e206ae7b59ae950040bcfb690127797634c559`. Excludes `nodekey` / `keystore/` / `static-nodes.json` so your validator identity is preserved during extraction. It includes `VinuBLS12381`, `VinuLatestEVM`, and `SfcV2Patch7`/`SfcV2Patch8`/`SfcV2Patch9` all active.
 {% endhint %}
@@ -368,7 +368,7 @@ Anything `>= v2.0.8-elemont` clears the drift-cap lockout; `v2.0.44-elemont` is 
 - **Long-dead, corrupted, or stale across a fork seal** → a stale datadir replays historical forks under the wrong rules and halts with `WARN Incoming event rejected ... err="wrong event epoch hash"`. Restore from the latest chaindata snapshot per [Chain Upgrade Guide → wrong event epoch hash](../vinuchain-testnet/chain-upgrade-guide.md#warn-incoming-event-rejected-err-wrong-event-epoch-hash). For any validator dead more than a few hours this is the reliable path.
 
 {% hint style="warning" %}
-**Preserve your identity files.** Back up `<datadir>/keystore/` and `<datadir>/go-opera/nodekey` before deleting any chaindata. The published snapshots deliberately exclude `nodekey`, `keystore/`, `static-nodes.json`, and `trusted-nodes.json`, so extracting one over your datadir keeps your validator identity intact. **Do not resync from genesis on testnet** — it stages not-yet-sealed forks at the wrong heights and diverges immediately.
+**Preserve your identity files.** Back up `<datadir>/keystore/` and `<datadir>/go-opera/nodekey` before deleting any chaindata. The published snapshots deliberately exclude `nodekey`, `keystore/`, `static-nodes.json`, and `trusted-nodes.json`, so extracting one over your datadir keeps your validator identity intact. **Do not resync from a stale genesis on testnet** (the 2024-06-21 / 2026-04-19 files) — it stages not-yet-sealed forks at the wrong heights and diverges immediately. The regenerated 2026-07-11 genesis (all activations sealed in its history) is the exception and may be used to bootstrap a fresh datadir — see the [Chain Upgrade Guide's *Fresh install?* note](../vinuchain-testnet/chain-upgrade-guide.md).
 {% endhint %}
 {% endstep %}
 
@@ -451,28 +451,31 @@ An **offline-deactivated** validator (status bit `8` only — not slashed, not w
 
 First bring your node back in synced **validator mode** ([8.4](#id-8-4)) so it resumes emitting the moment the SFC re-adds it, observing double-sign safety ([8.3](#id-8-3)).
 
-**Load the SFC into the Opera console.** Fetch the current ABI and build the `sfcc` object:
+**Load the SFC into the Opera console.** Fetch the current ABI and build the `sfcc` object. The script is written under your home directory — not world-writable `/tmp`, where another local user could swap the file between generation and `loadScript`:
 
 ```bash
-curl -L "https://raw.githubusercontent.com/VinuChain/Vinuchain-Lists/refs/heads/main/contracts/vinuchain/SFC_abi.json" -o /tmp/SFC_abi.json
+curl -L "https://raw.githubusercontent.com/VinuChain/Vinuchain-Lists/refs/heads/main/contracts/vinuchain/SFC_abi.json" -o "$HOME/SFC_abi.json"
 
 python3 - <<'PY'
-import json
+import json, os
 
-abi = json.load(open("/tmp/SFC_abi.json"))
+home = os.path.expanduser("~")
+abi = json.load(open(os.path.join(home, "SFC_abi.json")))
 
 js = "var abi = " + json.dumps(abi) + ";\n"
-js += 'var sfcc = web3.eth.contract(abi).at("0xFC00FACE00000000000000000000000000000000");\n'
+js += 'var sfcc = web3.vc.contract(abi).at("0xFC00FACE00000000000000000000000000000000");\n'
 js += 'console.log("SFC ABI loaded. Use sfcc.functionName(...)");\n'
 
-open("/tmp/sfc_console.js", "w").write(js)
+path = os.path.join(home, "sfc_console.js")
+open(path, "w").write(js)
+print('Now run in the Opera console:  loadScript("%s")' % path)
 PY
 ```
 
-Then inside the Opera console (`./opera attach`):
+Then inside the Opera console (`./opera attach`), paste the `loadScript` line the script printed, e.g.:
 
 ```javascript
-loadScript("/tmp/sfc_console.js")
+loadScript("/home/YOUR_USER/sfc_console.js")
 ```
 
 **Reactivate** — from the validator's `auth` address (self-service) or the SFC owner address (fallback). Replace `15` with your validator ID:
