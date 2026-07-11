@@ -79,14 +79,27 @@ if [ -n "$duplicate_ids" ]; then
   err "duplicate manual anchor id found:"$'\n'"$out"
 fi
 
-# 8) Every relative link in the root README must resolve to a file or directory.
+# 8) Rollback guidance must cover every persisted SFC patch currently active.
+upgrade_guide="technical-docs/vinuchain-testnet/chain-upgrade-guide.md"
+rollback_section=$(sed -n '/^\*\*Per-version rollback deltas\./,/^{% endhint %}$/p' "$upgrade_guide")
+bytecode_table=$(sed -n '/^| Sealed patch /,/^$/p' "$upgrade_guide")
+for marker in SfcV2Patch7 SfcV2Patch8 SfcV2Patch9 v2.0.41 v2.0.43 v2.0.44; do
+  if ! grep -qF -- "$marker" <<<"$rollback_section"; then
+    err "rollback section is missing current marker: $marker"
+  fi
+  if ! grep -qF -- "$marker" <<<"$bytecode_table"; then
+    err "sealed-bytecode table is missing current marker: $marker"
+  fi
+done
+
+# 9) Every relative link in the root README must resolve to a file or directory.
 while IFS= read -r target; do
   target="${target%%#*}"
   [ -n "$target" ] || continue
   [ -e "$target" ] || err "README.md links to missing path: $target"
 done < <(grep -oE '\]\([^)]+\)' README.md | sed 's/^](//; s/)$//' | grep -Ev '^(https?:|mailto:|#)')
 
-# 9) Every relative link in SUMMARY.md must resolve to a file.
+# 10) Every relative link in SUMMARY.md must resolve to a file.
 while IFS= read -r target; do
   [ -f "$target" ] || err "SUMMARY.md links to missing file: $target"
 done < <(grep -oE '\]\([^)]+\)' SUMMARY.md | sed 's/^](//; s/)$//' | grep -v '^http')
