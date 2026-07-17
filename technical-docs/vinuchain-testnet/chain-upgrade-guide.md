@@ -6,6 +6,7 @@
 
 | Version           | Network | Status                                                                 |
 | ----------------- | ------- | ---------------------------------------------------------------------- |
+| `v2.0.45-elemont` | Testnet | **Published 2026-07-17 (non-consensus). Recommended for all fresh installs.** Ships the regenerated 2026-07-11 genesis as the trusted preset `VinuChain testnet with history (2026-07-11)`, so a fresh install no longer needs `--genesis.allowExperimental`. Refuses the stale 2024-06-21 / 2026-04-19 genesis files for fresh installs, and refuses to start any datadir whose upgrade activation history disagrees with the live chain's (`SfcV2Patch7` from epoch 6017, `SfcV2Patch8` from 6118, `SfcV2Patch9` from 6119) — the state that forked testnet validators 17 and 18 on 2026-06-21. No rules, flag, contract, or persisted-state change: `vc_getRules` is identical before and after, no snapshot is required, and **the live fleet keeps running `v2.0.44-elemont`** (a swap is optional, since the fleet is far past every activation seal). A node stopped inside epoch 6118 is still resumable — only `SfcV2Patch9` remains and it activates at the canonical 6118→6119 seal. |
 | `v2.0.44-elemont` | Testnet | **Deployed fleet-wide 2026-07-08 (CONSENSUS).** Activates `SfcV2Patch9`: reflashes Cycle-164 SFC bytecode with two reward-accounting fixes on top of Patch8 — (1) `_rawDelegate` seeds the reward cursor at `currentSealedEpoch+1` (not E) for any zero-stake delegation and keeps it monotonic, closing a one-epoch reward over-mint for new/returning delegators; (2) `reactivateValidator` physically backfills a prior offline gap on repeated reactivation so a passive delegator across two gaps is not re-stranded. Activated at block 1,529,442 (epoch seal 6118→6119, 2026-07-08 15:49:06 UTC). **Requires the v2.0.44 chaindata snapshot** (below) or the regenerated 2026-07-11 genesis (see the *Fresh install?* note under Upgrade Steps); non-upgraded / divergent nodes must recover from the snapshot. |
 | `v2.0.43-elemont` | Testnet | **Deployed fleet-wide 2026-07-08 (CONSENSUS).** Activates `SfcV2Patch8`: reflashes Cycle-163 SFC bytecode making `reactivateValidator` **self-service** — a validator's own (immutable) `auth` key may reactivate it from a pure-`OFFLINE` status after an anti-flap cooldown, without the contract owner (owner keeps the looser power for lost-key recovery). Doublesign/cheater validators stay permanently un-reactivatable for ALL callers. Two appended storage mappings capture the pre-gap reward rate at reactivation and carry it forward, so delegators are never frozen across the offline gap. Activated at block 1,529,200 (epoch seal 6117→6118). Superseded by `v2.0.44-elemont`; recover from the current snapshot below. |
 | `v2.0.41-elemont` | Testnet | **Deployed fleet-wide 2026-06-21 (CONSENSUS).** Activates `SfcV2Patch7`: reflashes Cycle-162 SFC bytecode (initializes `stashedRewardsUntilEpoch` on first delegation in `_rawDelegate`, fixing the reward-cursor dead-zone where post-genesis delegators' `claimRewards`/`restakeRewards` reverted "zero rewards" while `pendingRewards` over-reported) + a testnet-only one-shot migration that raised 12 stuck delegator cursors to their join epochs. Activated at block 1,508,211 (epoch seal 6016→6017). Superseded by `v2.0.44-elemont`; recover from the current snapshot below. |
@@ -84,25 +85,26 @@ Ensure these remain open in your firewall:
 ```bash
 git clone https://github.com/VinuChain/VinuChain.git $HOME/vinuchain-upgrade
 cd $HOME/vinuchain-upgrade
-git checkout v2.0.44-elemont
+git checkout v2.0.45-elemont
 make opera
 
 curl -L -o $HOME/vitainu-genesis-testnet-20260711.g \
   https://vinu-blockchain-genesis.s3.amazonaws.com/vitainu-genesis-testnet-20260711.g
 
-# The && gates the launch on the digest check: if verification fails, the
-# node must NOT be started with --genesis.allowExperimental.
+# The && gates the launch on the digest check: if verification fails, do
+# not start the node against the downloaded file.
 # Replace YOUR_PUBLIC_IPV4 — without --nat extip: the node advertises
 # 127.0.0.1, stalls at 0-1 peers, and never syncs.
 echo "a31e5100c0bf72deeab924ce0bed41955e2bc2b64b7a766827ee7603e68efaeb  $HOME/vitainu-genesis-testnet-20260711.g" | sha256sum -c - \
   && $HOME/vinuchain-upgrade/build/opera \
        --datadir $HOME/vinuchain-testnet-datadir \
        --genesis $HOME/vitainu-genesis-testnet-20260711.g \
-       --genesis.allowExperimental \
        --nat extip:YOUR_PUBLIC_IPV4
 ```
 
-On `v2.0.44-elemont` the file is not yet in the binary's trusted-preset list, so `--genesis.allowExperimental` is required on the first boot; after the pinned-digest check above passes, expect `Applying genesis state` followed by `Applied genesis state name="VinuChain Testnet" id=206 genesis=0xbf7a3d7f49cd99745acd2aa1c828c81576c41a84fddc9c6ffb9857bab02fe260` in the startup log. The next release ships this file as the trusted preset `VinuChain testnet with history (2026-07-11)` (no override flag; expected startup line: `Genesis file is a known preset`) and actively refuses the stale 2024-06-21 / 2026-04-19 genesis files for fresh installs: replaying those re-stages `SfcV2Patch7/8/9` at the wrong epoch seal and diverges with `wrong event epoch hash` (this is how testnet validators 17 and 18 forked on 2026-06-21). Restoring the current chaindata snapshot per [Troubleshooting → Wrong event epoch hash](#warn-incoming-event-rejected-err-wrong-event-epoch-hash) remains an equally valid, faster bootstrap path. The genesis-replay caveat still applies to mainnet: the ELEMONT `SfcV2` / EVM forks are already live on mainnet, so a fresh or pre-activation mainnet datadir replayed under the current binary would re-stage those transitions at the wrong epoch seal. Recover fresh or divergent mainnet nodes from a post-activation snapshot rather than a genesis replay.
+`v2.0.45-elemont` ships this file as the trusted preset `VinuChain testnet with history (2026-07-11)`, so no override flag is needed: after the pinned-digest check above passes, expect `Genesis file is a known preset name="VinuChain testnet with history (2026-07-11)"`, then `Applying genesis state` and `Applied genesis state name="VinuChain Testnet" id=206 genesis=0xbf7a3d7f49cd99745acd2aa1c828c81576c41a84fddc9c6ffb9857bab02fe260`. (On `v2.0.44-elemont` and earlier the file is not in the trusted-preset list, so `--genesis.allowExperimental` was required — drop it once you are on v2.0.45.)
+
+`v2.0.45-elemont` also refuses the stale 2024-06-21 / 2026-04-19 genesis files for fresh installs, and refuses to start a datadir whose upgrade activation history disagrees with the live chain's — see [Troubleshooting → datadir has not crossed the upgrade activation seals](#fatal-this-datadir-belongs-to-the-vinuchain-testnet-network). Replaying a stale genesis, or resuming a datadir stranded below the activation seals, re-stages `SfcV2Patch7/8/9` at the wrong epoch seal and diverges with `wrong event epoch hash`; this is how testnet validators 17 and 18 forked on 2026-06-21. Restoring the current chaindata snapshot per [Troubleshooting → Wrong event epoch hash](#warn-incoming-event-rejected-err-wrong-event-epoch-hash) remains an equally valid, faster bootstrap path. The genesis-replay caveat still applies to mainnet: the ELEMONT `SfcV2` / EVM forks are already live on mainnet, so a fresh or pre-activation mainnet datadir replayed under the current binary would re-stage those transitions at the wrong epoch seal. Recover fresh or divergent mainnet nodes from a post-activation snapshot rather than a genesis replay. (Mainnet carries no activation-history check yet — it is added as part of the mainnet upgrade rollout, once those activation epochs are historical fact.)
 {% endhint %}
 
 {% stepper %}
@@ -166,7 +168,7 @@ The build directory is independent of your node's `--datadir`. The build process
 ```bash
 git clone https://github.com/VinuChain/VinuChain.git $HOME/vinuchain-upgrade
 cd $HOME/vinuchain-upgrade
-git checkout v2.0.44-elemont
+git checkout v2.0.45-elemont
 make opera
 # Binary is at $HOME/vinuchain-upgrade/build/opera
 ```
@@ -176,7 +178,7 @@ make opera
 Substitute `/opt/vinuchain-upgrade` (or any other path) if `$HOME` is not the right partition for your setup — every later command in this guide that references `$HOME/vinuchain-upgrade` should be adjusted to match.
 
 {% hint style="info" %}
-**Dependency pins.** `v2.0.44-elemont` uses go-vinu `v1.20.25-quota` (the `v1.20.24-quota` precompile/ModExp/EVM-fork surface — Shanghai, selected Cancun execution support, Prague/EIP-7702 set-code transactions, VinuBLS12381, VinuLatestEVM — plus the cherry-picked CVE-2023-40591 p2p ping-flood goroutine bound) and lachesis-base `v0.1.6-elemont`, unchanged from v2.0.41 (the SfcV2Patch8 and SfcV2Patch9 changes are SFC-bytecode-only, no dependency bump). `make opera` fetches dependencies on first build.
+**Dependency pins.** `v2.0.45-elemont` uses go-vinu `v1.20.25-quota` (the `v1.20.24-quota` precompile/ModExp/EVM-fork surface — Shanghai, selected Cancun execution support, Prague/EIP-7702 set-code transactions, VinuBLS12381, VinuLatestEVM — plus the cherry-picked CVE-2023-40591 p2p ping-flood goroutine bound) and lachesis-base `v0.1.6-elemont`, unchanged from v2.0.41 (the SfcV2Patch8/SfcV2Patch9 changes are SFC-bytecode-only and the v2.0.45 genesis-preset/startup-guard change is launcher-only, so no dependency bump). `make opera` fetches dependencies on first build.
 {% endhint %}
 {% endstep %}
 
@@ -189,11 +191,11 @@ The newly-built binary is at `vinuchain-upgrade/build/opera`. Move into that dir
 ```bash
 cd $HOME/vinuchain-upgrade/build
 ./opera version
-# Expected: Version: 2.0.44-elemont
+# Expected: Version: 2.0.45-elemont
 ```
 
 {% hint style="info" %}
-`opera version` prints `2.0.44-elemont` — this matches the git tag `v2.0.44-elemont`. See the note at the top of this page.
+`opera version` prints `2.0.45-elemont` — this matches the git tag `v2.0.45-elemont`. See the note at the top of this page.
 {% endhint %}
 {% endstep %}
 
@@ -323,7 +325,7 @@ For testing or development, you can run in the foreground:
 
 What to expect:
 
-**Startup banner.** Every v2.x build prints the VinuChain banner. This is the first visual confirmation that you are running v2.0.44-elemont and not the previous binary:
+**Startup banner.** Every v2.x build prints the VinuChain banner. This is the first visual confirmation that you are running v2.0.45-elemont and not the previous binary:
 
 ```text
  ██╗   ██╗██╗███╗   ██╗██╗   ██╗ ██████╗██╗  ██╗ █████╗ ██╗███╗   ██╗
@@ -335,7 +337,7 @@ What to expect:
 
                         v2.0  -  ELEMONT
 
-  Version: 2.0.44-elemont
+  Version: 2.0.45-elemont
 ```
 
 **Staging logs (testnet only, first-time Shanghai/Cancun/Prague/BLS/latest-EVM install).** On the first boot of a node that has not yet sealed Shanghai (e.g. a genesis replay rather than a snapshot restore), you will see Shanghai staged while later forks are deferred:
@@ -423,7 +425,7 @@ After the mainnet seal, `vc_getRules` reports `Upgrades.SfcV2 = true`, SFC `vers
 | Check                                                     | Expected                                                                                                                                              |
 | --------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Startup banner                                            | `VINUCHAIN v2.0 - ELEMONT` ASCII art printed to stderr                                                                                                |
-| `opera version`                                           | `Version: 2.0.44-elemont`                                                                                                                             |
+| `opera version`                                           | `Version: 2.0.45-elemont`                                                                                                                             |
 | Block production                                          | Resumes within seconds of startup; block numbers advance                                                                                              |
 | Peer count                                                | Returns to prior steady-state within minutes                                                                                                          |
 | Shanghai staging logs (testnet, first pre-Shanghai boot) | 1× `Staged Shanghai upgrade …`; Cancun and Prague may log as deferred until predecessors are active                                                    |
@@ -560,8 +562,43 @@ On mainnet, the ELEMONT `SfcV2` activation has already sealed, so its Cycle-162 
 ### Node won't start after upgrade
 
 1. Check logs: `journalctl -u opera -f` (systemd) or your terminal / Docker output.
-2. Verify the binary: `opera version` must print `2.0.44-elemont`.
+2. Verify the binary: `opera version` must print `2.0.45-elemont`.
 3. If the database is reported as corrupted, restore from the chaindata snapshot below.
+4. If startup ends with `Fatal: this datadir belongs to the VinuChain Testnet network but ...`, see the next section — the datadir is stale or divergent and must be replaced, not restarted.
+
+### `Fatal: this datadir belongs to the VinuChain Testnet network`
+
+`v2.0.45-elemont` and later refuse to start a testnet datadir that has not genuinely crossed the live chain's upgrade activation seals. The refusal is deliberate and there is no override flag: starting such a datadir would activate `SfcV2Patch7/8/9` at a local epoch seal the live chain never performed, and the node would fork and reject every peer event with `wrong event epoch hash`. This is the state that stranded testnet validators 17 and 18 on 2026-06-21 — earlier binaries started anyway and only failed later, after the damage was sealed into chaindata.
+
+You will see one of these, depending on how the datadir went stale:
+
+```
+Fatal: this datadir belongs to the VinuChain Testnet network but stopped syncing at
+epoch 5700, before its upgrade activation seals (this binary may only resume a datadir
+at epoch 6118 or later): resuming it would activate several upgrades at once at its next
+local epoch seal — a seal the live chain never performed — and diverge with "wrong event
+epoch hash"; bootstrap a fresh datadir from https://vinu-blockchain-genesis.s3.amazonaws.com/vitainu-genesis-testnet-20260711.g,
+or restore a current chaindata snapshot
+```
+
+```
+Fatal: this datadir belongs to the VinuChain Testnet network but activated SfcV2Patch7 at
+block 1423702, while the live chain activated it at block 1508212: the datadir sealed the
+upgrade at a local block the live chain never performed and has diverged with "wrong event
+epoch hash"; ...
+```
+
+```
+Fatal: this datadir belongs to the VinuChain Testnet network but disagrees with its upgrade
+activation history: at epoch 6118 the live chain has SfcV2Patch9 inactive, while this datadir
+has it active (SfcV2Patch9 activated at epoch 6119); ...
+```
+
+**What to do:** replace the chaindata. Either restore the current chaindata snapshot per [Troubleshooting → Wrong event epoch hash](#warn-incoming-event-rejected-err-wrong-event-epoch-hash) (faster) or bootstrap a fresh datadir from the 2026-07-11 genesis (see the *Fresh install?* note under Upgrade Steps). Your `nodekey` and `keystore/` are preserved by the snapshot procedure, so the node keeps its identity.
+
+**Do not** try to work around it by downgrading to `v2.0.44-elemont` and starting the same datadir: the older binary has no such check, so it will start, fork at its next epoch seal, and leave you with a divergent database to replace anyway.
+
+For reference, the live testnet activated `SfcV2Patch7` at epoch 6017 (block 1,508,212 — the first block under the new rules; the seal itself is block 1,508,211), `SfcV2Patch8` at epoch 6118 (block 1,529,201), and `SfcV2Patch9` at epoch 6119 (block 1,529,443). A node stopped *inside* epoch 6118 is **not** refused: only `SfcV2Patch9` is left to stage and it activates at the canonical 6118→6119 seal, so it resumes normally. Generated private networks (`opera network new`) and fakenets are never affected — the check matches on the published testnet genesis ID, which they do not share.
 
 ### Node starts but doesn't produce events
 
@@ -913,4 +950,4 @@ Operator-facing controls for managing chaindata size on long-lived nodes.
 
 ---
 
-_Last updated: 2026-07-08 · latest guide target `v2.0.44-elemont` (consensus: SfcV2Patch9 reward-cursor over-mint + repeated-reactivation fixes; supersedes v2.0.43 self-service `reactivateValidator`) · ERC-4337 account abstraction live on testnet · latest public snapshot `testnet-chaindata-v2.0.44-elemont-20260708T163957Z-clean.tar.gz` · corrected PaybackV2 address `0x89D1cBD9DEAaB4dFf6f800a336FBDd9A5c6829e4` · `VinuBLS12381` active, `VinuLatestEVM` active, `SfcV2Patch7` + `SfcV2Patch8` + `SfcV2Patch9` active · SFC Cycle-164 · go-vinu `v1.20.25-quota` · lachesis-base `v0.1.6-elemont`_
+_Last updated: 2026-07-17 · latest guide target `v2.0.45-elemont` (non-consensus: 2026-07-11 genesis as trusted preset + refusal of datadirs that have not crossed the upgrade activation seals; fleet remains on v2.0.44-elemont, no swap required) · ERC-4337 account abstraction live on testnet · latest public snapshot `testnet-chaindata-v2.0.44-elemont-20260708T163957Z-clean.tar.gz` · corrected PaybackV2 address `0x89D1cBD9DEAaB4dFf6f800a336FBDd9A5c6829e4` · `VinuBLS12381` active, `VinuLatestEVM` active, `SfcV2Patch7` + `SfcV2Patch8` + `SfcV2Patch9` active · SFC Cycle-164 · go-vinu `v1.20.25-quota` · lachesis-base `v0.1.6-elemont`_
