@@ -41,7 +41,7 @@ https://vinu-blockchain-genesis.s3.amazonaws.com/chaindata-snapshots/testnet-cha
 Snapshot SHA256:
 
 ```text
-1e6baa4f1e932b7a51cb77d173e206ae7b59ae950040bcfb690127797634c559
+ff52058d5f2f6a61972cfd5a5bd6fcd1db63dd9c2a3b229573140d173fbeac4a
 ```
 
 It was produced under the `20260717T055748Z` object name; `SNAPSHOT_INFO.txt` records snapshot timestamp `2026-07-17T05:57:48Z`, tip block `1,541,394`, and epoch `6,170`, with `SfcV2Patch7`, `SfcV2Patch8`, and `SfcV2Patch9` (plus `VinuBLS12381`, `VinuLatestEVM`, `PaybackV2`, `PaybackV2Patch`) all sealed. Tarball sha256 `ff52058d5f2f6a61972cfd5a5bd6fcd1db63dd9c2a3b229573140d173fbeac4a` (1.32 GiB). A stale snapshot (pre-`SfcV2Patch9`) will replay historical forks under the wrong rule set and hit `wrong event epoch hash`; always use the current object above.
