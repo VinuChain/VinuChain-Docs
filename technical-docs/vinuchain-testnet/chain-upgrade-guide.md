@@ -653,11 +653,13 @@ After the `VinuBLS12381` and `VinuLatestEVM` seals on 2026-06-03, live validator
 
    The file lists the network, snapshot timestamp, binary version, tip block, tip epoch, and the full set of sealed upgrade flags. The tip block listed there is the minimum block number your first `New block` log line should show after restart. If `cat` returns nothing, the tarball did not extract correctly — do not start opera; re-extract at the datadir root.
 
-   Current snapshot listing (public, no AWS credentials required):
-
-   ```text
-   https://vinu-blockchain-genesis.s3.amazonaws.com/?list-type=2&prefix=chaindata-snapshots/
-   ```
+   The current object name is published in this guide (above) and in the
+   GitHub release notes for the matching tag — those are the source of truth.
+   Bucket listing is **not** public (`?list-type=2` returns `AccessDenied`), so
+   there is no URL that enumerates snapshots without AWS credentials; with
+   credentials, use `aws s3 ls s3://vinu-blockchain-genesis/chaindata-snapshots/`.
+   Superseded objects are removed, so an old URL will 403 rather than serve
+   stale chaindata.
 
    The tarball is flat (top-level is `chaindata/`, `go-opera/`, and `SNAPSHOT_INFO.txt` — no `datadir/` prefix to nest) and excludes `nodekey`, `keystore/`, `opera.ipc`, `static-nodes.json`, `trusted-nodes.json`, archived `chaindata.bak.*/`, and shell `history` files. New snapshots are published under `s3://vinu-blockchain-genesis/chaindata-snapshots/`. As of the `v2.0.46-elemont` fleet rollout (2026-07-17), the current public object is `testnet-chaindata-v2.0.46-elemont-20260717T055748Z-clean` (sha256 `ff52058d5f2f6a61972cfd5a5bd6fcd1db63dd9c2a3b229573140d173fbeac4a`, tip block 1,541,394 / epoch 6170, all flags through `SfcV2Patch9` sealed); older objects may be removed and must not be reused after a newer fork seal.
 
