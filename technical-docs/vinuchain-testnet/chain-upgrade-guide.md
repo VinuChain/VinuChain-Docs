@@ -505,6 +505,8 @@ Before a staged fork seals, rollback is a normal coordinated binary swap back to
 
 The earlier SfcV2Patch6 rollback constraints still apply. After SfcV2Patch6 seals, do not roll back below v2.0.21 without operator coordination: the Cycle-162 bytecode and automatic testnet delegation backfill persist in chain state, and older binaries do not contain the activation-time backfill logic. The corrected PaybackV2 v2.0.19 rollback constraints still apply if PaybackV2Patch was also part of the node's upgrade path.
 
+The later SfcV2Patch7, SfcV2Patch8, and SfcV2Patch9 constraints also apply. After those patches seal, do not roll back below v2.0.41, v2.0.43, or v2.0.44 respectively without operator coordination: each patch reflashes the SFC contract and its bytecode persists in chain state. The current testnet has all three patches sealed, so any downgrade from v2.0.44 is a coordinated incident response; use the current post-Patch9 snapshot (or the regenerated 2026-07-11 genesis only for a brand-new datadir) instead of replaying an older state.
+
 For mainnet `SfcV2` (now live under ELEMONT), the seal has already happened: do not roll below the ELEMONT activation binary without operator coordination, because Cycle-162 SFC bytecode and the mainnet delegation backfill persist in chain state. Fresh or recovering mainnet nodes should use a post-SfcV2 snapshot; replaying from a pre-activation genesis/datadir under a different binary can re-stage the transition at the wrong seal.
 
 1. Stop the node (clean shutdown).
@@ -516,6 +518,9 @@ No datadir changes are needed for a pre-seal rollback. A post-seal rollback must
 {% hint style="info" %}
 **Per-version rollback deltas.** Each bullet describes the only functional difference between the two versions.
 
+- **v2.0.44 → v2.0.43 rollback:** `SfcV2Patch9` has reflashed Cycle-164 SFC bytecode with the reward-cursor and repeated-reactivation fixes. After the Patch9 seal, that bytecode persists in chain state and v2.0.43 lacks the Patch9 rule bit, startup guard, and staging logic; downgrade only as coordinated incident response.
+- **v2.0.43 → v2.0.41 rollback:** `SfcV2Patch8` has reflashed Cycle-163 SFC bytecode with self-service reactivation and offline-gap reward mappings. After the Patch8 seal, that bytecode persists in chain state and v2.0.41 lacks the Patch8 rule bit, startup guard, and staging logic; downgrade only as coordinated incident response.
+- **v2.0.41 → earlier rollback:** `SfcV2Patch7` has reflashed Cycle-162 SFC bytecode and ran the testnet migration for stuck delegator reward cursors. After the Patch7 seal, that bytecode and migrated state persist; older binaries lack the Patch7 rule bit and staging logic, so downgrade only as coordinated incident response.
 - **v2.0.40 → v2.0.39 rollback:** v2.0.40's only delta is the go-vinu bump to `v1.20.25-quota` (the CVE-2023-40591 p2p ping-flood goroutine bound plus a consensus-behavior-preserving FeeRefund nil-vs-zero decode normalization). It adds no fork flag, rules, snapshot, SFC, or persisted-state change, so a binary-only rollback to v2.0.39 is **state-compatible at any point and safe as a routine downgrade** — there is no seal to cross and no mid-epoch-restart divergence risk (the FeeRefund decode change re-encodes byte-identically in both directions). The only thing lost is the p2p ping-flood DoS hardening on the networking layer; mitigate at the infra/firewall layer while rolled back.
 - **v2.0.39 → v2.0.38/v2.0.37 rollback:** v2.0.39's only delta is the startup PaybackCache warm-up (consensus A1 fix) — no fork flag, rules, snapshot, SFC, or dependency change — so a binary-only rollback is state-compatible at any point. **But it reintroduces the divergence the fix closes:** a rolled-back node that restarts mid-epoch can seal FeeRefund/`block.Root` values that differ from never-restarted peers. If you must roll back, avoid any further restart of the rolled-back node until it is re-upgraded; treat an unplanned mid-epoch restart on the old binary as a potential-fork incident and compare the node's latest state root against a healthy peer before letting it emit.
 - **v2.0.37 → earlier rollback:** v2.0.37 consumes the go-vinu precompile/ModExp vector-test release. Treat rollback like v2.0.36: safe only before the relevant BLS/latest-EVM seal, and never below the binary that sealed an already-active flag without operator coordination.
@@ -550,6 +555,9 @@ No datadir changes are needed for a pre-seal rollback. A post-seal rollback must
 | `SfcV2Patch4` | v2.0.11       | 2026-04-23 · block 1,430,436 | Cycle-160 SFC — `_lockStake` / `relockStake` fix |
 | `SfcV2Patch5` | v2.0.14       | Active by 2026-05-17         | Cycle-161 SFC — canonical-pubkey validation      |
 | `SfcV2Patch6` | v2.0.21       | 2026-05-16 · block 1,460,329 | Cycle-162 SFC — orphan-delegation auto-backfill  |
+| `SfcV2Patch7` | v2.0.41       | 2026-06-21 · block 1,508,211 | Cycle-162 SFC — reward-cursor initialization and stuck-cursor migration |
+| `SfcV2Patch8` | v2.0.43       | 2026-07-08 · block 1,529,200 | Cycle-163 SFC — self-service reactivation and offline-gap reward mappings |
+| `SfcV2Patch9` | v2.0.44       | 2026-07-08 · block 1,529,442 | Cycle-164 SFC — reward-cursor and repeated-reactivation fixes |
 
 This is expected behavior — the bytecode update is the intended outcome of each upgrade and cannot be undone by swapping binaries. Reverting installed bytecode would require shipping another epoch-sealed upgrade flag, which is a forward-moving change rather than a rollback.
 
