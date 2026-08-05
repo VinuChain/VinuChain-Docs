@@ -11,7 +11,7 @@
 |---|---|---|
 | **Chain ID / Network ID** | `207` (`0xcf`) | `206` (`0xce`) |
 | **Currency** | VC | VC |
-| **Public RPC** | `https://vinuchain-rpc.com` | `https://vinufoundation-rpc.com` |
+| **Public RPC** | `https://rpc.vinuchain.org` | `https://vinufoundation-rpc.com` |
 | **Block explorer** | [vinuexplorer.org](https://vinuexplorer.org) | [testnet.vinuexplorer.org](https://testnet.vinuexplorer.org) |
 | **Alternate explorer** | [mainnet.vinuscan.com](https://mainnet.vinuscan.com) | [testnet.vinuscan.com](https://testnet.vinuscan.com) |
 | **Faucet** | — | [Request in Discord](https://discord.gg/vinu) |
@@ -34,7 +34,7 @@ Verify the active Quota contract at any time with
 ## Wallet quick-add (mainnet)
 
 * Network name: `VinuChain`
-* RPC URL: `https://vinuchain-rpc.com`
+* RPC URL: `https://rpc.vinuchain.org`
 * Chain ID: `207`
 * Currency symbol: `VC`
 * Explorer: `https://vinuexplorer.org`

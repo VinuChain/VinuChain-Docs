@@ -53,7 +53,7 @@ curl -s -X POST https://bundler-testnet.vinuexplorer.org/rpc \
 
 A bundler is simply an ERC-4337-aware relayer pointed at a node's RPC. To submit
 UserOperations on **mainnet**, run a bundler (e.g. Skandha) against the mainnet
-RPC `https://vinuchain-rpc.com`, or use any hosted bundler that supports
+RPC `https://rpc.vinuchain.org`, or use any hosted bundler that supports
 VinuChain mainnet. The EntryPoint address and UserOperation flow are identical on
 both networks.
 
@@ -78,7 +78,7 @@ curl -s -X POST <bundler-endpoint> \
 SDKs such as [permissionless.js](https://docs.pimlico.io/permissionless),
 [userop.js](https://github.com/stackup-wallet/userop.js), and the
 [aa-sdk](https://accountkit.alchemy.com/) can be pointed at the VinuChain RPC
-(`https://vinuchain-rpc.com` for mainnet, `https://vinufoundation-rpc.com` for
+(`https://rpc.vinuchain.org` for mainnet, `https://vinufoundation-rpc.com` for
 testnet) and a bundler endpoint.
 
 ## Exploring UserOperations
