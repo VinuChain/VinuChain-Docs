@@ -302,7 +302,7 @@ VNS_ORACLE_CHAIN_ID='206' \
 VNS_PRICE_CHAIN_ID='207' \
 VNS_ORACLE_REQUIRE_POOL_GUARD='1' \
 VNS_ORACLE_RPC_URL='https://vinufoundation-rpc.com' \
-VNS_PRICE_RPC_URL='https://vinuchain-rpc.com' \
+VNS_PRICE_RPC_URL='https://rpc.vinuchain.org' \
 VNS_ORACLE_MAX_DEVIATION_BPS='750' \
 npm run vns:oracle:dry-run
 
@@ -312,7 +312,7 @@ VNS_ORACLE_CHAIN_ID='206' \
 VNS_PRICE_CHAIN_ID='207' \
 VNS_ORACLE_REQUIRE_POOL_GUARD='1' \
 VNS_ORACLE_RPC_URL='https://vinufoundation-rpc.com' \
-VNS_PRICE_RPC_URL='https://vinuchain-rpc.com' \
+VNS_PRICE_RPC_URL='https://rpc.vinuchain.org' \
 VNS_ORACLE_MAX_DEVIATION_BPS='750' \
 npm run vns:oracle:update
 

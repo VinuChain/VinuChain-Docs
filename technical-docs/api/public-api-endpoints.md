@@ -9,22 +9,16 @@ description: Public Nodes / Public API Endpoints
 #### RPC
 
 ```
-https://vinuchain-rpc.com
+https://rpc.vinuchain.org
 ChainID: 207
 Symbol: VC
 Explorer: https://vinuexplorer.org
 ```
 
-Alternate RPC:
-
-```
-https://rpc.vinuchain.org
-```
-
 #### WS
 
 ```
-wss://vinuchain-rpc.com:4100
+wss://rpc.vinuchain.org
 ```
 
 

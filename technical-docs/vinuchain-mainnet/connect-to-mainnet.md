@@ -13,7 +13,7 @@ equivalence, EIP-7702 set-code transactions, and the `vc_*` RPC namespace.
 Here are the network details to connect on Metamask / Trust Wallet:
 
 * Network Name: VinuChain
-* New RPC URL: [https://vinuchain-rpc.com](https://vinuchain-rpc.com) (alternate: [https://rpc.vinuchain.org](https://rpc.vinuchain.org))
+* New RPC URL: [https://rpc.vinuchain.org](https://rpc.vinuchain.org)
 * Chain ID: 207
 * Currency symbol: VC&#x20;
 * Block Explorer URL: [https://vinuexplorer.org](https://vinuexplorer.org)

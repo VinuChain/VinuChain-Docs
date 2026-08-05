@@ -11,7 +11,7 @@
 
 | Network | Chain ID (hex / dec) | Public RPC | Block Explorer |
 |---|---|---|---|
-| Mainnet | `0xcf` / `207` | `https://vinuchain-rpc.com` | `https://vinuexplorer.org` |
+| Mainnet | `0xcf` / `207` | `https://rpc.vinuchain.org` | `https://vinuexplorer.org` |
 | Testnet | `0xce` / `206` | `https://vinufoundation-rpc.com` | `https://testnet.vinuexplorer.org` |
 | Staging | `0xcd` / `205` | (internal) | (internal) |
 | Fakenet | `0x1b` / `27` | (local dev) | n/a |

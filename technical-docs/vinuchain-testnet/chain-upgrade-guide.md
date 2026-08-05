@@ -52,7 +52,7 @@ It was produced under the `20260717T055748Z` object name; `SNAPSHOT_INFO.txt` re
 
 | Network | Chain ID   | RPC                              | Status          |
 | ------- | ---------- | -------------------------------- | --------------- |
-| Mainnet | 207 (0xcf) | `https://vinuchain-rpc.com`      | **ELEMONT live.** Shanghai, Cancun, Prague, SfcV2 (+30% base-fee burn), Elemont, ElemontPubkeyValidation, Podgorica, Llr, Berlin, London active; Quota proxy `0x1c4269fb…0acda6`. PaybackV2 / BLS12-381 / latest-EVM remain testnet-only |
+| Mainnet | 207 (0xcf) | `https://rpc.vinuchain.org`      | **ELEMONT live.** Shanghai, Cancun, Prague, SfcV2 (+30% base-fee burn), Elemont, ElemontPubkeyValidation, Podgorica, Llr, Berlin, London active; Quota proxy `0x1c4269fb…0acda6`. PaybackV2 / BLS12-381 / latest-EVM remain testnet-only |
 | Testnet | 206 (0xce) | `https://vinufoundation-rpc.com` | v2.0.46-elemont deployed; the above plus PaybackV2/BLS/latest-EVM active, SfcV2Patch7 + SfcV2Patch8 (self-service `reactivateValidator`) active, SfcV2Patch9 (reward-cursor over-mint + repeated-reactivation fixes) active; Quota proxy `0x89D1cBD9…29e4` |
 
 ---
@@ -714,7 +714,7 @@ The RPC-safe payback accessor is gated by a process-wide semaphore (8 in-flight,
 **Mainnet (chain 207) runs the ELEMONT release.** The mainnet ELEMONT hard fork is complete: Berlin, London, Shanghai, Cancun, Prague, Llr, Podgorica, SfcV2 (with the 30% base-fee burn), Elemont, and ElemontPubkeyValidation are all active, and `Economy.QuotaCacheAddress` points at the live mainnet V1 Quota proxy `0x1c4269fbbd4a8254f69383eef6af720bcd0acda6`. Confirm the live mainnet state directly against the public RPC:
 
 ```bash
-curl -s -X POST https://vinuchain-rpc.com \
+curl -s -X POST https://rpc.vinuchain.org \
   -H 'content-type: application/json' \
   -d '{"jsonrpc":"2.0","method":"vc_getRules","params":["latest"],"id":1}' \
   | jq '{shanghai: .result.Upgrades.Shanghai, cancun: .result.Upgrades.Cancun, prague: .result.Upgrades.Prague, sfcV2: .result.Upgrades.SfcV2, elemont: .result.Upgrades.Elemont, elemontPubkey: .result.Upgrades.ElemontPubkeyValidation, podgorica: .result.Upgrades.Podgorica, quotaCache: .result.Economy.QuotaCacheAddress}'

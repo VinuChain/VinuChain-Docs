@@ -30,7 +30,7 @@ fee-refund system) were already active on mainnet before ELEMONT and remain so.
 You can confirm the live rule set at any time:
 
 ```bash
-curl -s -X POST https://vinuchain-rpc.com \
+curl -s -X POST https://rpc.vinuchain.org \
   -H 'Content-Type: application/json' \
   -d '{"jsonrpc":"2.0","method":"vc_getRules","params":["latest"],"id":1}' \
   | python3 -m json.tool
@@ -41,7 +41,7 @@ curl -s -X POST https://vinuchain-rpc.com \
 ## New RPC surface
 
 ELEMONT ships a richer RPC surface, available on the public mainnet endpoint
-`https://vinuchain-rpc.com`:
+`https://rpc.vinuchain.org`:
 
 | Method | Purpose |
 |---|---|

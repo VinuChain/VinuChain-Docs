@@ -6,7 +6,7 @@ deploy and run on VinuChain mainnet (chain 207) exactly as they do on Ethereum.
 Deploying a smart contract involves sending a VinuChain transaction containing
 your compiled bytecode with no recipient address. You need VC to cover gas fees.
 
-**Mainnet** (chain 207, `https://vinuchain-rpc.com`) is the primary deployment
+**Mainnet** (chain 207, `https://rpc.vinuchain.org`) is the primary deployment
 target. **Testnet** (chain 206, `https://vinufoundation-rpc.com`) is available
 for testing before mainnet deployment; request testnet VC in the
 [VinuChain Discord](https://discord.gg/vinu).
@@ -72,7 +72,7 @@ module.exports = {
       accounts: [process.env.DEPLOYER_PRIVATE_KEY].filter(Boolean),
     },
     vinuchain: {
-      url: "https://vinuchain-rpc.com",
+      url: "https://rpc.vinuchain.org",
       chainId: 207,
       accounts: [process.env.DEPLOYER_PRIVATE_KEY].filter(Boolean),
     },

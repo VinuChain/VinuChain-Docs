@@ -77,7 +77,7 @@ would use as the refund cap for that wallet's next transaction.
 |---|---|---|
 | **Active Quota contract** | `0x1c4269fbbd4a8254f69383eef6af720bcd0acda6` | `0x89D1cBD9DEAaB4dFf6f800a336FBDd9A5c6829e4` |
 | **Chain ID** | `207` | `206` |
-| **RPC** | `https://vinuchain-rpc.com` | `https://vinufoundation-rpc.com` |
+| **RPC** | `https://rpc.vinuchain.org` | `https://vinufoundation-rpc.com` |
 | **Explorer** | [vinuexplorer.org](https://vinuexplorer.org) | [testnet.vinuexplorer.org](https://testnet.vinuexplorer.org) |
 
 > Feeless transactions are live on **both** networks. Mainnet runs Payback on
@@ -129,7 +129,7 @@ field (a hex-encoded wei amount) to the transaction receipt. Read it with the
 standard `eth_getTransactionReceipt`:
 
 ```bash
-curl -s -X POST https://vinuchain-rpc.com \
+curl -s -X POST https://rpc.vinuchain.org \
   -H 'Content-Type: application/json' \
   -d '{"jsonrpc":"2.0","method":"eth_getTransactionReceipt","params":["0xYOUR_TX_HASH"],"id":1}' \
   | python3 -c "import sys,json; print(json.load(sys.stdin)['result'].get('feeRefund'))"
@@ -167,13 +167,13 @@ Verify the active contract and chain ID live:
 
 ```bash
 # Active Quota contract address the node is enforcing (mainnet)
-curl -s -X POST https://vinuchain-rpc.com \
+curl -s -X POST https://rpc.vinuchain.org \
   -H 'Content-Type: application/json' \
   -d '{"jsonrpc":"2.0","method":"vc_getRules","params":["latest"],"id":1}' \
   | python3 -c "import sys,json; r=json.load(sys.stdin)['result']; print('chainId', r['NetworkID']); print('quota', r['Economy']['QuotaCacheAddress'])"
 
 # Available Payback quota (wei) for a wallet
-curl -s -X POST https://vinuchain-rpc.com \
+curl -s -X POST https://rpc.vinuchain.org \
   -H 'Content-Type: application/json' \
   -d '{"jsonrpc":"2.0","method":"vc_getPaybackBalance","params":["0xYOUR_ADDRESS","latest"],"id":1}'
 ```
@@ -182,7 +182,7 @@ curl -s -X POST https://vinuchain-rpc.com \
 
 This script stakes the minimum for Payback, waits for the quota to accrue,
 sends an ordinary transaction, and reads the `feeRefund` from its receipt — all
-against mainnet at `https://vinuchain-rpc.com` (chain `207`).
+against mainnet at `https://rpc.vinuchain.org` (chain `207`).
 
 > **Prerequisites**
 > * Node 18+ and `ethers` v6: `npm i ethers@6`
@@ -199,7 +199,7 @@ against mainnet at `https://vinuchain-rpc.com` (chain `207`).
 // feeless.mjs — stake -> send tx -> observe the Payback refund (mainnet)
 import { ethers } from "ethers";
 
-const RPC = "https://vinuchain-rpc.com";               // VinuChain mainnet
+const RPC = "https://rpc.vinuchain.org";               // VinuChain mainnet
 const QUOTA = "0x1c4269fbbd4a8254f69383eef6af720bcd0acda6"; // Quota contract
 
 // Minimal ABI: the staking writes + the views we read.
