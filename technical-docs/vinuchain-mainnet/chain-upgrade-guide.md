@@ -714,17 +714,41 @@ What does change once SfcV2 activates:
 **This affects most mainnet delegators and is the likeliest source of support questions.**
 
 The V2 staking contract settles rewards in bounded chunks: each call advances your reward cursor
-by at most **100 epochs**. `pendingRewards()` is *not* bounded the same way — it keeps reporting
-the full outstanding amount. So after the upgrade you can see a large `pendingRewards` figure and
-have a single `claimRewards` transaction pay only a fraction of it. In one measured mainnet
-position the first claim settles about **8%** of the displayed figure.
+by at most **100 epochs** (`_stashRewards` clamps it via `_safeCursorPosition`).
+`pendingRewards()` is *not* bounded the same way — it computes across the whole outstanding range
+and keeps reporting the full total. So after the upgrade you can see a large `pendingRewards`
+figure and have a single `claimRewards` transaction pay only a fraction of it.
 
 Nothing is lost. The remainder stays claimable; it just needs further calls.
 
-Measured against live mainnet on 2026-08-20: **111 of 139** enumerated delegations have a reward
-cursor more than 100 epochs behind, with a median gap of about **1,300 epochs** and a maximum of
-**7,632** — that longest position needs on the order of **60–77 sequential `claimRewards` calls**
-to settle fully.
+**How many calls: `ceil(cursor_gap / 100)`.** That is exact — it depends only on how far behind
+your cursor is, not on reward amounts. Read the cursor with
+`stashedRewardsUntilEpoch(you, validatorID)` and subtract it from the current sealed epoch.
+
+Measured against live mainnet at sealed epoch **7,835** (2026-08-21), over **226** delegations
+enumerated from `Delegated` logs holding non-zero `getStake`:
+
+| | |
+|---|---|
+| Delegations with a cursor more than 100 epochs behind | **143 of 226** |
+| Median gap *among those affected* | **3,919 epochs** |
+| Largest gap | **7,640 epochs** — **77** calls to settle fully |
+| Affected positions needing more than 40 calls | about half |
+
+**What fraction does the first claim pay?** Not a fixed percentage — it depends on how rewards
+fell across your gap, not just its length. Computed exactly from the per-epoch accumulated reward
+rate, for the 82 affected positions whose validator has a non-zero rate across the range:
+
+| First `claimRewards` settles | Positions |
+|---|---|
+| Median | **5.67%** of the displayed figure |
+| Under 10% | 60 of 82 |
+| Under 5% | 33 of 82 |
+| Best case | 94.91% |
+
+A first claim paying a few percent of what your wallet displays is therefore the **normal** case,
+not a fault. Two measured positions settle **0.00%** on the first call — their first 100-epoch
+window holds no reward at all, which is exactly the `"zero rewards"` revert described below.
 
 What to do:
 
@@ -743,14 +767,19 @@ contract has no 100-epoch bound. If you have a large outstanding balance and wou
 send a long sequence of transactions, claim **before 29 August**.
 {% endhint %}
 
-{% hint style="warning" %}
-**If your stake is locked, claim before the upgrade.** Under V2, once a lockup has expired the
-contract clears the lockup record the first time rewards are settled. Because settlement is
-chunked, a position with a long cursor gap can have its lockup bonus applied to only the first
-window and settle the remainder at the lower unlocked rate. Claiming while V1 is still live
-settles the whole range in one go, at the lockup rate throughout. The team is evaluating this
-ahead of the upgrade; if you hold a locked position with a long-outstanding balance, claiming
-beforehand is the safe move.
+{% hint style="success" %}
+**Locked positions are safe — this was fixed before the upgrade shipped.** An earlier revision of
+the V2 contract (Cycle-164) cleared a delegator's lockup record the first time rewards were
+settled after the lockup expired, judged on wall-clock alone. Combined with chunked settlement,
+that applied the lockup bonus to only the first 100-epoch window and paid the remainder at the
+lower unlocked rate.
+
+Mainnet does **not** activate that revision. It activates **Cycle-165**, which deletes the lockup
+record only once the cursor has settled every payable epoch — reproducing the pre-chunking
+single-sweep accounting exactly. You receive the same total whether you claim in one V1
+transaction beforehand or in a long V2 sequence afterwards; only the number of transactions
+differs. Verified on a forked chain to the wei: 47 chunked claims summed to the unclamped
+`pendingRewards` total with a residual of zero.
 {% endhint %}
 
 ---
