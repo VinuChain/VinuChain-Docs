@@ -20,6 +20,15 @@
 
 These are predeploy / genesis-installed contracts that exist on every VinuChain network.
 
+{% hint style="warning" %}
+**Mainnet Payback and SFC addresses/bytecode change on 2026-08-29.** The ELEMONT
+upgrade repoints mainnet `Economy.QuotaCacheAddress` from the V1 proxy to a newly
+deployed `QuotaContractV2`, and replaces the mainnet SFC with its V2 bytecode.
+Entries below marked mainnet are pre-upgrade values. See the
+[Mainnet Upgrade Guide](../vinuchain-mainnet/chain-upgrade-guide.md).
+{% endhint %}
+
+
 | Contract | Address | Owner / Administrator | Role |
 |---|---|---|---|
 | **SFC (Staking)** | `0xFC00FACE00000000000000000000000000000000` | mainnet: `0xF39257…16c1`; testnet: `0x7f9076…dbfd` | Validator staking, delegation, lockups, epoch rewards, slashing. **V2 SFC bytecode (latest cycle, version 3.0.5) on both networks** — mainnet activated SfcV2 with the ELEMONT upgrade; SfcV2 burns 30% of the validator base-fee share. |

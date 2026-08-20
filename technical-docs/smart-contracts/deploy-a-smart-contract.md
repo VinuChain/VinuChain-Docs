@@ -13,8 +13,14 @@ for testing before mainnet deployment; request testnet VC in the
 
 ## EVM target support
 
-Mainnet supports the full ELEMONT EVM feature set, including Shanghai, Cancun,
-and Prague hard-fork opcodes. You can use:
+**Testnet** supports the full ELEMONT EVM feature set today. **Mainnet does not
+yet** — it runs a London-era EVM until the
+[ELEMONT upgrade](../vinuchain-mainnet/chain-upgrade-guide.md) on 2026-08-29,
+which activates Shanghai, Cancun and Prague across successive epoch seals. Do not
+deploy Shanghai-or-later bytecode to mainnet before confirming the relevant seal
+has landed (`vc_getRules` → `Upgrades`).
+
+Once active on a network, you can use:
 
 * `evmVersion: "cancun"` or `"prague"` in your Solidity/Hardhat compiler config
 * `PUSH0` (EIP-3855), transient storage `TLOAD`/`TSTORE` (EIP-1153), and `MCOPY`

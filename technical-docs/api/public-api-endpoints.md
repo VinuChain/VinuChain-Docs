@@ -67,6 +67,23 @@ method-not-found (`-32601`). Use the standard `eth_*` methods for normal
 tooling; reach for `vc_*` specifically for `vc_getRules` and
 `vc_getPaybackBalance`.
 
+{% hint style="warning" %}
+**Availability differs by network right now.** `vc_getRules` works on both. But
+`vc_getPaybackBalance` and `eth_config` / `vc_config` are **testnet-only until the
+mainnet ELEMONT upgrade on 2026-08-29** — on `https://rpc.vinuchain.org` today they
+return `-32601` (method not found), because mainnet still runs the pre-ELEMONT
+binary. The wider `vc_*` mirror is likewise only partially present on mainnet.
+
+Check before depending on one:
+
+```bash
+curl -s -X POST https://rpc.vinuchain.org -H 'Content-Type: application/json' \
+  -d '{"jsonrpc":"2.0","method":"rpc_modules","params":[],"id":1}'
+```
+
+See the [Mainnet Upgrade Guide](../vinuchain-mainnet/chain-upgrade-guide.md).
+{% endhint %}
+
 #### `vc_getPaybackBalance`
 
 ```

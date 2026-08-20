@@ -13,7 +13,9 @@ Latest public snapshot: `https://vinu-blockchain-genesis.s3.amazonaws.com/chaind
 
 ## 1. Supported go-opera version <a href="#id-1.-current-version-of-go-opera" id="id-1.-current-version-of-go-opera"></a>
 
-The current node release is **v2.0.44-elemont** for testnet (mainnet runs the ELEMONT feature set on the latest mainnet-compatible build). Build it from the `v2.0.44-elemont` tag with Go 1.25+ (see [Read-Only Node](read-only-node.md)).
+The current node release is **v2.0.46-elemont** for testnet. Build it from the `v2.0.46-elemont` tag with Go 1.25.12+ (see [Read-Only Node](read-only-node.md)).
+
+**Mainnet** still runs the pre-ELEMONT `v2.0.0-rc.1` binary until the upgrade on **2026-08-29 10:00 UTC**, which moves it to `v2.0.47-elemont` — see the [Mainnet Upgrade Guide (ELEMONT)](../vinuchain-mainnet/chain-upgrade-guide.md).
 
 ### **1.0 Pre-flight checklist** <a href="#id-1.0-pre-flight-checklist" id="id-1.0-pre-flight-checklist"></a>
 

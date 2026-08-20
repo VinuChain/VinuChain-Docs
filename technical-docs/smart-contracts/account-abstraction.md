@@ -7,20 +7,36 @@ change to the underlying protocol. The standard ERC-4337 stack lives at its
 canonical, cross-chain addresses, so existing tooling (account SDKs, bundler
 clients, paymaster services) works against VinuChain unmodified.
 
-The ELEMONT upgrade enables ERC-4337 on mainnet: Prague's **EIP-7702 set-code
-transactions** are live, and the canonical
+ERC-4337 is **live on testnet today**. It is **not yet available on mainnet** — the
+contracts are not deployed there. Verified 2026-08-19: `eth_getCode` for the
+EntryPoint, the SimpleAccountFactory, and the Arachnid deterministic-deployment
+proxy all return `0x` (no code) on chain `207`.
+
+Mainnet gains the prerequisites with the [ELEMONT upgrade](../vinuchain-mainnet/chain-upgrade-guide.md)
+on 2026-08-29: Prague's **EIP-7702 set-code transactions** activate at the third
+epoch seal, and the canonical
 [Arachnid deterministic-deployment proxy](https://github.com/Arachnid/deterministic-deployment-proxy)
-transaction is allowlisted so the EntryPoint can be placed at its canonical
-address on mainnet (chain `207`).
+transaction is allowlisted so the EntryPoint can then be placed at its canonical
+address. Deploying the EntryPoint singleton is a separate CREATE2 step after that.
 
 ## Availability
 
-| Network | Chain ID | ERC-4337 |
-| --------- | ---------- | ---------- |
-| Mainnet | 207 | **Live** |
-| Testnet | 206 | **Live** |
+| Network | Chain ID | ERC-4337 | Notes |
+| --------- | ---------- | ---------- | --- |
+| Mainnet | 207 | **Not yet** | EntryPoint / factory not deployed (`eth_getCode` = `0x`). Prague activates 2026-08-29; deployment follows. |
+| Testnet | 206 | **Live** | EntryPoint v0.7 (16,035 bytes) and SimpleAccountFactory (2,288 bytes) deployed. |
 
-## Canonical contracts (both networks)
+{% hint style="warning" %}
+Check before you build against mainnet:
+
+```bash
+curl -s -X POST https://rpc.vinuchain.org -H 'Content-Type: application/json' \
+  -d '{"jsonrpc":"2.0","method":"eth_getCode","params":["0x0000000071727De22E5E9d8BAf0edAc6f37da032","latest"],"id":1}'
+# "0x" means the EntryPoint is not deployed on mainnet yet.
+```
+{% endhint %}
+
+## Canonical contracts (deployed on testnet; canonical addresses reserved for mainnet)
 
 | Contract | Address |
 | ---------- | --------- |

@@ -80,11 +80,17 @@ would use as the refund cap for that wallet's next transaction.
 | **RPC** | `https://rpc.vinuchain.org` | `https://vinufoundation-rpc.com` |
 | **Explorer** | [vinuexplorer.org](https://vinuexplorer.org) | [testnet.vinuexplorer.org](https://testnet.vinuexplorer.org) |
 
-> Feeless transactions are live on **both** networks. Mainnet runs Payback on
-> its original Quota proxy; testnet runs the newer `QuotaContractV2`, which adds
-> receiver-funded staking (`stakeFor`/`unstakeFor`). Confirm the address the node
-> is actually enforcing at any time with `vc_getRules("latest")` →
-> `Economy.QuotaCacheAddress` (see below).
+> Feeless transactions are live on **both** networks. Mainnet currently runs Payback
+> on its original Quota proxy; testnet runs the newer `QuotaContractV2`, which adds
+> receiver-funded staking (`stakeFor`/`unstakeFor`).
+>
+> **Mainnet moves to `QuotaContractV2` on 2026-08-29** as part of the ELEMONT
+> upgrade. Stake left on the old proxy stops earning fee refunds at that point and
+> must be migrated — see
+> [the migration steps](../vinuchain-mainnet/chain-upgrade-guide.md#if-you-stake-in-the-payback-fee-refund-contract).
+>
+> Confirm the address the node is actually enforcing at any time with
+> `vc_getRules("latest")` → `Economy.QuotaCacheAddress` (see below).
 
 ### Getting the ABI
 
@@ -177,6 +183,15 @@ curl -s -X POST https://rpc.vinuchain.org \
   -H 'Content-Type: application/json' \
   -d '{"jsonrpc":"2.0","method":"vc_getPaybackBalance","params":["0xYOUR_ADDRESS","latest"],"id":1}'
 ```
+
+{% hint style="warning" %}
+`vc_getPaybackBalance` is **not yet available on mainnet** — it returns `-32601`
+(method not found) on `https://rpc.vinuchain.org` until the ELEMONT upgrade on
+2026-08-29. It works on testnet (`https://vinufoundation-rpc.com`) today. Fee
+refunds themselves *are* live on mainnet via Podgorica; it is only this RPC helper
+that is missing. Read the refund from the transaction receipt's `feeRefund` field
+in the meantime.
+{% endhint %}
 
 ## End-to-end example (ethers.js, mainnet)
 
