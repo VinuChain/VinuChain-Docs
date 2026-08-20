@@ -7,7 +7,7 @@ There are two ways a user can stake their VC on VinuChain:
 1. **Stake for APY (delegating).**
 2. **Stake for Payback (zero gas fee transactions).**
 
-A user can separately stake for both options if they wish, or just one, on [VinuScan](https://mainnet.vinuscan.com/staking).
+A user can separately stake for both options if they wish, or just one, on the [VinuChain staking app](https://vinuchain.org/staking).
 
 ### Stake for APY (Delegating)
 

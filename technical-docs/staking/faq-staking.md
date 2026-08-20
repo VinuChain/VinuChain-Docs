@@ -41,7 +41,7 @@ Yes, you can.
 
 ### **Can I re-stake or increase my delegation?** <a href="#can-i-re-stake-or-increase-my-delegation" id="can-i-re-stake-or-increase-my-delegation"></a>
 
-Yes. This is possible through [VinuScan](https://mainnet.vinuscan.com).
+Yes. This is possible through the [VinuChain staking app](https://vinuchain.org/staking).
 
 ### **Can I unlock my delegation before the lock-up period ends?** <a href="#can-i-unlock-my-delegation-before-the-lock-up-period-ends" id="can-i-unlock-my-delegation-before-the-lock-up-period-ends"></a>
 

@@ -13,7 +13,6 @@
 | **Currency** | VC | VC |
 | **Public RPC** | `https://rpc.vinuchain.org` | `https://vinufoundation-rpc.com` |
 | **Block explorer** | [vinuexplorer.org](https://vinuexplorer.org) | [testnet.vinuexplorer.org](https://testnet.vinuexplorer.org) |
-| **Alternate explorer** | [mainnet.vinuscan.com](https://mainnet.vinuscan.com) | [testnet.vinuscan.com](https://testnet.vinuscan.com) |
 | **Faucet** | — | [Request in Discord](https://discord.gg/vinu) |
 
 ## Key contracts
@@ -30,6 +29,15 @@ The full contract table (including VNS) is in the
 [Master Contracts Reference](smart-contracts/contracts-master-list.md).
 Verify the active Quota contract at any time with
 `vc_getRules("latest")` → `Economy.QuotaCacheAddress`.
+
+{% hint style="warning" %}
+**Mainnet's Payback contract changes on 2026-08-29.** The ELEMONT upgrade repoints
+`Economy.QuotaCacheAddress` off the V1 proxy above onto a newly deployed
+`QuotaContractV2`. Fee-refund stakers must migrate — see the
+[Mainnet Upgrade Guide](vinuchain-mainnet/chain-upgrade-guide.md#if-you-stake-in-the-payback-fee-refund-contract).
+The same upgrade replaces the mainnet SFC with its V2 bytecode. Re-read this page
+after the upgrade, and trust `vc_getRules` over any static list.
+{% endhint %}
 
 ## Wallet quick-add (mainnet)
 

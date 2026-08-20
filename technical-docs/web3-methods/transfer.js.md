@@ -41,7 +41,7 @@ const transfer = async () => {
     signedTx.rawTransaction,
     function (error, hash) {
       if (!error) {
-        console.log(`🎉 The hash of your transaction is: https://mainnet.vinuscan.com/tx/${hash}`);
+        console.log(`🎉 The hash of your transaction is: https://vinuexplorer.org/tx/${hash}`);
       } else {
         console.log(
           '❗Something went wrong while submitting your transaction:',
@@ -60,11 +60,11 @@ const transferWithParams = async (mainnet) => {
   if (mainnet) {
     RPC = MAINNET_RPC;
     chainId = 207;
-    URL = 'https://mainnet.vinuscan.com/tx/';
+    URL = 'https://vinuexplorer.org/tx/';
   } else {
     RPC = TESTNET_RPC;
     chainId = 206;
-    URL = 'https://testnet.vinuscan.com/tx/';
+    URL = 'https://testnet.vinuexplorer.org/tx/';
   }
 
   var testWeb3 = new Web3(RPC);

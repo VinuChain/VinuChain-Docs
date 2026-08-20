@@ -28,7 +28,28 @@ To stake, you do not need any dedicated special hardware or device. You can do i
 
 ## How to Stake <a href="#how-to-stake" id="how-to-stake"></a>
 
-You can stake on [VinuScan](https://mainnet.vinuscan.com/staking).
+You can stake on the [VinuChain staking app](https://vinuchain.org/staking).
+
+### Reading epoch data <a href="#reading-epoch-data" id="reading-epoch-data"></a>
+
+The per-epoch values in the formulas below (`epochDuration`, `totalBaseRewardWeight`) come from
+the epoch snapshot held on-chain by the SFC staking contract at
+`0xFC00FACE00000000000000000000000000000000`. Read the current epoch number first, then that
+epoch's snapshot:
+
+```bash
+# current epoch
+curl -s -X POST https://rpc.vinuchain.org -H 'Content-Type: application/json' \
+  -d '{"jsonrpc":"2.0","method":"eth_currentEpoch","params":[],"id":1}'
+
+# snapshot for a sealed epoch (replace the padded epoch number)
+curl -s -X POST https://rpc.vinuchain.org -H 'Content-Type: application/json' \
+  -d '{"jsonrpc":"2.0","method":"eth_call","params":[{"to":"0xFC00FACE00000000000000000000000000000000","data":"0x39b80c000000000000000000000000000000000000000000000000000000000000001e91"},"latest"],"id":1}'
+```
+
+`getEpochSnapshot(uint256)` (selector `0x39b80c00`) returns the epoch's end time, fee, and
+`totalBaseRewardWeight`. Query a **sealed** epoch (one below the current one) — the in-progress
+epoch has no final snapshot yet. A mainnet epoch seals at most every 4 hours.
 
 ## How Staking Rewards are Calculated <a href="#how-staking-rewards-are-calculated" id="how-staking-rewards-are-calculated"></a>
 
@@ -39,10 +60,10 @@ Validators receive a **base reward** and **15% of delegator rewards** per epoch.
 * If a validator stake is locked, it receives 100% of the base reward.
 * If a validator stake is unlocked, it only receives 30% of the base reward.
   * `validatorStake` = the amount you have staked.
-  * `epochDuration` = [Epoch Duration](https://mainnet.vinuscan.com/epochs) in seconds _(an epoch is approximately 4 hours / 14,400 seconds)._
-  * `validatorEpochUptime` _=_ [Epoch Duration](https://mainnet.vinuscan.com/epochs) in seconds _(if validator was online for 100% of the time, otherwise pro-rata it)._
+  * `epochDuration` = the epoch duration in seconds _(an epoch is approximately 4 hours / 14,400 seconds)._
+  * `validatorEpochUptime` _=_ the epoch duration in seconds _(if validator was online for 100% of the time, otherwise pro-rata it)._
   * `baseRewardPerSecond` = 0.75.
-  * `totalBaseRewardWeight` = a field found within each [Epoch](https://mainnet.vinuscan.com/epochs).
+  * `totalBaseRewardWeight` = a field in that epoch's on-chain snapshot — see [Reading epoch data](#reading-epoch-data).
   * `delegatorStake` = the amount delegated to the validator excluding its own stake.
 
 ```
@@ -65,10 +86,10 @@ Delegators receive a **base reward** **less** **15% fee sent to the validator** 
 * If a delegator stake is locked, it receives 85% _(100% - 15%)_ of the base reward per epoch.
 * If a delegator stake is unlocked, it receives 25.5% _(30% x (100%-15%))_ of the base reward per epoch.
   * `delegatorStake` = the amount you have staked as a delegator.
-  * `epochDuration` = [Epoch Duration](https://mainnet.vinuscan.com/epochs) in seconds _(an epoch is approximately 4 hours / 14,400 seconds)._
-  * `validatorEpochUptime` _=_ [Epoch Duration](https://mainnet.vinuscan.com/epochs) in seconds _(if validator was online for 100% of the time, otherwise pro-rata it)._
+  * `epochDuration` = the epoch duration in seconds _(an epoch is approximately 4 hours / 14,400 seconds)._
+  * `validatorEpochUptime` _=_ the epoch duration in seconds _(if validator was online for 100% of the time, otherwise pro-rata it)._
   * `baseRewardPerSecond` = 0.75.
-  * `totalBaseRewardWeight` = a field found within each [Epoch](https://mainnet.vinuscan.com/epochs).
+  * `totalBaseRewardWeight` = a field in that epoch's on-chain snapshot — see [Reading epoch data](#reading-epoch-data).
 
 ```
 Total Delegator Reward = Delegator Reward + Delegator Fees

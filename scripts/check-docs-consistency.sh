@@ -58,9 +58,21 @@ if out=$(grep -rniE "$mojibake_pattern" --include='*.md' . --exclude-dir=.git); 
   err "mojibake marker found; re-save the affected text as UTF-8 or replace it with plain ASCII:"$'\n'"$out"
 fi
 
-# 6) VinuScan links must use the explicit mainnet/testnet hosts.
-if out=$(grep -rniE 'https?://(www\.)?vinuscan\.com([/?#)]|$)' --include='*.md' . --exclude-dir=.git); then
-  err "bare vinuscan.com link found; use mainnet.vinuscan.com or testnet.vinuscan.com:"$'\n'"$out"
+# 6) vinuscan.com does not resolve. The registration expired 2026-07-06 and the
+#    name entered redemption period 2026-08-17, so every host under it (apex,
+#    www., mainnet., testnet., faucet., vinu-price.) returns NXDOMAIN — verified
+#    2026-08-19. That is how a dead staking link sat in staking/overview.md.
+#    Explorer links belong on vinuexplorer.org / testnet.vinuexplorer.org; the
+#    staking UI is https://vinuchain.org/staking.
+#
+#    THIS CHECK IS CONDITIONAL, NOT PERMANENT. The domain is redeemable until it
+#    drops (~mid-September 2026) and the serving path behind it is intact, so if
+#    vinuscan.com is redeemed and resolving again, relax or delete this check
+#    rather than working around it. Confirm with:
+#        dig +short mainnet.vinuscan.com
+#    Background: vinuchain-ops-docs ops/incident-2026-08-19-vinuscan-domain-expiry.md
+if out=$(grep -rniE '[a-z0-9.-]*vinuscan\.com' --include='*.md' . --exclude-dir=.git); then
+  err "vinuscan.com link found; that domain does not resolve (expired 2026-07-06, in redemption since 2026-08-17). Use vinuexplorer.org / testnet.vinuexplorer.org for explorers, or https://vinuchain.org/staking for staking. If the domain has since been redeemed, relax check 6 instead of adding the link back:"$'\n'"$out"
 fi
 
 # 7) Manual anchor IDs must be unique. Duplicate IDs can make GitBook route
