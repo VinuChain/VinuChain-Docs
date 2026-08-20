@@ -8,7 +8,7 @@
 - **Validator offline >1,000 epochs cannot rejoin** → upgrade to v2.0.8-elemont (removes the `validatePeerProgress` drift cap). See [Chain Upgrade Guide → stuck peercount](../vinuchain-testnet/chain-upgrade-guide.md#stuck-at-net-peercount-1-with-one-stale-peer).
 - **`WARN Incoming event rejected ... err="wrong event epoch hash"`** → resync from a **stale** genesis (the 2024-06-21 / 2026-04-19 files) **does not work** on current binary rules. Use the latest post-seal chaindata snapshot at `s3://vinu-blockchain-genesis/chaindata-snapshots/` — see [Chain Upgrade Guide → wrong event epoch hash](../vinuchain-testnet/chain-upgrade-guide.md#warn-incoming-event-rejected-err-wrong-event-epoch-hash) for the recovery procedure — or bootstrap a fresh datadir from the regenerated 2026-07-11 genesis (see the Chain Upgrade Guide's *Fresh install?* note).
 
-Latest public snapshot: `https://vinu-blockchain-genesis.s3.amazonaws.com/chaindata-snapshots/testnet-chaindata-v2.0.46-elemont-20260717T055748Z-clean.tar.gz` (published 2026-07-17, tip block 1,541,394 / epoch 6170). SHA256 `ff52058d5f2f6a61972cfd5a5bd6fcd1db63dd9c2a3b229573140d173fbeac4a`. Excludes `nodekey` / `keystore/` / `static-nodes.json` so your validator identity is preserved during extraction. It includes `VinuBLS12381`, `VinuLatestEVM`, and `SfcV2Patch7`/`SfcV2Patch8`/`SfcV2Patch9` all active.
+Latest public snapshot: `https://vinu-blockchain-genesis.s3.amazonaws.com/chaindata-snapshots/testnet-chaindata-v2.0.47-elemont-20260820T113052Z-clean.tar.gz` (published 2026-08-20, tip block 1,585,766 / epoch 6,375). SHA256 `56fb6ed4ca88f4fe202444180036b1a5920560d1879110716d6ae74befa2409d`. Excludes `nodekey` / `keystore/` / `static-nodes.json` so your validator identity is preserved during extraction. It includes `VinuBLS12381`, `VinuLatestEVM`, and `SfcV2Patch7`/`SfcV2Patch8`/`SfcV2Patch9` all active.
 {% endhint %}
 
 ## 1. Supported go-opera version <a href="#id-1.-current-version-of-go-opera" id="id-1.-current-version-of-go-opera"></a>
@@ -49,8 +49,8 @@ Context: the 2026-04-23 mainnet RPC recovery required exactly this sequence afte
 Chaindata snapshots from `s3://vinu-blockchain-genesis/chaindata-snapshots/` are typically ~1 GiB compressed. Long-running downloads over SSM can be cut short by an SSM session timeout (20 min default), CloudFlare connection drop, or a transient instance networking blip. To make the download resumable, always pass `curl -C - -o <file> <url>`:
 
 ```
-curl -C - -o testnet-chaindata-v2.0.46-elemont-20260717T055748Z-clean.tar.gz \
-  https://vinu-blockchain-genesis.s3.amazonaws.com/chaindata-snapshots/testnet-chaindata-v2.0.46-elemont-20260717T055748Z-clean.tar.gz
+curl -C - -o testnet-chaindata-v2.0.47-elemont-20260820T113052Z-clean.tar.gz \
+  https://vinu-blockchain-genesis.s3.amazonaws.com/chaindata-snapshots/testnet-chaindata-v2.0.47-elemont-20260820T113052Z-clean.tar.gz
 ```
 
 The `-C -` flag auto-resumes from the byte offset already on disk if the file exists, or starts from zero if it doesn't. Without it, an interrupted `curl` forces a full redownload and wastes the partial bytes.

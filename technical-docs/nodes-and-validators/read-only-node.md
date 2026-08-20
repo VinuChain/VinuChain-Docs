@@ -176,10 +176,10 @@ You can download the genesis file with the following command:
 Current testnet installs must restore the latest chaindata snapshot instead of replaying from a genesis file. Follow [Troubleshooting](troubleshooting.md) and use:
 
 ```text
-https://vinu-blockchain-genesis.s3.amazonaws.com/chaindata-snapshots/testnet-chaindata-v2.0.46-elemont-20260717T055748Z-clean.tar.gz
+https://vinu-blockchain-genesis.s3.amazonaws.com/chaindata-snapshots/testnet-chaindata-v2.0.47-elemont-20260820T113052Z-clean.tar.gz
 ```
 
-SHA256: `ff52058d5f2f6a61972cfd5a5bd6fcd1db63dd9c2a3b229573140d173fbeac4a` (tip epoch 6170 / block 1,541,394)
+SHA256: `56fb6ed4ca88f4fe202444180036b1a5920560d1879110716d6ae74befa2409d` (tip epoch 6,375 / block 1,585,766)
 
 {% hint style="warning" %}
 **Do not bootstrap current testnet from older genesis files or pre-v2.0.37 snapshots.** Nodes that missed a seal-time upgrade such as `PaybackV2Patch`, `SfcV2Patch6`, `Shanghai`, `Cancun`, `VinuBLS12381`, or `VinuLatestEVM` compute a different epoch-state hash and reject current-tip events with `err="wrong event epoch hash"`. The v2.0.37 snapshot above includes `VinuBLS12381: active`, `VinuLatestEVM: active`, `PaybackV2Patch: active`, `SfcV2Patch6: active`, `Shanghai: active`, and `Cancun: active`; older testnet snapshots and genesis files remain archival only.
