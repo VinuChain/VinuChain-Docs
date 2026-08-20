@@ -34,19 +34,19 @@
 
 `v2.0.44-elemont` (**consensus**) was built once on the validator host and distributed byte-identically to all five nodes on **2026-07-08** (RPC first, then validators V1-V4 one-at-a-time with 20s spacing). Binary sha256 `d060210f793d7d38019d41a3bfb6cc48a52a5878d544d0b6bf6bd094c7d04a72` (one build distributed via S3, byte-identical by construction). It activates `SfcV2Patch9` at the first epoch seal after boot, which **reflashes Cycle-164 SFC bytecode** (raw-bytes sha256 `b25a749fe4fa4191bafc2f48d62f046176e1c9ba8fb914fa4a6f81651c4344af`, 48,336 bytes) with two reward-accounting fixes on top of Patch8: **(1)** `_rawDelegate` now seeds the reward cursor at `currentSealedEpoch+1` — the first epoch whose stake snapshot includes the new stake — for any zero-stake delegation (first OR returning delegator), skips the immediate `_stashRewards` on a zero-stake delegation, and makes the cursor monotonic in `_stashRewards`, closing a one-epoch reward over-mint (seeding at E let a delegation opened during E+1 claim the E→E+1 accumulator delta whose `_epochEndReceivedStake[E]` per-token denominator excluded the just-added stake). A residual one-epoch over-mint remains, by design, only when ADDING to an existing non-zero position (not fixable with a single per-delegator cursor). **(2)** `reactivateValidator` physically backfills a PRIOR offline gap's snapshot rates (bounded at `MAX_REACTIVATION_BACKFILL`=300 ≈ 7.5M gas, under the 20.5M block-gas limit) before overwriting its single heal record, so a fully-passive delegator across two consecutive offline gaps is not re-stranded. No new storage slots (a constant + existing mappings only). Because this is a persisted-state consensus change, **a fresh chaindata snapshot IS required** once the activation seals; non-upgraded nodes diverge with `wrong event epoch hash`. The previous binary is preserved as `opera.v2.0.43.bak.<timestamp>` beside each deployed binary. Activation sealed at block **1,529,442** (epoch 6118→6119) on 2026-07-08 15:49:06 UTC — all five nodes reflashed the Cycle-164 bytecode at the same block, each logging exactly one `Re-applying SFC V2 bytecode upgrade (patch 9)` with no `Multiple SfcV2Patch*` warning and no `wrong event epoch hash` (clean single-patch activation). Post-rollout `vc_getRules("latest")` reports `SfcV2Patch9=true` and `eth_getCode(0xFC00FACE…)` is the 48,336-byte Cycle-164 (`b25a749f…`); the chain advanced past the activation block with all four validators active and producing (quorum reached the reflash with no divergence). The replacement v2.0.44 chaindata snapshot is published below.
 
-The latest public recovery snapshot is the `v2.0.46-elemont` object (taken 2026-07-17 at block 1,541,394 / epoch 6170). It carries the same sealed upgrade flags as the v2.0.44 object it replaces — v2.0.45/46 changed no chain state — and is a convenience refresh, not a required recovery step:
+The latest public recovery snapshot is the `v2.0.47-elemont` object (taken 2026-08-20 at block 1,585,766 / epoch 6,375). It is the **required** recovery artefact for this release: `SfcV2Patch10` is a persisted-state consensus change, so a pre-Patch10 snapshot replays the reflash at the wrong seal and diverges with `wrong event epoch hash`. It is also the only valid bootstrap for a fresh install, because every published genesis pre-dates the Patch10 activation.
 
 ```text
-https://vinu-blockchain-genesis.s3.amazonaws.com/chaindata-snapshots/testnet-chaindata-v2.0.46-elemont-20260717T055748Z-clean.tar.gz
+https://vinu-blockchain-genesis.s3.amazonaws.com/chaindata-snapshots/testnet-chaindata-v2.0.47-elemont-20260820T113052Z-clean.tar.gz
 ```
 
 Snapshot SHA256:
 
 ```text
-ff52058d5f2f6a61972cfd5a5bd6fcd1db63dd9c2a3b229573140d173fbeac4a
+56fb6ed4ca88f4fe202444180036b1a5920560d1879110716d6ae74befa2409d
 ```
 
-It was produced under the `20260717T055748Z` object name; `SNAPSHOT_INFO.txt` records snapshot timestamp `2026-07-17T05:57:48Z`, tip block `1,541,394`, and epoch `6,170`, with `SfcV2Patch7`, `SfcV2Patch8`, and `SfcV2Patch9` (plus `VinuBLS12381`, `VinuLatestEVM`, `PaybackV2`, `PaybackV2Patch`) all sealed. Tarball sha256 `ff52058d5f2f6a61972cfd5a5bd6fcd1db63dd9c2a3b229573140d173fbeac4a` (1.32 GiB). A stale snapshot (pre-`SfcV2Patch9`) will replay historical forks under the wrong rule set and hit `wrong event epoch hash`; always use the current object above.
+It was produced under the `20260820T113052Z` object name; `SNAPSHOT_INFO.txt` records snapshot timestamp `2026-08-20T11:30:52Z`, tip block `1,585,766`, and epoch `6,375`, with all 24 upgrade flags sealed — `SfcV2Patch7`/`8`/`9` plus **`SfcV2Patch10`**, alongside `VinuBLS12381`, `VinuLatestEVM`, `PaybackV2` and `PaybackV2Patch`. It also pins the sealed SFC bytecode: Cycle-165, 48,757 bytes, sha256 `134a508b13d46647052b64f8d6691f0b939d2afaa0fa400882c6653a40a77887`. Tarball sha256 `56fb6ed4ca88f4fe202444180036b1a5920560d1879110716d6ae74befa2409d` (1.39 GiB); identity files (`nodekey`, `keystore/`, `opera.ipc`, static-/trusted-nodes) are excluded, so it is safe to distribute. A stale snapshot (pre-`SfcV2Patch10`) will replay historical forks under the wrong rule set and hit `wrong event epoch hash`; always use the current object above.
 
 ---
 
@@ -649,7 +649,7 @@ After the `VinuBLS12381` and `VinuLatestEVM` seals on 2026-06-03, live validator
 
    ```bash
    cd <datadir>
-   SNAPSHOT_URL="https://vinu-blockchain-genesis.s3.amazonaws.com/chaindata-snapshots/testnet-chaindata-v2.0.46-elemont-20260717T055748Z-clean.tar.gz"
+   SNAPSHOT_URL="https://vinu-blockchain-genesis.s3.amazonaws.com/chaindata-snapshots/testnet-chaindata-v2.0.47-elemont-20260820T113052Z-clean.tar.gz"
    curl -LO "$SNAPSHOT_URL"
    # verify integrity
    curl -L "$SNAPSHOT_URL.sha256" | sha256sum -c -
@@ -673,7 +673,7 @@ After the `VinuBLS12381` and `VinuLatestEVM` seals on 2026-06-03, live validator
    Superseded objects are removed, so an old URL will 403 rather than serve
    stale chaindata.
 
-   The tarball is flat (top-level is `chaindata/`, `go-opera/`, and `SNAPSHOT_INFO.txt` — no `datadir/` prefix to nest) and excludes `nodekey`, `keystore/`, `opera.ipc`, `static-nodes.json`, `trusted-nodes.json`, archived `chaindata.bak.*/`, and shell `history` files. New snapshots are published under `s3://vinu-blockchain-genesis/chaindata-snapshots/`. As of the `v2.0.46-elemont` fleet rollout (2026-07-17), the current public object is `testnet-chaindata-v2.0.46-elemont-20260717T055748Z-clean` (sha256 `ff52058d5f2f6a61972cfd5a5bd6fcd1db63dd9c2a3b229573140d173fbeac4a`, tip block 1,541,394 / epoch 6170, all flags through `SfcV2Patch9` sealed); older objects may be removed and must not be reused after a newer fork seal.
+   The tarball is flat (top-level is `chaindata/`, `go-opera/`, and `SNAPSHOT_INFO.txt` — no `datadir/` prefix to nest) and excludes `nodekey`, `keystore/`, `opera.ipc`, `static-nodes.json`, `trusted-nodes.json`, archived `chaindata.bak.*/`, and shell `history` files. New snapshots are published under `s3://vinu-blockchain-genesis/chaindata-snapshots/`. As of the `v2.0.46-elemont` fleet rollout (2026-07-17), the current public object is `testnet-chaindata-v2.0.46-elemont-20260717T055748Z-clean` (sha256 `56fb6ed4ca88f4fe202444180036b1a5920560d1879110716d6ae74befa2409d`, tip block 1,541,394 / epoch 6170, all flags through `SfcV2Patch9` sealed); older objects may be removed and must not be reused after a newer fork seal.
 
 5. Ensure `--nat extip:<your_public_ip>` is set and `<datadir>/go-opera/static-nodes.json` contains the canonical bootnode list from the [Start your node](#start-your-node) section.
 6. Restart opera. The node resumes from the snapshot's tip and syncs forward. Expect `New DAG summary age=<few seconds>` within 1-2 minutes of restart.
@@ -968,4 +968,4 @@ Operator-facing controls for managing chaindata size on long-lived nodes.
 
 ---
 
-_Last updated: 2026-07-17 · latest guide target `v2.0.46-elemont`, deployed fleet-wide 2026-07-17 (non-consensus: Go 1.25.12 pin for GO-2026-5856, on top of v2.0.45's 2026-07-11 genesis trusted preset + refusal of datadirs that have not crossed the upgrade activation seals) · ERC-4337 account abstraction live on testnet · latest public snapshot `testnet-chaindata-v2.0.46-elemont-20260717T055748Z-clean.tar.gz` · corrected PaybackV2 address `0x89D1cBD9DEAaB4dFf6f800a336FBDd9A5c6829e4` · `VinuBLS12381` active, `VinuLatestEVM` active, `SfcV2Patch7` + `SfcV2Patch8` + `SfcV2Patch9` active · SFC Cycle-164 · go-vinu `v1.20.25-quota` · lachesis-base `v0.1.6-elemont`_
+_Last updated: 2026-08-20 · latest guide target `v2.0.47-elemont`, deployed fleet-wide 2026-08-20 (CONSENSUS: `SfcV2Patch10` reflashes Cycle-165 SFC bytecode, fixing lockup-reward destruction under chunked settlement; activated at block 1,585,699 / epoch seal 6374→6375). Recovery snapshot and fresh-install bootstrap: the `v2.0.47-elemont` object above._
