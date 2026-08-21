@@ -32,7 +32,7 @@ addresses are listed under "Legacy contracts" below for provenance only.
 | VinuUsdOracle | `0xde7931dCA452Be9647e4AF13C92edCFac1f26d52` |
 | Exponential Premium Price Oracle | `0xf165a2a7858C6E215e56B27a3Bf4565Bcf16e226` |
 | VNS Registrar Controller (pausable) | `0x67f98dD44B88bE9fAB06e3b94C77EB2444E81695` |
-| VNS Bulk Renewal | `0xC3E55936B1014c41370A678ea22F986C1Ef57288` |
+| VNS Bulk Renewal | `0xAF71860B1f2a7702b25A1d9E6C1E2cE4008aFf5C` |
 | VNS Public Resolver | `0x4A48039E378d7a29A27BC737d9D6E303D46A6620` |
 | Gateway Provider | `0xbd3D532604cDC469aF0C69e7D8fbC11420eB7BaC` |
 | Universal Resolver | `0x79165046bac745Aad2649b2278EEb1389AA577AA` |
