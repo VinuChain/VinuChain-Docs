@@ -88,7 +88,7 @@ Ensure these remain open in your firewall:
 ```bash
 git clone https://github.com/VinuChain/VinuChain.git $HOME/vinuchain-upgrade
 cd $HOME/vinuchain-upgrade
-git checkout v2.0.46-elemont
+git checkout v2.0.47-elemont
 make opera
 
 curl -L -o $HOME/vitainu-genesis-testnet-20260711.g \
@@ -171,9 +171,27 @@ The build directory is independent of your node's `--datadir`. The build process
 ```bash
 git clone https://github.com/VinuChain/VinuChain.git $HOME/vinuchain-upgrade
 cd $HOME/vinuchain-upgrade
-git checkout v2.0.46-elemont
+git checkout v2.0.47-elemont
 make opera
 # Binary is at $HOME/vinuchain-upgrade/build/opera
+```
+
+{% endcode %}
+
+**Or download the published binary instead of building.** Attached to the
+[v2.0.47-elemont release](https://github.com/VinuChain/VinuChain/releases/tag/v2.0.47-elemont):
+
+{% code title="Download and verify the release binary" overflow="wrap" %}
+
+```bash
+curl -LO https://github.com/VinuChain/VinuChain/releases/download/v2.0.47-elemont/opera-v2.0.47-elemont-linux-amd64
+sha256sum -c <<< "2525435e918e3690a6e197b359df5a78b628a6e6ef8554022cb19434addf3ec6  opera-v2.0.47-elemont-linux-amd64"
+chmod +x opera-v2.0.47-elemont-linux-amd64
+
+# Prove it runs on THIS host before you stop the node. A binary built on a
+# newer Linux needs GLIBC_2.38 and will not exec on Ubuntu 22.04 (glibc 2.35) —
+# discovering that after `systemctl stop` means downtime you did not plan.
+./opera-v2.0.47-elemont-linux-amd64 version   # must print 2.0.47-elemont
 ```
 
 {% endcode %}
@@ -181,7 +199,7 @@ make opera
 Substitute `/opt/vinuchain-upgrade` (or any other path) if `$HOME` is not the right partition for your setup — every later command in this guide that references `$HOME/vinuchain-upgrade` should be adjusted to match.
 
 {% hint style="info" %}
-**Dependency pins.** `v2.0.46-elemont` builds with Go `1.25.12`+ (pinned in `go.mod` for GO-2026-5856) and uses go-vinu `v1.20.25-quota` (the `v1.20.24-quota` precompile/ModExp/EVM-fork surface — Shanghai, selected Cancun execution support, Prague/EIP-7702 set-code transactions, VinuBLS12381, VinuLatestEVM — plus the cherry-picked CVE-2023-40591 p2p ping-flood goroutine bound) and lachesis-base `v0.1.6-elemont`, unchanged from v2.0.41 (the SfcV2Patch8/SfcV2Patch9 changes are SFC-bytecode-only and the v2.0.45 genesis-preset/startup-guard change is launcher-only, so no dependency bump). `make opera` fetches dependencies on first build.
+**Dependency pins.** `v2.0.47-elemont` builds with Go `1.25.12`+ (pinned in `go.mod` for GO-2026-5856) and uses go-vinu `v1.20.25-quota` (the `v1.20.24-quota` precompile/ModExp/EVM-fork surface — Shanghai, selected Cancun execution support, Prague/EIP-7702 set-code transactions, VinuBLS12381, VinuLatestEVM — plus the cherry-picked CVE-2023-40591 p2p ping-flood goroutine bound) and lachesis-base `v0.1.6-elemont`, unchanged from v2.0.41 (the SfcV2Patch8/SfcV2Patch9 changes are SFC-bytecode-only and the v2.0.45 genesis-preset/startup-guard change is launcher-only, so no dependency bump). `make opera` fetches dependencies on first build.
 {% endhint %}
 {% endstep %}
 
@@ -194,11 +212,11 @@ The newly-built binary is at `vinuchain-upgrade/build/opera`. Move into that dir
 ```bash
 cd $HOME/vinuchain-upgrade/build
 ./opera version
-# Expected: Version: 2.0.46-elemont
+# Expected: Version: 2.0.47-elemont
 ```
 
 {% hint style="info" %}
-`opera version` prints `2.0.46-elemont` — this matches the git tag `v2.0.46-elemont`. See the note at the top of this page.
+`opera version` prints `2.0.47-elemont` — this matches the git tag `v2.0.47-elemont`. See the note at the top of this page.
 {% endhint %}
 {% endstep %}
 
@@ -328,7 +346,7 @@ For testing or development, you can run in the foreground:
 
 What to expect:
 
-**Startup banner.** Every v2.x build prints the VinuChain banner. This is the first visual confirmation that you are running v2.0.46-elemont and not the previous binary:
+**Startup banner.** Every v2.x build prints the VinuChain banner. This is the first visual confirmation that you are running v2.0.47-elemont and not the previous binary:
 
 ```text
  ██╗   ██╗██╗███╗   ██╗██╗   ██╗ ██████╗██╗  ██╗ █████╗ ██╗███╗   ██╗
@@ -340,7 +358,7 @@ What to expect:
 
                         v2.0  -  ELEMONT
 
-  Version: 2.0.46-elemont
+  Version: 2.0.47-elemont
 ```
 
 **Staging logs (testnet only, first-time Shanghai/Cancun/Prague/BLS/latest-EVM install).** On the first boot of a node that has not yet sealed Shanghai (e.g. a genesis replay rather than a snapshot restore), you will see Shanghai staged while later forks are deferred:
@@ -428,7 +446,7 @@ Once the mainnet seal happens (scheduled 2026-08-29), `vc_getRules` will report 
 | Check                                                     | Expected                                                                                                                                              |
 | --------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Startup banner                                            | `VINUCHAIN v2.0 - ELEMONT` ASCII art printed to stderr                                                                                                |
-| `opera version`                                           | `Version: 2.0.46-elemont`                                                                                                                             |
+| `opera version`                                           | `Version: 2.0.47-elemont`                                                                                                                             |
 | Block production                                          | Resumes within seconds of startup; block numbers advance                                                                                              |
 | Peer count                                                | Returns to prior steady-state within minutes                                                                                                          |
 | Shanghai staging logs (testnet, first pre-Shanghai boot) | 1× `Staged Shanghai upgrade …`; Cancun and Prague may log as deferred until predecessors are active                                                    |
@@ -575,7 +593,7 @@ On mainnet, the ELEMONT `SfcV2` activation has already sealed, so its Cycle-162 
 ### Node won't start after upgrade
 
 1. Check logs: `journalctl -u opera -f` (systemd) or your terminal / Docker output.
-2. Verify the binary: `opera version` must print `2.0.46-elemont`.
+2. Verify the binary: `opera version` must print `2.0.47-elemont`.
 3. If the database is reported as corrupted, restore from the chaindata snapshot below.
 4. If startup ends with `Fatal: this datadir belongs to the VinuChain Testnet network but ...`, see the next section — the datadir is stale or divergent and must be replaced, not restarted.
 
@@ -673,7 +691,7 @@ After the `VinuBLS12381` and `VinuLatestEVM` seals on 2026-06-03, live validator
    Superseded objects are removed, so an old URL will 403 rather than serve
    stale chaindata.
 
-   The tarball is flat (top-level is `chaindata/`, `go-opera/`, and `SNAPSHOT_INFO.txt` — no `datadir/` prefix to nest) and excludes `nodekey`, `keystore/`, `opera.ipc`, `static-nodes.json`, `trusted-nodes.json`, archived `chaindata.bak.*/`, and shell `history` files. New snapshots are published under `s3://vinu-blockchain-genesis/chaindata-snapshots/`. As of the `v2.0.46-elemont` fleet rollout (2026-07-17), the current public object is `testnet-chaindata-v2.0.46-elemont-20260717T055748Z-clean` (sha256 `56fb6ed4ca88f4fe202444180036b1a5920560d1879110716d6ae74befa2409d`, tip block 1,541,394 / epoch 6170, all flags through `SfcV2Patch9` sealed); older objects may be removed and must not be reused after a newer fork seal.
+   The tarball is flat (top-level is `chaindata/`, `go-opera/`, and `SNAPSHOT_INFO.txt` — no `datadir/` prefix to nest) and excludes `nodekey`, `keystore/`, `opera.ipc`, `static-nodes.json`, `trusted-nodes.json`, archived `chaindata.bak.*/`, and shell `history` files. New snapshots are published under `s3://vinu-blockchain-genesis/chaindata-snapshots/`. As of the `v2.0.47-elemont` fleet rollout (2026-08-20), the current public object is `testnet-chaindata-v2.0.47-elemont-20260820T113052Z-clean` (sha256 `56fb6ed4ca88f4fe202444180036b1a5920560d1879110716d6ae74befa2409d`, tip block 1,585,766 / epoch 6,375, all flags through `SfcV2Patch10` sealed); older objects are removed and must not be reused after a newer fork seal — the `v2.0.46` object named here previously now returns 403.
 
 5. Ensure `--nat extip:<your_public_ip>` is set and `<datadir>/go-opera/static-nodes.json` contains the canonical bootnode list from the [Start your node](#start-your-node) section.
 6. Restart opera. The node resumes from the snapshot's tip and syncs forward. Expect `New DAG summary age=<few seconds>` within 1-2 minutes of restart.
