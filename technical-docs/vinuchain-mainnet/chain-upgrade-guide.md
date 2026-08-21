@@ -19,7 +19,7 @@ Mainnet is being brought up to the **ELEMONT** feature set that VinuChain testne
 | **Network** | VinuChain Mainnet |
 | **Chain ID** | `207` (`0xcf`) |
 | **Upgrade window opens** | **2026-08-29 10:00 UTC** |
-| **Target release** | `v2.0.47-elemont` — the mainnet full-parity release. Cut once the mainnet `QuotaContractV2` is deployed and its address is compiled in; the tag and its build instructions are published here before the window. |
+| **Target release** | [`v2.0.47-elemont`](https://github.com/VinuChain/VinuChain/releases/tag/v2.0.47-elemont) — the mainnet full-parity release. **Published.** Prebuilt linux/amd64 binary attached to the release, sha256 `2525435e918e3690a6e197b359df5a78b628a6e6ef8554022cb19434addf3ec6`. |
 | **Upgrading from** | `v2.0.0-rc.1` (the binary mainnet has run to date) |
 | **Type** | **Consensus.** Non-upgraded nodes diverge at the activation seal. |
 | **Activation** | At the **first epoch seal** after the validator set is running the new binary — not at restart. See [When activation actually happens](#when-activation-actually-happens). |
@@ -89,7 +89,7 @@ curl -s -X POST https://rpc.vinuchain.org -H 'Content-Type: application/json' \
 | **ElemontPubkeyValidation** | Validator pubkeys must be the canonical 66-byte `0xc0`-prefixed Secp256k1 form at every on-chain ingress (`createValidator`, `_rawCreateValidator`, `updateValidatorPubkey`). Malformed keys are rejected from the activation seal onward. |
 | **VinuBLS12381** | The EIP-2537 BLS12-381 precompile family at `0x0b`–`0x11`. |
 | **VinuLatestEVM** | `P256VERIFY` at `0x0100`, `CLZ`, MODEXP bounds/repricing, and the **EIP-7825 per-transaction gas cap**. The gas cap is a live-traffic behaviour change — see [Breaking changes](#breaking-changes-to-check-before-the-29th). |
-| **PaybackV2** | Moves the Payback / fee-refund system off the original Quota proxy `0x1c4269fb…0acda6` onto a newly deployed non-proxy `QuotaContractV2`. `Economy.QuotaCacheAddress` **changes** at this activation. **Fee-refund stakers must migrate** — see [If you stake in the Payback contract](#if-you-stake-in-the-payback-fee-refund-contract). |
+| **PaybackV2** | Moves the Payback / fee-refund system off the original Quota proxy `0x1c4269fb…0acda6` onto the newly deployed non-proxy `QuotaContractV2` at `0x5D989A2d65d049e2198D91d8ddc31C918f2544AB`. `Economy.QuotaCacheAddress` **changes** at this activation. **Fee-refund stakers must migrate** — see [If you stake in the Payback contract](#if-you-stake-in-the-payback-fee-refund-contract). |
 
 `Berlin`, `London` (EIP-1559 base fee), `Llr` and `Podgorica` (the Payback / fee-refund system) are already active on mainnet and are unaffected.
 
@@ -177,6 +177,24 @@ go version   # must report go1.25.12 or newer
 
 Build **before** upgrade day and keep the binary staged. Do not plan to compile during the swap window — a build failure at 10:00 UTC costs you the window.
 
+**Option A — download the published binary** (linux/amd64):
+
+```bash
+mkdir -p $HOME/vinuchain-upgrade/build && cd $HOME/vinuchain-upgrade/build
+curl -LO https://github.com/VinuChain/VinuChain/releases/download/v2.0.47-elemont/opera-v2.0.47-elemont-linux-amd64
+sha256sum -c <<< "2525435e918e3690a6e197b359df5a78b628a6e6ef8554022cb19434addf3ec6  opera-v2.0.47-elemont-linux-amd64"
+mv opera-v2.0.47-elemont-linux-amd64 opera && chmod +x opera
+
+./opera version
+# Expected: Version: 2.0.47-elemont
+```
+
+The published binary is built against **GLIBC_2.34**, so it runs on Ubuntu 22.04 (glibc 2.35)
+and newer. Run `./opera version` on the **target host** — a binary that cannot exec there is
+something you want to discover now, not after `systemctl stop`.
+
+**Option B — build from source:**
+
 ```bash
 git clone https://github.com/VinuChain/VinuChain.git $HOME/vinuchain-upgrade
 cd $HOME/vinuchain-upgrade
@@ -186,6 +204,11 @@ make opera
 ./build/opera version
 # Expected: Version: 2.0.47-elemont
 ```
+
+If you build on a host newer than your fleet, the result can require a newer glibc than the
+target has and will not exec there. Build on a machine matching your servers, or use Option A.
+`CGO_ENABLED=0` is **not** a workaround — `go-duktape` has no non-cgo fallback and the build
+fails.
 
 Pick a path with ~2 GB free for the source tree, module cache, and the ~38 MB binary. Avoid `/tmp` — some distributions clear it on reboot and would wipe your pre-staged build. The build directory is independent of your `--datadir`; the build never reads or writes chain data.
 
@@ -514,7 +537,7 @@ Run this after **each** seal, not once — several rows only become true at late
 | Staging log (pre-SfcV2 datadir) | 1× `Staged SfcV2 upgrade …` at boot |
 | Seal-time log | 1× `Applying SFC V2 bytecode upgrade …` |
 | `vc_getRules` → `Upgrades` | `Shanghai`, `Cancun`, `Prague`, `SfcV2`, `Elemont`, `ElemontPubkeyValidation` all `true` (on top of `Berlin`, `London`, `Llr`, `Podgorica`) |
-| `vc_getRules` → `Economy.QuotaCacheAddress` | **Changes at seal 1** from `0x1c4269fbbd4a8254f69383eef6af720bcd0acda6` (V1 proxy) to the new `QuotaContractV2` address |
+| `vc_getRules` → `Economy.QuotaCacheAddress` | **Changes at seal 1** from `0x1c4269fbbd4a8254f69383eef6af720bcd0acda6` (V1 proxy) to `0x5D989A2d65d049e2198D91d8ddc31C918f2544AB` (`QuotaContractV2`) |
 | SFC `version()` | `0x3330350…` (`"305"`) |
 | `eth_getCode(0xFC00FACE…)` length | 48,336 bytes |
 | `vc_getRules` → `PaybackV2` | `true` after seal 1 |
@@ -807,8 +830,10 @@ The new contract keeps the same parameters as the old one: `feeRefundBlockCount`
    a **1-day** hold. You can do this before or after 29 August.
 2. **Wait out the 1-day hold**, then call `withdrawStake(uint256 wrID)` on the same contract with
    that ID. Your VC returns to your wallet.
-3. **Stake on the new contract** — call `stake()` on the new address with your VC as the
-   transaction value. Minimum 10 VC.
+3. **Stake on the new contract** — call `stake()` on
+   **`0x5D989A2d65d049e2198D91d8ddc31C918f2544AB`** with your VC as the transaction
+   value. Minimum 10 VC. Do this only **after** seal 1; staking earlier is safe but earns
+   nothing until the protocol switches over.
 
 Doing steps 1 and 2 **before 29 August** gives the shortest gap in refund eligibility. Migrating
 later is fine too; you simply earn no fee refunds in the meantime.
@@ -825,8 +850,17 @@ curl -s -X POST https://rpc.vinuchain.org -H 'Content-Type: application/json' \
   -d '{"jsonrpc":"2.0","method":"vc_getPaybackBalance","params":["0xYOUR_ADDRESS","latest"],"id":1}'
 ```
 
-The new contract's address is published in the upgrade announcement and here once it is deployed
-and verified.
+**`QuotaContractV2` — mainnet**
+
+| | |
+|---|---|
+| Address | `0x5D989A2d65d049e2198D91d8ddc31C918f2544AB` |
+| Deployed | 2026-08-21, block 14,616,227 |
+| Deploy tx | `0x0456aab6fe358da173bf8fa93ec5772de18937008fd201d828adee9dd678b506` |
+| Source | [verified on VinuExplorer](https://mainnet.vinuexplorer.org/address/0x5D989A2d65d049e2198D91d8ddc31C918f2544AB/contracts) — solc `v0.8.19+commit.7dd6d404`, optimizer on, 200 runs |
+
+Read the source before you stake into it. Until seal 1 the protocol still reads the V1 proxy, so
+the new contract holding no stake before the upgrade is expected, not a fault.
 
 ---
 

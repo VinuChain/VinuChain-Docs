@@ -133,6 +133,19 @@ verification checklist, and rollback. The summary:
 
 The mainnet ELEMONT release is **`v2.0.47-elemont`** — the full-parity release. Build it from source:
 
+**Prebuilt binary** (linux/amd64) is attached to the [`v2.0.47-elemont` release](https://github.com/VinuChain/VinuChain/releases/tag/v2.0.47-elemont):
+
+```bash
+curl -LO https://github.com/VinuChain/VinuChain/releases/download/v2.0.47-elemont/opera-v2.0.47-elemont-linux-amd64
+sha256sum -c <<< "2525435e918e3690a6e197b359df5a78b628a6e6ef8554022cb19434addf3ec6  opera-v2.0.47-elemont-linux-amd64"
+chmod +x opera-v2.0.47-elemont-linux-amd64
+./opera-v2.0.47-elemont-linux-amd64 version   # Version: 2.0.47-elemont
+```
+
+It requires **GLIBC_2.34** or newer, so it runs on Ubuntu 22.04 and later.
+
+**Or build from source:**
+
 ```bash
 git clone https://github.com/VinuChain/VinuChain.git
 cd VinuChain
