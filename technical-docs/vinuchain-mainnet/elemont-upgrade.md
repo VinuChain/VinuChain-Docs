@@ -131,15 +131,15 @@ are unchanged by ELEMONT.
 It covers the pre-flight checks, the swap procedure, activation timing, the
 verification checklist, and rollback. The summary:
 
-The mainnet ELEMONT release is **`v2.0.48-elemont`** — the full-parity release plus non-consensus datadir fallback hardening. Build it from source:
+The mainnet ELEMONT release is **`v2.0.49-elemont`** — the final one-install binary for 2026-08-29, superseding v2.0.48 with no EVM, state-transition, receipt-encoding, chain-rule, activation-height, or protocol-capability changes. Build it from source at commit `8b88cc49d11e56635385413fe8f9eaec1969c1ac`:
 
-**Prebuilt binary** (linux/amd64) is attached to the [`v2.0.48-elemont` release](https://github.com/VinuChain/VinuChain/releases/tag/v2.0.48-elemont):
+**Prebuilt binary** (linux/amd64) is attached to the [`v2.0.49-elemont` release](https://github.com/VinuChain/VinuChain/releases/tag/v2.0.49-elemont):
 
 ```bash
-curl -LO https://github.com/VinuChain/VinuChain/releases/download/v2.0.48-elemont/opera-v2.0.48-elemont-linux-amd64
-sha256sum -c <<< "b3415753e27f3a1586150330c69940d676edb6d0369a6100d6d15bea14f221eb  opera-v2.0.48-elemont-linux-amd64"
-chmod +x opera-v2.0.48-elemont-linux-amd64
-./opera-v2.0.48-elemont-linux-amd64 version   # Version: 2.0.48-elemont
+curl -LO https://github.com/VinuChain/VinuChain/releases/download/v2.0.49-elemont/opera-v2.0.49-elemont-linux-amd64
+sha256sum -c <<< "678040e9f88a98331a8cc32b7bf5b9e0ae4acdf84919390465eeee584b7f56c1  opera-v2.0.49-elemont-linux-amd64"
+chmod +x opera-v2.0.49-elemont-linux-amd64
+./opera-v2.0.49-elemont-linux-amd64 version   # Version: 2.0.49-elemont
 ```
 
 It requires **GLIBC_2.34** or newer, so it runs on Ubuntu 22.04 and later.
@@ -149,12 +149,13 @@ It requires **GLIBC_2.34** or newer, so it runs on Ubuntu 22.04 and later.
 ```bash
 git clone https://github.com/VinuChain/VinuChain.git
 cd VinuChain
-git checkout v2.0.48-elemont
+git checkout v2.0.49-elemont
+test "$(git rev-parse HEAD)" = 8b88cc49d11e56635385413fe8f9eaec1969c1ac
 make opera          # -> build/opera
 ```
 
 Requirements: **Go 1.25.13+**, a C compiler, git, and ≥ 50 GB free disk. The
-build pins `go-vinu v1.20.25-quota` and `lachesis-base v0.1.6-elemont` via
+build pins `go-vinu v1.20.26-quota` and `lachesis-base v0.1.6-elemont` via
 `go.mod`. Note that mainnet's current binary was built with Go 1.19 — the
 toolchain upgrade is part of this work.
 
@@ -182,7 +183,7 @@ epoch seal and diverges with `wrong event epoch hash`. See
 Verify a node is on ELEMONT after it syncs:
 
 ```bash
-# Client version should report v2.0.48-elemont
+# Client version should report v2.0.49-elemont
 curl -s -X POST http://localhost:18545 -H 'Content-Type: application/json' \
   -d '{"jsonrpc":"2.0","method":"web3_clientVersion","params":[],"id":1}'
 ```

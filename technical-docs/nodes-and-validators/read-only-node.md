@@ -100,8 +100,8 @@ First, install the required build tools:
 
 ```
 # Install go
-(validator)$ wget https://go.dev/dl/go1.25.8.linux-amd64.tar.gz
-(validator)$ sudo tar -xvf go1.25.8.linux-amd64.tar.gz
+(validator)$ wget https://go.dev/dl/go1.25.13.linux-amd64.tar.gz
+(validator)$ sudo tar -xvf go1.25.13.linux-amd64.tar.gz
 (validator)$ sudo mv go /usr/local
 ```
 
@@ -144,6 +144,7 @@ go version
 # Install Opera
 (validator)$ git clone https://github.com/VinuChain/VinuChain
 (validator)$ cd VinuChain/
+(validator)$ git checkout v2.0.49-elemont
 (validator)$ make
 ```
 
@@ -152,7 +153,7 @@ go version
 ```
 $./build/opera version
 VERSION:
-v2.0.39-elemont
+v2.0.49-elemont
 ```
 
 ### Download Genesis File

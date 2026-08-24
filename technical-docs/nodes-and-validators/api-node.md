@@ -20,6 +20,7 @@ API nodes are useful for building applications that require querying historical 
 # Install Opera
 (validator)$ git clone https://github.com/VinuChain/VinuChain
 (validator)$ cd VinuChain/
+(validator)$ git checkout v2.0.49-elemont
 (validator)$ make
 ```
 
