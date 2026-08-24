@@ -5,21 +5,21 @@
 {% hint style="danger" %}
 **Scheduled consensus upgrade — Saturday 29 August 2026, 10:00 UTC.**
 
-Every VinuChain **mainnet** validator and RPC/API node operator must swap to `v2.0.47-elemont` in this window. This is a **consensus** upgrade: a node still running the old binary when the activation epoch seals will stop following the chain and log `wrong event epoch hash`. It cannot be caught up by waiting — it has to be upgraded and, if it already diverged, restored from a post-activation snapshot.
+Every VinuChain **mainnet** validator and RPC/API node operator must swap to `v2.0.48-elemont` in this window. This is a **consensus** upgrade: a node still running the old binary when the activation epoch seals will stop following the chain and log `wrong event epoch hash`. It cannot be caught up by waiting — it has to be upgraded and, if it already diverged, restored from a post-activation snapshot.
 
 If you run a mainnet validator, read [Before upgrade day](#before-upgrade-day) now, not on the 29th. Two of the pre-flight items (transaction indexing and the Go toolchain) can take **more than a day** to remedy.
 {% endhint %}
 
 ## What is happening
 
-Mainnet is being brought up to the **ELEMONT** feature set that VinuChain testnet has been running since early 2026. In a single coordinated binary swap, mainnet moves from `v2.0.0-rc.1` to `v2.0.47-elemont` and activates the **entire** testnet feature set: the modern EVM (Shanghai, Cancun, Prague/EIP-7702), the **V2 staking contract (SfcV2)**, the Elemont consensus correctness fixes, canonical validator-pubkey validation, the **BLS12-381** and **latest-EVM** precompiles, and **PaybackV2** (a new fee-refund contract).
+Mainnet is being brought up to the **ELEMONT** feature set that VinuChain testnet has been running since early 2026. In a single coordinated binary swap, mainnet moves from `v2.0.0-rc.1` to `v2.0.48-elemont` and activates the **entire** testnet feature set: the modern EVM (Shanghai, Cancun, Prague/EIP-7702), the **V2 staking contract (SfcV2)**, the Elemont consensus correctness fixes, canonical validator-pubkey validation, the **BLS12-381** and **latest-EVM** precompiles, and **PaybackV2** (a new fee-refund contract).
 
 | | Value |
 | --- | --- |
 | **Network** | VinuChain Mainnet |
 | **Chain ID** | `207` (`0xcf`) |
 | **Upgrade window opens** | **2026-08-29 10:00 UTC** |
-| **Target release** | [`v2.0.47-elemont`](https://github.com/VinuChain/VinuChain/releases/tag/v2.0.47-elemont) — the mainnet full-parity release. **Published.** Prebuilt linux/amd64 binary attached to the release, sha256 `2525435e918e3690a6e197b359df5a78b628a6e6ef8554022cb19434addf3ec6`. |
+| **Target release** | [`v2.0.48-elemont`](https://github.com/VinuChain/VinuChain/releases/tag/v2.0.48-elemont) — the mainnet full-parity release plus non-consensus datadir fallback hardening. **Published.** Prebuilt linux/amd64 binary attached to the release, sha256 `b3415753e27f3a1586150330c69940d676edb6d0369a6100d6d15bea14f221eb`. |
 | **Upgrading from** | `v2.0.0-rc.1` (the binary mainnet has run to date) |
 | **Type** | **Consensus.** Non-upgraded nodes diverge at the activation seal. |
 | **Activation** | At the **first epoch seal** after the validator set is running the new binary — not at restart. See [When activation actually happens](#when-activation-actually-happens). |
@@ -81,7 +81,7 @@ curl -s -X POST https://rpc.vinuchain.org -H 'Content-Type: application/json' \
 
 | Feature | What it means for mainnet |
 | --- | --- |
-| **SfcV2** | The staking contract at `0xFC00FACE…0000` is replaced with V2 bytecode (48,336 bytes, "Cycle-164"). Adds the **30% burn of the validator base-fee share**, self-service `reactivateValidator`, and the corrected reward-cursor accounting. `version()` returns `"305"`. |
+| **SfcV2** | The staking contract at `0xFC00FACE…0000` is replaced with V2 bytecode (48,757 bytes, "Cycle-165"). Adds the **30% burn of the validator base-fee share**, self-service `reactivateValidator`, and the corrected reward-cursor accounting. `version()` returns `"305"`. |
 | **Shanghai** | `PUSH0`, warm coinbase, Shanghai transaction rules. |
 | **Cancun** | Selected (non-blob) Cancun: transient storage (`TLOAD`/`TSTORE`), `MCOPY`, EIP-6780 `SELFDESTRUCT` semantics. **Blob transactions (EIP-4844) and `BLOBBASEFEE` are not enabled.** |
 | **Prague** | **EIP-7702 set-code transactions** (type `0x04`). |
@@ -102,14 +102,14 @@ that mainnet will not set are the **re-flash / repair** flags, which are not fea
 
 | Not set | Why |
 | --- | --- |
-| **`SfcV2Patch1`–`SfcV2Patch9`** | These exist only to **re-flash** SFC bytecode on a chain that already activated SfcV2 with older bytecode. Testnet needed nine of them because it activated SfcV2 early and then corrected the bytecode repeatedly. Mainnet's *first* SfcV2 activation installs the latest corrected bytecode directly, so it reaches the same on-chain result without them — see the note below. |
+| **`SfcV2Patch1`–`SfcV2Patch10`** | These exist only to **re-flash** SFC bytecode on a chain that already activated SfcV2 with older bytecode. Testnet needed ten of them because it activated SfcV2 early and then corrected the bytecode repeatedly. Mainnet's *first* SfcV2 activation installs the latest corrected bytecode directly, so it reaches the same on-chain result without them — see the note below. |
 | **`PaybackV2Patch`** | Same shape: it re-runs the PaybackV2 address rebinding for a chain that crossed that edge with a wrong address. Mainnet crosses it once, with the correct address, so there is nothing to repair. |
 
 Mainnet therefore ends up with **identical on-chain state** to testnet — the same SFC bytecode
-and the same style of Payback contract — reached in one step instead of nine.
+and the same style of Payback contract — reached in one step instead of ten.
 
 {% hint style="info" %}
-**Why mainnet needs no `SfcV2Patch*` flags.** Testnet activated SfcV2 early and then re-flashed the contract nine times as bytecode fixes landed. Mainnet activates for the first time, and the fresh-activation path installs the newest V2 bytecode in one step — the 48,336-byte Cycle-164 blob, which is byte-identical (sha256 `b25a749fe4fa4191bafc2f48d62f046176e1c9ba8fb914fa4a6f81651c4344af`) to what testnet arrived at after all nine patches. Mainnet therefore lands on fully-patched V2 immediately rather than replaying testnet's patch history.
+**Why mainnet needs no `SfcV2Patch*` flags.** Testnet activated SfcV2 early and then re-flashed the contract ten times as bytecode fixes landed. Mainnet activates for the first time, and the fresh-activation path installs the newest V2 bytecode in one step — the 48,757-byte Cycle-165 blob, which is byte-identical (sha256 `134a508b13d46647052b64f8d6691f0b939d2afaa0fa400882c6653a40a77887`) to what testnet arrived at after all ten patches. Mainnet therefore lands on fully-patched V2 immediately rather than replaying testnet's patch history.
 {% endhint %}
 
 ---
@@ -123,7 +123,7 @@ Work through this list **this week**. Items 1 and 2 have multi-day remediation p
 
 ### 1. Confirm transaction indexing is enabled — this can block boot
 
-`v2.0.47-elemont` rebuilds its in-memory Payback cache at startup by replaying recently-sealed blocks from stored receipts, so a restarted node seals the same fee-refund values as its peers. That warm-up is **fail-closed**: if it cannot read a transaction-bearing block inside the replay window, the node **refuses to start** rather than risk silently diverging.
+`v2.0.48-elemont` rebuilds its in-memory Payback cache at startup by replaying recently-sealed blocks from stored receipts, so a restarted node seals the same fee-refund values as its peers. That warm-up is **fail-closed**: if it cannot read a transaction-bearing block inside the replay window, the node **refuses to start** rather than risk silently diverging.
 
 In practice: **a node that has been running with transaction indexing disabled will not boot on the new binary.**
 
@@ -160,15 +160,15 @@ If indexing is off, you must re-sync that node **with indexing on**, from a snap
 {% endstep %}
 {% step %}
 
-### 2. Install Go 1.25.12 or newer
+### 2. Install Go 1.25.13 or newer
 
-The current mainnet binary was built with **Go 1.19.13**. `v2.0.47-elemont` pins Go `1.25.12` in `go.mod` (for [GO-2026-5856](https://pkg.go.dev/vuln/GO-2026-5856), an Encrypted Client Hello privacy leak in `crypto/tls`) and will not build on an older toolchain.
+The current mainnet binary was built with **Go 1.19.13**. `v2.0.48-elemont` pins Go `1.25.13` in `go.mod`, superseding the earlier Go 1.25.12 security pin, and will not build on an older toolchain.
 
 ```bash
-go version   # must report go1.25.12 or newer
+go version   # must report go1.25.13 or newer
 ```
 
-`make opera` fetches the pinned toolchain automatically if your Go is new enough to honour the `toolchain` directive; otherwise install Go 1.25.12+ from [go.dev/dl](https://go.dev/dl/).
+`make opera` fetches the pinned toolchain automatically if your Go is new enough to honour the `toolchain` directive; otherwise install Go 1.25.13+ from [go.dev/dl](https://go.dev/dl/).
 
 {% endstep %}
 {% step %}
@@ -181,12 +181,12 @@ Build **before** upgrade day and keep the binary staged. Do not plan to compile 
 
 ```bash
 mkdir -p $HOME/vinuchain-upgrade/build && cd $HOME/vinuchain-upgrade/build
-curl -LO https://github.com/VinuChain/VinuChain/releases/download/v2.0.47-elemont/opera-v2.0.47-elemont-linux-amd64
-sha256sum -c <<< "2525435e918e3690a6e197b359df5a78b628a6e6ef8554022cb19434addf3ec6  opera-v2.0.47-elemont-linux-amd64"
-mv opera-v2.0.47-elemont-linux-amd64 opera && chmod +x opera
+curl -LO https://github.com/VinuChain/VinuChain/releases/download/v2.0.48-elemont/opera-v2.0.48-elemont-linux-amd64
+sha256sum -c <<< "b3415753e27f3a1586150330c69940d676edb6d0369a6100d6d15bea14f221eb  opera-v2.0.48-elemont-linux-amd64"
+mv opera-v2.0.48-elemont-linux-amd64 opera && chmod +x opera
 
 ./opera version
-# Expected: Version: 2.0.47-elemont
+# Expected: Version: 2.0.48-elemont
 ```
 
 The published binary is built against **GLIBC_2.34**, so it runs on Ubuntu 22.04 (glibc 2.35)
@@ -198,11 +198,11 @@ something you want to discover now, not after `systemctl stop`.
 ```bash
 git clone https://github.com/VinuChain/VinuChain.git $HOME/vinuchain-upgrade
 cd $HOME/vinuchain-upgrade
-git checkout v2.0.47-elemont
+git checkout v2.0.48-elemont
 make opera
 
 ./build/opera version
-# Expected: Version: 2.0.47-elemont
+# Expected: Version: 2.0.48-elemont
 ```
 
 If you build on a host newer than your fleet, the result can require a newer glibc than the
@@ -258,8 +258,8 @@ Rollback **before** the activation seal is a plain binary swap back. After the s
 | Check | Command | Required |
 | --- | --- | --- |
 | Transaction indexing on | inspect `ExecStart` / `run_node.sh` | **Yes — blocks boot** |
-| Go 1.25.12+ | `go version` | Yes |
-| New binary built and staged | `./build/opera version` → `2.0.47-elemont` | Yes |
+| Go 1.25.13+ | `go version` | Yes |
+| New binary built and staged | `./build/opera version` → `2.0.48-elemont` | Yes |
 | Old binary kept | `ls opera.v2.0.0-rc.1.bak` | Yes |
 | Chaindata backup / volume snapshot | `df -h`, provider snapshot | Strongly recommended |
 | P2P 3000 TCP **and** UDP open | firewall / security group | Yes |
@@ -302,7 +302,7 @@ systemctl cat vinu-opera.service | grep -E 'KillSignal|TimeoutStopSec|Restart='
 pkill -TERM opera
 ```
 
-Wait for the process to exit — up to a minute is normal on a large datadir. Use `pkill -KILL` only as a genuine last resort.
+Wait for the process to exit — up to a minute is normal on a large datadir. If it does not exit cleanly, stop and ask; never send `SIGKILL` to opera.
 {% endtab %}
 {% tab title="Docker" %}
 
@@ -332,7 +332,7 @@ Copy the pre-built, pre-verified binary into place. Do **not** build on the box 
 
 ```bash
 # verify what you are about to install, then install it
-$HOME/vinuchain-upgrade/build/opera version   # Version: 2.0.47-elemont
+$HOME/vinuchain-upgrade/build/opera version   # Version: 2.0.48-elemont
 sha256sum $HOME/vinuchain-upgrade/build/opera
 
 cp $HOME/vinuchain-upgrade/build/opera /path/to/your/opera
@@ -359,7 +359,10 @@ sudo journalctl -u vinu-opera.service -f
 ```bash
 cd /path/to/build
 
+# This template assumes the old command passed --datadir. Copy that value exactly;
+# if the old command relied on the default, omit this line and preserve its working directory.
 nohup ./opera \
+  --datadir EXACT_VALUE_FROM_THE_PREVIOUS_COMMAND \
   --nat extip:YOUR_PUBLIC_IPV4 \
   --validator.id YOUR_VALIDATOR_ID \
   --validator.pubkey 0xYOUR_PUBKEY \
@@ -370,7 +373,7 @@ tail -f validator.log
 ```
 
 {% hint style="warning" %}
-**Always use absolute paths for file flags.** `--validator.password`, `--datadir` and `--genesis` are resolved against opera's working directory, not your home directory. A bare `pw.txt` is the fastest way to lose an upgrade window to `Failed to unlock validator key: open pw.txt: no such file or directory`.
+**Preserve the exact live `--datadir` value and working directory during this upgrade.** Do not replace it with `.opera`, `.vinuchain`, or a newly absolute path in the window. For newly staged password/genesis paths, use absolute paths because relative paths resolve against opera's working directory.
 {% endhint %}
 {% endtab %}
 {% tab title="Docker" %}
@@ -452,7 +455,7 @@ Then confirm the node is alive and following:
 ```bash
 curl -s -X POST http://localhost:18545 -H 'Content-Type: application/json' \
   -d '{"jsonrpc":"2.0","method":"web3_clientVersion","params":[],"id":1}'
-# Expect a version string containing v2.0.47-elemont
+# Expect a version string containing v2.0.48-elemont
 
 curl -s -X POST http://localhost:18545 -H 'Content-Type: application/json' \
   -d '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}'
@@ -494,7 +497,7 @@ curl -s -X POST http://localhost:18545 -H 'Content-Type: application/json' \
 curl -s -X POST http://localhost:18545 -H 'Content-Type: application/json' \
   -d '{"jsonrpc":"2.0","method":"eth_call","params":[{"to":"0xFC00FACE00000000000000000000000000000000","data":"0x54fd4d50"},"latest"],"id":1}'
 
-# 3. SFC bytecode size: 24168 (V1) must have become 48336 (V2 Cycle-164)
+# 3. SFC bytecode size: 24168 (V1) must have become 48757 (V2 Cycle-165)
 curl -s -X POST http://localhost:18545 -H 'Content-Type: application/json' \
   -d '{"jsonrpc":"2.0","method":"eth_getCode","params":["0xFC00FACE00000000000000000000000000000000","latest"],"id":1}' \
   | python3 -c 'import sys,json;print(len(json.load(sys.stdin)["result"][2:])//2, "bytes")'
@@ -532,14 +535,14 @@ Run this after **each** seal, not once — several rows only become true at late
 
 | Check | Expected after activation |
 | --- | --- |
-| `opera version` | `Version: 2.0.47-elemont` |
+| `opera version` | `Version: 2.0.48-elemont` |
 | Startup banner | `VINUCHAIN v2.0 - ELEMONT` |
 | Staging log (pre-SfcV2 datadir) | 1× `Staged SfcV2 upgrade …` at boot |
 | Seal-time log | 1× `Applying SFC V2 bytecode upgrade …` |
 | `vc_getRules` → `Upgrades` | `Shanghai`, `Cancun`, `Prague`, `SfcV2`, `Elemont`, `ElemontPubkeyValidation` all `true` (on top of `Berlin`, `London`, `Llr`, `Podgorica`) |
 | `vc_getRules` → `Economy.QuotaCacheAddress` | **Changes at seal 1** from `0x1c4269fbbd4a8254f69383eef6af720bcd0acda6` (V1 proxy) to `0x5D989A2d65d049e2198D91d8ddc31C918f2544AB` (`QuotaContractV2`) |
 | SFC `version()` | `0x3330350…` (`"305"`) |
-| `eth_getCode(0xFC00FACE…)` length | 48,336 bytes |
+| `eth_getCode(0xFC00FACE…)` length | 48,757 bytes |
 | `vc_getRules` → `PaybackV2` | `true` after seal 1 |
 | `vc_getRules` → `VinuBLS12381` | `true` after seal 4; `eth_config` lists `BLS12_G1ADD` through `BLS12_MAP_FP2_TO_G2` |
 | `vc_getRules` → `VinuLatestEVM` | `true` after seal 5; `eth_config` lists `P256VERIFY` at `0x…0100` |
@@ -679,7 +682,7 @@ Your node applied a different rule set than the network at an epoch boundary. On
 Do **not** try to fix this by restarting, re-syncing from genesis, or rolling the binary back and forth. A fresh or pre-activation mainnet datadir replayed under the post-ELEMONT binary re-stages the SfcV2 and EVM transitions at the wrong epoch seal and reproduces the same divergence.
 {% endhint %}
 
-Recovery: stop the node, move the diverged datadir aside, and restore from a **post-activation mainnet chaindata snapshot**, then start on `v2.0.47-elemont`. The snapshot URL and its SHA256 will be published here once the activation has sealed.
+Recovery: stop the node, move the diverged datadir aside, and restore from a **post-activation mainnet chaindata snapshot**, then start on `v2.0.48-elemont`. The snapshot URL and its SHA256 will be published here once the activation has sealed.
 
 ### Node starts but does not produce events
 

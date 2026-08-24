@@ -131,15 +131,15 @@ are unchanged by ELEMONT.
 It covers the pre-flight checks, the swap procedure, activation timing, the
 verification checklist, and rollback. The summary:
 
-The mainnet ELEMONT release is **`v2.0.47-elemont`** — the full-parity release. Build it from source:
+The mainnet ELEMONT release is **`v2.0.48-elemont`** — the full-parity release plus non-consensus datadir fallback hardening. Build it from source:
 
-**Prebuilt binary** (linux/amd64) is attached to the [`v2.0.47-elemont` release](https://github.com/VinuChain/VinuChain/releases/tag/v2.0.47-elemont):
+**Prebuilt binary** (linux/amd64) is attached to the [`v2.0.48-elemont` release](https://github.com/VinuChain/VinuChain/releases/tag/v2.0.48-elemont):
 
 ```bash
-curl -LO https://github.com/VinuChain/VinuChain/releases/download/v2.0.47-elemont/opera-v2.0.47-elemont-linux-amd64
-sha256sum -c <<< "2525435e918e3690a6e197b359df5a78b628a6e6ef8554022cb19434addf3ec6  opera-v2.0.47-elemont-linux-amd64"
-chmod +x opera-v2.0.47-elemont-linux-amd64
-./opera-v2.0.47-elemont-linux-amd64 version   # Version: 2.0.47-elemont
+curl -LO https://github.com/VinuChain/VinuChain/releases/download/v2.0.48-elemont/opera-v2.0.48-elemont-linux-amd64
+sha256sum -c <<< "b3415753e27f3a1586150330c69940d676edb6d0369a6100d6d15bea14f221eb  opera-v2.0.48-elemont-linux-amd64"
+chmod +x opera-v2.0.48-elemont-linux-amd64
+./opera-v2.0.48-elemont-linux-amd64 version   # Version: 2.0.48-elemont
 ```
 
 It requires **GLIBC_2.34** or newer, so it runs on Ubuntu 22.04 and later.
@@ -149,11 +149,11 @@ It requires **GLIBC_2.34** or newer, so it runs on Ubuntu 22.04 and later.
 ```bash
 git clone https://github.com/VinuChain/VinuChain.git
 cd VinuChain
-git checkout v2.0.47-elemont
+git checkout v2.0.48-elemont
 make opera          # -> build/opera
 ```
 
-Requirements: **Go 1.25.12+**, a C compiler, git, and ≥ 50 GB free disk. The
+Requirements: **Go 1.25.13+**, a C compiler, git, and ≥ 50 GB free disk. The
 build pins `go-vinu v1.20.25-quota` and `lachesis-base v0.1.6-elemont` via
 `go.mod`. Note that mainnet's current binary was built with Go 1.19 — the
 toolchain upgrade is part of this work.
@@ -182,7 +182,7 @@ epoch seal and diverges with `wrong event epoch hash`. See
 Verify a node is on ELEMONT after it syncs:
 
 ```bash
-# Client version should report v2.0.47-elemont
+# Client version should report v2.0.48-elemont
 curl -s -X POST http://localhost:18545 -H 'Content-Type: application/json' \
   -d '{"jsonrpc":"2.0","method":"web3_clientVersion","params":[],"id":1}'
 ```
@@ -196,12 +196,12 @@ activation the two networks carry the same capabilities.
 The only flags testnet has that mainnet will **not** set are repair mechanisms,
 not features:
 
-* **`SfcV2Patch1`–`SfcV2Patch9`** — re-flash flags that brought testnet's SFC
+* **`SfcV2Patch1`–`SfcV2Patch10`** — re-flash flags that brought testnet's SFC
   bytecode up to date after its early SfcV2 activation. Mainnet's first SfcV2
   activation installs the latest corrected bytecode directly. This is verifiable
   rather than assumed: the bytecode a fresh activation installs is byte-identical
-  to what testnet reached after all nine patches (48,336 bytes, sha256
-  `b25a749fe4fa4191bafc2f48d62f046176e1c9ba8fb914fa4a6f81651c4344af`).
+  to what testnet reached after all ten patches (48,757 bytes, sha256
+  `134a508b13d46647052b64f8d6691f0b939d2afaa0fa400882c6653a40a77887`).
 * **`PaybackV2Patch`** — re-runs the PaybackV2 address rebinding for a chain that
   crossed that edge with a wrong address. Mainnet crosses it once, correctly.
 
