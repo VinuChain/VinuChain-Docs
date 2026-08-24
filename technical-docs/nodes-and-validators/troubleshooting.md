@@ -6,16 +6,16 @@
 **Testnet operators running or installing v2.x-elemont**: see the [Chain Upgrade Guide](../vinuchain-testnet/chain-upgrade-guide.md) first. Two failure modes need dedicated recovery steps that the legacy procedures on this page do not cover:
 
 - **Validator offline >1,000 epochs cannot rejoin** → upgrade to v2.0.8-elemont (removes the `validatePeerProgress` drift cap). See [Chain Upgrade Guide → stuck peercount](../vinuchain-testnet/chain-upgrade-guide.md#stuck-at-net-peercount-1-with-one-stale-peer).
-- **`WARN Incoming event rejected ... err="wrong event epoch hash"`** → resync from a **stale** genesis (the 2024-06-21 / 2026-04-19 files) **does not work** on current binary rules. Use the latest post-seal chaindata snapshot at `s3://vinu-blockchain-genesis/chaindata-snapshots/` — see [Chain Upgrade Guide → wrong event epoch hash](../vinuchain-testnet/chain-upgrade-guide.md#warn-incoming-event-rejected-err-wrong-event-epoch-hash) for the recovery procedure — or bootstrap a fresh datadir from the regenerated 2026-07-11 genesis (see the Chain Upgrade Guide's *Fresh install?* note).
+- **`WARN Incoming event rejected ... err="wrong event epoch hash"`** → resync from any published testnet genesis **does not work** on current binary rules because every one predates the sealed `SfcV2Patch10` activation. Restore the latest post-seal chaindata snapshot at `s3://vinu-blockchain-genesis/chaindata-snapshots/` — see [Chain Upgrade Guide → wrong event epoch hash](../vinuchain-testnet/chain-upgrade-guide.md#warn-incoming-event-rejected-err-wrong-event-epoch-hash) for the recovery procedure.
 
-Latest public snapshot: `https://vinu-blockchain-genesis.s3.amazonaws.com/chaindata-snapshots/testnet-chaindata-v2.0.47-elemont-20260820T113052Z-clean.tar.gz` (published 2026-08-20, tip block 1,585,766 / epoch 6,375). SHA256 `56fb6ed4ca88f4fe202444180036b1a5920560d1879110716d6ae74befa2409d`. Excludes `nodekey` / `keystore/` / `static-nodes.json` so your validator identity is preserved during extraction. It includes `VinuBLS12381`, `VinuLatestEVM`, and `SfcV2Patch7`/`SfcV2Patch8`/`SfcV2Patch9` all active.
+Latest public snapshot: `https://vinu-blockchain-genesis.s3.amazonaws.com/chaindata-snapshots/testnet-chaindata-v2.0.47-elemont-20260820T113052Z-clean.tar.gz` (published 2026-08-20, tip block 1,585,766 / epoch 6,375). SHA256 `56fb6ed4ca88f4fe202444180036b1a5920560d1879110716d6ae74befa2409d`. Excludes `nodekey` / `keystore/` / `static-nodes.json` so your validator identity is preserved during extraction. It includes `VinuBLS12381`, `VinuLatestEVM`, and `SfcV2Patch7`/`SfcV2Patch8`/`SfcV2Patch9`/`SfcV2Patch10` all active.
 {% endhint %}
 
 ## 1. Supported go-opera version <a href="#id-1.-current-version-of-go-opera" id="id-1.-current-version-of-go-opera"></a>
 
-The current node release is **v2.0.46-elemont** for testnet. Build it from the `v2.0.46-elemont` tag with Go 1.25.12+ (see [Read-Only Node](read-only-node.md)).
+The current node release is **v2.0.49-elemont** for testnet. Build it from the `v2.0.49-elemont` tag with Go 1.25.13+ (see [Read-Only Node](read-only-node.md)).
 
-**Mainnet** still runs the pre-ELEMONT `v2.0.0-rc.1` binary until the upgrade on **2026-08-29 10:00 UTC**, which moves it to `v2.0.47-elemont` — see the [Mainnet Upgrade Guide (ELEMONT)](../vinuchain-mainnet/chain-upgrade-guide.md).
+**Mainnet** still runs the pre-ELEMONT `v2.0.0-rc.1` binary until the upgrade on **2026-08-29 10:00 UTC**, which moves it to `v2.0.49-elemont` — see the [Mainnet Upgrade Guide (ELEMONT)](../vinuchain-mainnet/chain-upgrade-guide.md).
 
 ### **1.0 Pre-flight checklist** <a href="#id-1.0-pre-flight-checklist" id="id-1.0-pre-flight-checklist"></a>
 
@@ -289,7 +289,7 @@ This is different from [§6](#6-delegated-stake-stuck-on-a-non-rewarding-validat
 * **Do NOT** attempt repeated `delegate` / `undelegate` calls to try to force the cursor forward. Unlike the §6 procedure, walking the cursor by hand on a **rewarding** validator can mint more than you are actually owed, so this path is unsafe here and must not be used.
 * If you were one of the 12 affected delegators: your cursor was corrected at block 1,508,211 — **retry Claim or Restake now**. It should succeed.
 * If you **still** see this symptom after the fix:
-  * **Check your node/RPC is past block 1,508,211 and running v2.0.44-elemont.** A non-upgraded node diverges with `wrong event epoch hash` and shows stale state — upgrade and re-sync from the [current snapshot](../vinuchain-testnet/chain-upgrade-guide.md).
+  * **Check your node/RPC is past block 1,508,211 and running v2.0.49-elemont.** A non-upgraded node diverges with `wrong event epoch hash` and shows stale state — upgrade and re-sync from the [current snapshot](../vinuchain-testnet/chain-upgrade-guide.md).
   * If your node is current and the revert persists, your delegation may be a newly surfaced case that was not among the 12 corrected by the migration. **Report it through the official VinuChain channels** — the permanent cursor-init fix prevents brand-new delegations from getting stuck, but the team can apply a targeted correction if a pre-existing delegation was missed.
 
 ## 8. Reviving a dead or long-offline validator (testnet) <a href="#id-8.-reviving-a-dead-or-long-offline-validator-testnet" id="id-8.-reviving-a-dead-or-long-offline-validator-testnet"></a>
