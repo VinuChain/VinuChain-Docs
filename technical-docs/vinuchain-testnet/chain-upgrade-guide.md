@@ -6,7 +6,8 @@
 
 | Version           | Network | Status                                                                 |
 | ----------------- | ------- | ---------------------------------------------------------------------- |
-| `v2.0.48-elemont` | Testnet | **Deployed fleet-wide 2026-08-24 (non-consensus). Latest — recommended for all fresh installs and new builds.** Hardens the Linux default-datadir fallback: an empty/read-only-command-created `.vinuchain`, an interrupted genesis, or an empty database-directory skeleton can no longer strand populated legacy `.opera` state; inspection errors fail closed. Explicit `--datadir` behavior and all chain rules/state are unchanged. Pins Go 1.25.13 and patched `x/net`/`x/text` dependencies. Binary sha256 `b3415753e27f3a1586150330c69940d676edb6d0369a6100d6d15bea14f221eb`. Fresh/divergent nodes still require the v2.0.47 post-Patch10 snapshot below. |
+| `v2.0.49-elemont` | Testnet | **Deployed fleet-wide 2026-08-24 (non-consensus). Latest — recommended for all fresh installs and new builds.** Final security baseline at commit `8b88cc49d11e56635385413fe8f9eaec1969c1ac`; binary sha256 `678040e9f88a98331a8cc32b7bf5b9e0ae4acdf84919390465eeee584b7f56c1`. Uses go-vinu `v1.20.26-quota`. It supersedes v2.0.48 for the 2026-08-29 one-install mainnet upgrade and adds no new consensus, rules, state, activation-height, or protocol-capability behavior. |
+| `v2.0.48-elemont` | Testnet | **Deployed fleet-wide 2026-08-24 (non-consensus); historical predecessor superseded by `v2.0.49-elemont` above.** Hardened the Linux default-datadir fallback: an empty/read-only-command-created `.vinuchain`, an interrupted genesis, or an empty database-directory skeleton could no longer strand populated legacy `.opera` state; inspection errors failed closed. Explicit `--datadir` behavior and all chain rules/state were unchanged. Binary sha256 `b3415753e27f3a1586150330c69940d676edb6d0369a6100d6d15bea14f221eb`. The v2.0.47 post-Patch10 snapshot below remains compatible. |
 | `v2.0.47-elemont` | Testnet | **Deployed fleet-wide 2026-08-20 (CONSENSUS); superseded by `v2.0.48-elemont` above.** Activates `SfcV2Patch10`: reflashes **Cycle-165** SFC bytecode fixing lockup-reward destruction under chunked settlement. Cycle-164's `_stashRewards` deleted a delegator's lockup record on a wall-clock-only condition, so the **first partial claim after a lockup expired** destroyed the record and every later 100-epoch chunk was paid at the *unlocked* rate instead of the lockup rate. Cycle-165 defers the delete until the reward cursor has fully settled, gates `lockStake`/`relockStake`/`restakeRewards` on full settlement so unswept history cannot be repriced, and makes `stashRewards` succeed through a zero-reward window instead of reverting and rolling back its own cursor advance. `undelegate` is deliberately never gated. No storage-layout change and no ABI change (129 selectors, identical). Also carries the mainnet full-parity staging for the 2026-08-29 mainnet upgrade. **Requires the v2.0.47 chaindata snapshot** (below) for fresh or divergent nodes; every published testnet genesis is refused for fresh installs under this binary until the post-Patch10 genesis is regenerated. |
 | `v2.0.46-elemont` | Testnet | **Deployed fleet-wide 2026-07-17 (non-consensus); superseded by `v2.0.47-elemont` above.** Pins Go `1.25.12` in `go.mod` for [GO-2026-5856](https://pkg.go.dev/vuln/GO-2026-5856) (*Invoking Encrypted Client Hello privacy leak* in `crypto/tls`, fixed upstream in go1.25.12; the advisory was published after the v2.0.44 rollout, so it is unrelated to any chain change). Requires Go **1.25.12+** to build — `make opera` fetches the toolchain automatically. Includes everything in `v2.0.45-elemont` below. No rules, flag, contract, or persisted-state change: `vc_getRules` is byte-identical before and after (verified post-rollout). Rolled to RPC + V1–V4 on 2026-07-17 05:37–05:46 UTC; binary sha256 `9420e0c1e09439b1fe5b09e7bcf6f99271d9caa302d33cf5bc7c0d49dbb72df6`, built independently on both boxes and byte-identical. A convenience snapshot was published below (not required for this release). |
 | `v2.0.45-elemont` | Testnet | **Published 2026-07-17 (non-consensus); superseded by `v2.0.46-elemont` above, which the fleet now runs.** Ships the regenerated 2026-07-11 genesis as the trusted preset `VinuChain testnet with history (2026-07-11)`, so a fresh install no longer needs `--genesis.allowExperimental`. Refuses the stale 2024-06-21 / 2026-04-19 genesis files for fresh installs, and refuses to start any datadir whose upgrade activation history disagrees with the live chain's (`SfcV2Patch7` from epoch 6017, `SfcV2Patch8` from 6118, `SfcV2Patch9` from 6119) — the state that forked testnet validators 17 and 18 on 2026-06-21. No rules, flag, contract, or persisted-state change: `vc_getRules` is identical before and after and no snapshot is required. A node stopped inside epoch 6118 is still resumable — only `SfcV2Patch9` remains and it activates at the canonical 6118→6119 seal. |
@@ -33,7 +34,7 @@
 
 ## Current Testnet Rollout State
 
-The RPC and validators V1–V4 run `v2.0.48-elemont`, deployed one node at a time on **2026-08-24** from the published linux/amd64 binary (sha256 `b3415753e27f3a1586150330c69940d676edb6d0369a6100d6d15bea14f221eb`). This was a non-consensus binary swap: explicit datadirs, sealed rules, SFC bytecode, and chain state were unchanged. All four validators resumed event production after the restart protection interval.
+The RPC and validators V1–V4 run `v2.0.49-elemont`, deployed one node at a time on **2026-08-24** from the published linux/amd64 binary (commit `8b88cc49d11e56635385413fe8f9eaec1969c1ac`, sha256 `678040e9f88a98331a8cc32b7bf5b9e0ae4acdf84919390465eeee584b7f56c1`). This was a non-consensus binary swap: v2.0.49 adds the security baseline but no new consensus, rules, state, activation-height, or protocol-capability behavior; sealed rules, SFC bytecode, and chain state were unchanged. All four validators resumed event production after the restart protection interval.
 
 `v2.0.44-elemont` (**consensus**) was built once on the validator host and distributed byte-identically to all five nodes on **2026-07-08** (RPC first, then validators V1-V4 one-at-a-time with 20s spacing). Binary sha256 `d060210f793d7d38019d41a3bfb6cc48a52a5878d544d0b6bf6bd094c7d04a72` (one build distributed via S3, byte-identical by construction). It activates `SfcV2Patch9` at the first epoch seal after boot, which **reflashes Cycle-164 SFC bytecode** (raw-bytes sha256 `b25a749fe4fa4191bafc2f48d62f046176e1c9ba8fb914fa4a6f81651c4344af`, 48,336 bytes) with two reward-accounting fixes on top of Patch8: **(1)** `_rawDelegate` now seeds the reward cursor at `currentSealedEpoch+1` — the first epoch whose stake snapshot includes the new stake — for any zero-stake delegation (first OR returning delegator), skips the immediate `_stashRewards` on a zero-stake delegation, and makes the cursor monotonic in `_stashRewards`, closing a one-epoch reward over-mint (seeding at E let a delegation opened during E+1 claim the E→E+1 accumulator delta whose `_epochEndReceivedStake[E]` per-token denominator excluded the just-added stake). A residual one-epoch over-mint remains, by design, only when ADDING to an existing non-zero position (not fixable with a single per-delegator cursor). **(2)** `reactivateValidator` physically backfills a PRIOR offline gap's snapshot rates (bounded at `MAX_REACTIVATION_BACKFILL`=300 ≈ 7.5M gas, under the 20.5M block-gas limit) before overwriting its single heal record, so a fully-passive delegator across two consecutive offline gaps is not re-stranded. No new storage slots (a constant + existing mappings only). Because this is a persisted-state consensus change, **a fresh chaindata snapshot IS required** once the activation seals; non-upgraded nodes diverge with `wrong event epoch hash`. The previous binary is preserved as `opera.v2.0.43.bak.<timestamp>` beside each deployed binary. Activation sealed at block **1,529,442** (epoch 6118→6119) on 2026-07-08 15:49:06 UTC — all five nodes reflashed the Cycle-164 bytecode at the same block, each logging exactly one `Re-applying SFC V2 bytecode upgrade (patch 9)` with no `Multiple SfcV2Patch*` warning and no `wrong event epoch hash` (clean single-patch activation). Post-rollout `vc_getRules("latest")` reports `SfcV2Patch9=true` and `eth_getCode(0xFC00FACE…)` is the 48,336-byte Cycle-164 (`b25a749f…`); the chain advanced past the activation block with all four validators active and producing (quorum reached the reflash with no divergence). The replacement v2.0.44 chaindata snapshot is published below.
 
@@ -58,7 +59,7 @@ It was produced under the `20260820T113052Z` object name; `SNAPSHOT_INFO.txt` re
 | Network | Chain ID   | RPC                              | Status          |
 | ------- | ---------- | -------------------------------- | --------------- |
 | Mainnet | 207 (0xcf) | `https://rpc.vinuchain.org`      | **Full-parity upgrade scheduled 2026-08-29 10:00 UTC.** Active today: Berlin, London, Llr, Podgorica; SFC **V1**; Quota proxy `0x1c4269fb…0acda6`. Across five consecutive seals it gains Shanghai, Cancun, Prague, SfcV2 (+30% base-fee burn), Elemont, ElemontPubkeyValidation, VinuBLS12381, VinuLatestEVM, and PaybackV2 (Quota address changes). Only the `SfcV2Patch*` / `PaybackV2Patch` re-flash flags stay unset |
-| Testnet | 206 (0xce) | `https://vinufoundation-rpc.com` | v2.0.48-elemont deployed; the above plus PaybackV2/BLS/latest-EVM active, SfcV2Patch7 + SfcV2Patch8 (self-service `reactivateValidator`) + SfcV2Patch9 (reward-cursor over-mint + repeated-reactivation fixes) + **SfcV2Patch10 (Cycle-165 lockup preservation under chunked settlement)** active; Quota proxy `0x89D1cBD9…29e4` |
+| Testnet | 206 (0xce) | `https://vinufoundation-rpc.com` | v2.0.49-elemont deployed; the above plus PaybackV2/BLS/latest-EVM active, SfcV2Patch7 + SfcV2Patch8 (self-service `reactivateValidator`) + SfcV2Patch9 (reward-cursor over-mint + repeated-reactivation fixes) + **SfcV2Patch10 (Cycle-165 lockup preservation under chunked settlement)** active; Quota proxy `0x89D1cBD9…29e4` |
 
 ---
 
@@ -86,7 +87,7 @@ Ensure these remain open in your firewall:
 ## Upgrade Steps
 
 {% hint style="info" %}
-**Fresh install?** Do not replay any published testnet genesis under v2.0.48. Every one predates the sealed `SfcV2Patch10` activation, and the binary refuses it to prevent a wrong-seal divergence. Restore the verified **v2.0.47 post-Patch10 chaindata snapshot** in [Wrong event epoch hash / snapshot recovery](#warn-incoming-event-rejected-err-wrong-event-epoch-hash), then start v2.0.48 with an explicit `--datadir`.
+**Fresh install?** Do not replay any published testnet genesis under v2.0.49. Every one predates the sealed `SfcV2Patch10` activation, and the binary refuses it to prevent a wrong-seal divergence. Restore the verified **v2.0.47 post-Patch10 chaindata snapshot** in [Wrong event epoch hash / snapshot recovery](#warn-incoming-event-rejected-err-wrong-event-epoch-hash), then start v2.0.49 with an explicit `--datadir`.
 {% endhint %}
 
 {% stepper %}
@@ -150,7 +151,9 @@ The build directory is independent of your node's `--datadir`. The build process
 ```bash
 git clone https://github.com/VinuChain/VinuChain.git $HOME/vinuchain-upgrade
 cd $HOME/vinuchain-upgrade
-git checkout v2.0.48-elemont
+git checkout v2.0.49-elemont
+git rev-parse HEAD
+# Expected: 8b88cc49d11e56635385413fe8f9eaec1969c1ac
 make opera
 # Binary is at $HOME/vinuchain-upgrade/build/opera
 ```
@@ -158,19 +161,21 @@ make opera
 {% endcode %}
 
 **Or download the published binary instead of building.** Attached to the
-[v2.0.48-elemont release](https://github.com/VinuChain/VinuChain/releases/tag/v2.0.48-elemont):
+[v2.0.49-elemont release](https://github.com/VinuChain/VinuChain/releases/tag/v2.0.49-elemont):
 
 {% code title="Download and verify the release binary" overflow="wrap" %}
 
 ```bash
-curl -LO https://github.com/VinuChain/VinuChain/releases/download/v2.0.48-elemont/opera-v2.0.48-elemont-linux-amd64
-sha256sum -c <<< "b3415753e27f3a1586150330c69940d676edb6d0369a6100d6d15bea14f221eb  opera-v2.0.48-elemont-linux-amd64"
-chmod +x opera-v2.0.48-elemont-linux-amd64
+mkdir -p $HOME/vinuchain-upgrade/build
+cd $HOME/vinuchain-upgrade/build
+curl -LO https://github.com/VinuChain/VinuChain/releases/download/v2.0.49-elemont/opera-v2.0.49-elemont-linux-amd64
+sha256sum -c <<< "678040e9f88a98331a8cc32b7bf5b9e0ae4acdf84919390465eeee584b7f56c1  opera-v2.0.49-elemont-linux-amd64"
+mv opera-v2.0.49-elemont-linux-amd64 opera
+chmod +x opera
 
-# Prove it runs on THIS host before you stop the node. A binary built on a
-# newer Linux needs GLIBC_2.38 and will not exec on Ubuntu 22.04 (glibc 2.35) —
-# discovering that after `systemctl stop` means downtime you did not plan.
-./opera-v2.0.48-elemont-linux-amd64 version   # must print 2.0.48-elemont
+# Prove it runs on THIS host before you stop the node. The official binary
+# requires GLIBC_2.34 and runs on Ubuntu 22.04 (glibc 2.35).
+./opera version   # must print 2.0.49-elemont
 ```
 
 {% endcode %}
@@ -178,7 +183,7 @@ chmod +x opera-v2.0.48-elemont-linux-amd64
 Substitute `/opt/vinuchain-upgrade` (or any other path) if `$HOME` is not the right partition for your setup — every later command in this guide that references `$HOME/vinuchain-upgrade` should be adjusted to match.
 
 {% hint style="info" %}
-**Dependency pins.** `v2.0.48-elemont` builds with Go `1.25.13`+ and patched `golang.org/x/net`/`x/text` releases. It uses go-vinu `v1.20.25-quota` (the `v1.20.24-quota` precompile/ModExp/EVM-fork surface — Shanghai, selected Cancun execution support, Prague/EIP-7702 set-code transactions, VinuBLS12381, VinuLatestEVM — plus the cherry-picked CVE-2023-40591 p2p ping-flood goroutine bound) and lachesis-base `v0.1.6-elemont`, unchanged from v2.0.41. `make opera` fetches dependencies on first build.
+**Dependency pins.** `v2.0.49-elemont` builds with Go `1.25.13`+ and patched `golang.org/x/net`/`x/text` releases. It uses go-vinu `v1.20.26-quota` and lachesis-base `v0.1.6-elemont`; the EVM, consensus rules, state, and activation behavior are unchanged from v2.0.48. `make opera` fetches dependencies on first build.
 {% endhint %}
 {% endstep %}
 
@@ -191,11 +196,11 @@ The newly-built binary is at `vinuchain-upgrade/build/opera`. Move into that dir
 ```bash
 cd $HOME/vinuchain-upgrade/build
 ./opera version
-# Expected: Version: 2.0.48-elemont
+# Expected: Version: 2.0.49-elemont
 ```
 
 {% hint style="info" %}
-`opera version` prints `2.0.48-elemont` — this matches the git tag `v2.0.48-elemont`. See the note at the top of this page.
+`opera version` prints `2.0.49-elemont` — this matches the git tag `v2.0.49-elemont`. See the note at the top of this page.
 {% endhint %}
 {% endstep %}
 
@@ -325,7 +330,7 @@ For testing or development, you can run in the foreground:
 
 What to expect:
 
-**Startup banner.** Every v2.x build prints the VinuChain banner. This is the first visual confirmation that you are running v2.0.48-elemont and not the previous binary:
+**Startup banner.** Every v2.x build prints the VinuChain banner. This is the first visual confirmation that you are running v2.0.49-elemont and not the previous binary:
 
 ```text
  ██╗   ██╗██╗███╗   ██╗██╗   ██╗ ██████╗██╗  ██╗ █████╗ ██╗███╗   ██╗
@@ -337,7 +342,7 @@ What to expect:
 
                         v2.0  -  ELEMONT
 
-  Version: 2.0.48-elemont
+  Version: 2.0.49-elemont
 ```
 
 **Staging logs (testnet only, first-time Shanghai/Cancun/Prague/BLS/latest-EVM install).** On the first boot of a node that has not yet sealed Shanghai (e.g. a genesis replay rather than a snapshot restore), you will see Shanghai staged while later forks are deferred:
@@ -425,7 +430,7 @@ Once the mainnet seal happens (scheduled 2026-08-29), `vc_getRules` will report 
 | Check                                                     | Expected                                                                                                                                              |
 | --------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Startup banner                                            | `VINUCHAIN v2.0 - ELEMONT` ASCII art printed to stderr                                                                                                |
-| `opera version`                                           | `Version: 2.0.48-elemont`                                                                                                                             |
+| `opera version`                                           | `Version: 2.0.49-elemont`                                                                                                                             |
 | Block production                                          | Resumes within seconds of startup; block numbers advance                                                                                              |
 | Peer count                                                | Returns to prior steady-state within minutes                                                                                                          |
 | Shanghai staging logs (testnet, first pre-Shanghai boot) | 1× `Staged Shanghai upgrade …`; Cancun and Prague may log as deferred until predecessors are active                                                    |
@@ -504,7 +509,7 @@ Before a staged fork seals, rollback is a normal coordinated binary swap back to
 
 The earlier SfcV2Patch6 rollback constraints still apply. After SfcV2Patch6 seals, do not roll back below v2.0.21 without operator coordination: the Cycle-162 bytecode and automatic testnet delegation backfill persist in chain state, and older binaries do not contain the activation-time backfill logic. The corrected PaybackV2 v2.0.19 rollback constraints still apply if PaybackV2Patch was also part of the node's upgrade path.
 
-The later SfcV2Patch7, SfcV2Patch8, SfcV2Patch9 and SfcV2Patch10 constraints also apply. After those patches seal, do not roll back below v2.0.41, v2.0.43, v2.0.44 or v2.0.47 respectively without operator coordination: each patch reflashes the SFC contract and its bytecode persists in chain state. The current testnet runs v2.0.48 and has all four patches sealed. A coordinated v2.0.48→v2.0.47 binary rollback is state-compatible; do not go below v2.0.47. Use the current post-Patch10 snapshot instead of replaying older state.
+The later SfcV2Patch7, SfcV2Patch8, SfcV2Patch9 and SfcV2Patch10 constraints also apply. After those patches seal, do not roll back below v2.0.41, v2.0.43, v2.0.44 or v2.0.47 respectively without operator coordination: each patch reflashes the SFC contract and its bytecode persists in chain state. The current testnet runs v2.0.49 and has all four patches sealed. A coordinated v2.0.49→v2.0.47 binary rollback is state-compatible because v2.0.49 adds no consensus, rules, state, or activation change; do not go below v2.0.47. Use the current post-Patch10 snapshot instead of replaying older state.
 
 **After the `SfcV2Patch10` seal, no published genesis is a valid fresh-install bootstrap.** Every testnet genesis preset — including the 2026-07-11 one — pre-dates the Patch10 activation, so replaying it under `v2.0.47-elemont` or newer stages Patch10 at a local seal the live chain never performed and diverges with `wrong event epoch hash`. The binary refuses those presets for fresh installs and points at the current snapshot instead. Until a post-Patch10 genesis is regenerated, **fresh installs restore from the snapshot**.
 
@@ -573,7 +578,7 @@ On mainnet, the ELEMONT `SfcV2` activation is scheduled for 2026-08-29 10:00 UTC
 ### Node won't start after upgrade
 
 1. Check logs: `journalctl -u opera -f` (systemd) or your terminal / Docker output.
-2. Verify the binary: `opera version` must print `2.0.48-elemont`.
+2. Verify the binary: `opera version` must print `2.0.49-elemont`.
 3. If the database is reported as corrupted, restore from the chaindata snapshot below.
 4. If startup ends with `Fatal: this datadir belongs to the VinuChain Testnet network but ...`, see the next section — the datadir is stale or divergent and must be replaced, not restarted.
 
@@ -771,6 +776,7 @@ Testnet has Shanghai, Cancun, Prague, the SFC re-flashes through `SfcV2Patch10`,
 
 | Version             | Type                                                                    | What changed                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | ------------------- | ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **v2.0.49-elemont** | **security baseline (non-consensus)** | Raises the audited go-ethereum advisory floor and uses go-vinu `v1.20.26-quota` with the applicable p2p/crypto hardening. No new consensus, rules, state, activation-height, or protocol-capability change relative to v2.0.48; supersedes v2.0.48 for the 2026-08-29 one-install mainnet upgrade. Deployed to testnet RPC + V1-V4 on 2026-08-24 at commit `8b88cc49d11e56635385413fe8f9eaec1969c1ac`; binary sha256 `678040e9f88a98331a8cc32b7bf5b9e0ae4acdf84919390465eeee584b7f56c1`. |
 | **v2.0.40-elemont** | **go-vinu bump — p2p CVE hardening (non-consensus)** | Bumps go-vinu to `v1.20.25-quota`, picking up the cherry-picked CVE-2023-40591 fix that bounds the devp2p ping-handler goroutine spawn (ping-flood DoS hardening on the networking layer) plus a consensus-behavior-preserving FeeRefund nil-vs-zero decode normalization. No fork flag, contract address, receipt format, SFC, snapshot, or consensus-state change — `vc_getRules` is identical before and after. Deployed to testnet RPC + V1-V4 on 2026-06-19; the rollout also restored systemd management of the validators (units left failed since the 2026-06-11 rollout). |
 | **v2.0.39-elemont** | **PaybackCache restart warm-up (consensus A1 fix)** | Rebuilds the volatile PaybackCache at startup by replaying epochs E−1 and E from raw stored receipts, so a mid-epoch restart seals the same FeeRefund/`block.Root` as never-restarted peers. Fail-closed on unreadable tx-bearing blocks in the replay window (TxIndex required); leading-gap tolerant on pruned/genesis-imported datadirs. No consensus-rule, fork-flag, snapshot, SFC, or dependency change — the fix changes startup behavior only. |
 | **v2.0.38-elemont** | **EvmWriter SFC warning hygiene**                                       | Raises the non-system `setBalance` large-balance warning threshold to `10,000,000 VC` and exempts the SFC contract, preventing valid restake calls from logging scary false positives. Log-only release; no consensus, SFC bytecode, snapshot, fork flag, or dependency change.                                                                                                                                                                                                                                                                                                                                                                                                                                      |
@@ -971,4 +977,4 @@ Operator-facing controls for managing chaindata size on long-lived nodes.
 
 ---
 
-_Last updated: 2026-08-24 · latest guide target `v2.0.48-elemont`, deployed fleet-wide 2026-08-24 (non-consensus datadir fallback/toolchain hardening; all testnet rules and state unchanged). Recovery snapshot and fresh-install bootstrap: the `v2.0.47-elemont` post-Patch10 object above._
+_Last updated: 2026-08-24 · latest guide target `v2.0.49-elemont`, deployed fleet-wide 2026-08-24 (non-consensus security baseline; all testnet rules and state unchanged). Recovery snapshot and fresh-install bootstrap: the `v2.0.47-elemont` post-Patch10 object above._

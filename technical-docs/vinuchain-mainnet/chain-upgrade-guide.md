@@ -5,21 +5,21 @@
 {% hint style="danger" %}
 **Scheduled consensus upgrade — Saturday 29 August 2026, 10:00 UTC.**
 
-Every VinuChain **mainnet** validator and RPC/API node operator must swap to `v2.0.48-elemont` in this window. This is a **consensus** upgrade: a node still running the old binary when the activation epoch seals will stop following the chain and log `wrong event epoch hash`. It cannot be caught up by waiting — it has to be upgraded and, if it already diverged, restored from a post-activation snapshot.
+Every VinuChain **mainnet** validator and RPC/API node operator must swap to `v2.0.49-elemont` in this window. This final binary supersedes `v2.0.48-elemont` for the one-install upgrade. The upgrade remains **consensus**-critical: a node still running the old binary when the activation epoch seals will stop following the chain and log `wrong event epoch hash`. It cannot be caught up by waiting — it has to be upgraded and, if it already diverged, restored from a post-activation snapshot.
 
 If you run a mainnet validator, read [Before upgrade day](#before-upgrade-day) now, not on the 29th. Two of the pre-flight items (transaction indexing and the Go toolchain) can take **more than a day** to remedy.
 {% endhint %}
 
 ## What is happening
 
-Mainnet is being brought up to the **ELEMONT** feature set that VinuChain testnet has been running since early 2026. In a single coordinated binary swap, mainnet moves from `v2.0.0-rc.1` to `v2.0.48-elemont` and activates the **entire** testnet feature set: the modern EVM (Shanghai, Cancun, Prague/EIP-7702), the **V2 staking contract (SfcV2)**, the Elemont consensus correctness fixes, canonical validator-pubkey validation, the **BLS12-381** and **latest-EVM** precompiles, and **PaybackV2** (a new fee-refund contract).
+Mainnet is being brought up to the **ELEMONT** feature set that VinuChain testnet has been running since early 2026. In a single coordinated binary swap, mainnet moves from `v2.0.0-rc.1` to `v2.0.49-elemont` and activates the **entire** testnet feature set: the modern EVM (Shanghai, Cancun, Prague/EIP-7702), the **V2 staking contract (SfcV2)**, the Elemont consensus correctness fixes, canonical validator-pubkey validation, the **BLS12-381** and **latest-EVM** precompiles, and **PaybackV2** (a new fee-refund contract). v2.0.49 supersedes v2.0.48 for this window; it changes no EVM, state-transition, receipt-encoding, chain-rule, activation-height, or protocol-capability behavior.
 
 | | Value |
 | --- | --- |
 | **Network** | VinuChain Mainnet |
 | **Chain ID** | `207` (`0xcf`) |
 | **Upgrade window opens** | **2026-08-29 10:00 UTC** |
-| **Target release** | [`v2.0.48-elemont`](https://github.com/VinuChain/VinuChain/releases/tag/v2.0.48-elemont) — the mainnet full-parity release plus non-consensus datadir fallback hardening. **Published.** Prebuilt linux/amd64 binary attached to the release, sha256 `b3415753e27f3a1586150330c69940d676edb6d0369a6100d6d15bea14f221eb`. |
+| **Target release** | [`v2.0.49-elemont`](https://github.com/VinuChain/VinuChain/releases/tag/v2.0.49-elemont) — the final one-install mainnet binary for 2026-08-29, superseding v2.0.48 with no EVM, state-transition, receipt-encoding, chain-rule, activation-height, or protocol-capability changes. Git commit `8b88cc49d11e56635385413fe8f9eaec1969c1ac`; prebuilt linux/amd64 binary sha256 `678040e9f88a98331a8cc32b7bf5b9e0ae4acdf84919390465eeee584b7f56c1`. |
 | **Upgrading from** | `v2.0.0-rc.1` (the binary mainnet has run to date) |
 | **Type** | **Consensus.** Non-upgraded nodes diverge at the activation seal. |
 | **Activation** | At the **first epoch seal** after the validator set is running the new binary — not at restart. See [When activation actually happens](#when-activation-actually-happens). |
@@ -123,7 +123,7 @@ Work through this list **this week**. Items 1 and 2 have multi-day remediation p
 
 ### 1. Confirm transaction indexing is enabled — this can block boot
 
-`v2.0.48-elemont` rebuilds its in-memory Payback cache at startup by replaying recently-sealed blocks from stored receipts, so a restarted node seals the same fee-refund values as its peers. That warm-up is **fail-closed**: if it cannot read a transaction-bearing block inside the replay window, the node **refuses to start** rather than risk silently diverging.
+`v2.0.49-elemont` rebuilds its in-memory Payback cache at startup by replaying recently-sealed blocks from stored receipts, so a restarted node seals the same fee-refund values as its peers. That warm-up is **fail-closed**: if it cannot read a transaction-bearing block inside the replay window, the node **refuses to start** rather than risk silently diverging.
 
 In practice: **a node that has been running with transaction indexing disabled will not boot on the new binary.**
 
@@ -162,7 +162,7 @@ If indexing is off, you must re-sync that node **with indexing on**, from a snap
 
 ### 2. Install Go 1.25.13 or newer
 
-The current mainnet binary was built with **Go 1.19.13**. `v2.0.48-elemont` pins Go `1.25.13` in `go.mod`, superseding the earlier Go 1.25.12 security pin, and will not build on an older toolchain.
+The current mainnet binary was built with **Go 1.19.13**. `v2.0.49-elemont` retains Go `1.25.13` and updates go-vinu to `v1.20.26-quota` for the audited security baseline; it will not build on an older toolchain.
 
 ```bash
 go version   # must report go1.25.13 or newer
@@ -181,12 +181,12 @@ Build **before** upgrade day and keep the binary staged. Do not plan to compile 
 
 ```bash
 mkdir -p $HOME/vinuchain-upgrade/build && cd $HOME/vinuchain-upgrade/build
-curl -LO https://github.com/VinuChain/VinuChain/releases/download/v2.0.48-elemont/opera-v2.0.48-elemont-linux-amd64
-sha256sum -c <<< "b3415753e27f3a1586150330c69940d676edb6d0369a6100d6d15bea14f221eb  opera-v2.0.48-elemont-linux-amd64"
-mv opera-v2.0.48-elemont-linux-amd64 opera && chmod +x opera
+curl -LO https://github.com/VinuChain/VinuChain/releases/download/v2.0.49-elemont/opera-v2.0.49-elemont-linux-amd64
+sha256sum -c <<< "678040e9f88a98331a8cc32b7bf5b9e0ae4acdf84919390465eeee584b7f56c1  opera-v2.0.49-elemont-linux-amd64"
+mv opera-v2.0.49-elemont-linux-amd64 opera && chmod +x opera
 
 ./opera version
-# Expected: Version: 2.0.48-elemont
+# Expected: Version: 2.0.49-elemont
 ```
 
 The published binary is built against **GLIBC_2.34**, so it runs on Ubuntu 22.04 (glibc 2.35)
@@ -198,11 +198,13 @@ something you want to discover now, not after `systemctl stop`.
 ```bash
 git clone https://github.com/VinuChain/VinuChain.git $HOME/vinuchain-upgrade
 cd $HOME/vinuchain-upgrade
-git checkout v2.0.48-elemont
+git checkout v2.0.49-elemont
+git rev-parse HEAD
+# Expected: 8b88cc49d11e56635385413fe8f9eaec1969c1ac
 make opera
 
 ./build/opera version
-# Expected: Version: 2.0.48-elemont
+# Expected: Version: 2.0.49-elemont
 ```
 
 If you build on a host newer than your fleet, the result can require a newer glibc than the
@@ -212,7 +214,7 @@ fails.
 
 Pick a path with ~2 GB free for the source tree, module cache, and the ~38 MB binary. Avoid `/tmp` — some distributions clear it on reboot and would wipe your pre-staged build. The build directory is independent of your `--datadir`; the build never reads or writes chain data.
 
-**Dependency pins:** go-vinu `v1.20.25-quota`, lachesis-base `v0.1.6-elemont`.
+**Dependency pins:** go-vinu `v1.20.26-quota`, lachesis-base `v0.1.6-elemont`.
 
 {% endstep %}
 {% step %}
@@ -259,7 +261,7 @@ Rollback **before** the activation seal is a plain binary swap back. After the s
 | --- | --- | --- |
 | Transaction indexing on | inspect `ExecStart` / `run_node.sh` | **Yes — blocks boot** |
 | Go 1.25.13+ | `go version` | Yes |
-| New binary built and staged | `./build/opera version` → `2.0.48-elemont` | Yes |
+| New binary built and staged | `./build/opera version` → `2.0.49-elemont` | Yes |
 | Old binary kept | `ls opera.v2.0.0-rc.1.bak` | Yes |
 | Chaindata backup / volume snapshot | `df -h`, provider snapshot | Strongly recommended |
 | P2P 3000 TCP **and** UDP open | firewall / security group | Yes |
@@ -332,7 +334,7 @@ Copy the pre-built, pre-verified binary into place. Do **not** build on the box 
 
 ```bash
 # verify what you are about to install, then install it
-$HOME/vinuchain-upgrade/build/opera version   # Version: 2.0.48-elemont
+$HOME/vinuchain-upgrade/build/opera version   # Version: 2.0.49-elemont
 sha256sum $HOME/vinuchain-upgrade/build/opera
 
 cp $HOME/vinuchain-upgrade/build/opera /path/to/your/opera
@@ -455,7 +457,7 @@ Then confirm the node is alive and following:
 ```bash
 curl -s -X POST http://localhost:18545 -H 'Content-Type: application/json' \
   -d '{"jsonrpc":"2.0","method":"web3_clientVersion","params":[],"id":1}'
-# Expect a version string containing v2.0.48-elemont
+# Expect a version string containing v2.0.49-elemont
 
 curl -s -X POST http://localhost:18545 -H 'Content-Type: application/json' \
   -d '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}'
@@ -535,7 +537,7 @@ Run this after **each** seal, not once — several rows only become true at late
 
 | Check | Expected after activation |
 | --- | --- |
-| `opera version` | `Version: 2.0.48-elemont` |
+| `opera version` | `Version: 2.0.49-elemont` |
 | Startup banner | `VINUCHAIN v2.0 - ELEMONT` |
 | Staging log (pre-SfcV2 datadir) | 1× `Staged SfcV2 upgrade …` at boot |
 | Seal-time log | 1× `Applying SFC V2 bytecode upgrade …` |
@@ -682,7 +684,7 @@ Your node applied a different rule set than the network at an epoch boundary. On
 Do **not** try to fix this by restarting, re-syncing from genesis, or rolling the binary back and forth. A fresh or pre-activation mainnet datadir replayed under the post-ELEMONT binary re-stages the SfcV2 and EVM transitions at the wrong epoch seal and reproduces the same divergence.
 {% endhint %}
 
-Recovery: stop the node, move the diverged datadir aside, and restore from a **post-activation mainnet chaindata snapshot**, then start on `v2.0.48-elemont`. The snapshot URL and its SHA256 will be published here once the activation has sealed.
+Recovery: stop the node, move the diverged datadir aside, and restore from a **post-activation mainnet chaindata snapshot**, then start on `v2.0.49-elemont`. The snapshot URL and its SHA256 will be published here once the activation has sealed.
 
 ### Node starts but does not produce events
 

@@ -114,8 +114,8 @@ Machine-readable address registries and ABIs live in the public
 | VNS contracts catalogue (`.sol` + `_abi.json` per contract) | `Vinuchain-Lists:/contracts/vns/` |
 | VNS testnet deployment provenance (tx hashes + block numbers) | `Vinuchain-Lists:/contracts/vns/deployment-testnet.json` |
 | Core VinuChain contracts catalogue | `Vinuchain-Lists:/contracts/vinuchain/` |
-| Go-side predeploy / address constants | [`VinuChain:/opera/contracts/`](https://github.com/VinuChain/VinuChain/tree/main/opera/contracts) |
-| `Economy.QuotaCacheAddress` per-network rule | [`VinuChain:/opera/rules.go`](https://github.com/VinuChain/VinuChain/blob/main/opera/rules.go) |
+| Go-side predeploy / address constants | [`VinuChain:/opera/contracts/`](https://github.com/VinuChain/VinuChain/tree/elemont/opera/contracts) |
+| `Economy.QuotaCacheAddress` per-network rule | [`VinuChain:/opera/rules.go`](https://github.com/VinuChain/VinuChain/blob/elemont/opera/rules.go) |
 | PaybackV2 per-network V2 address slots | [`VinuChain:/opera/payback_v2_address.go`](https://github.com/VinuChain/VinuChain/blob/elemont/opera/payback_v2_address.go) (on the `elemont` branch) |
 
 ## Smoke-name baseline (testnet)

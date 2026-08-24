@@ -160,8 +160,8 @@ Then there is a validator self-stake bonding period — **180 epochs and 3 days*
 If your node is in dirty state (it may happen occasionally), do a fresh resync as follows:
 
 * Stop the node
-* Remove the current (broken) datadir (the default datadir is located at \~/.opera)
-* Rebuild the current binary: `git clone https://github.com/VinuChain/VinuChain.git && cd VinuChain && git checkout v2.0.44-elemont && make opera` (requires Go 1.25+)
+* Back up the validator identity files, then move the broken datadir aside (the legacy default is `~/.opera`)
+* Rebuild the current binary: `git clone https://github.com/VinuChain/VinuChain.git && cd VinuChain && git checkout v2.0.49-elemont && make opera` (requires Go 1.25.13+)
 * Run your node again in read mode
 
 ### **4.2 Slow syncing** <a href="#id-4.2-slow-syncing" id="id-4.2-slow-syncing"></a>
@@ -332,7 +332,7 @@ Removing p2p peer  req=true err="subprotocol error"     (~175 ms later)
 
 — while the stale node itself sits at `net.peerCount == 0/1` and never advances its head.
 
-`v2.0.8-elemont` removed those drift caps (`validatePeerProgress` now only rejects a structurally invalid zero-epoch progress), so a node re-peers with the tip regardless of how far behind it is — the deeper acceptance checks still gate actual state changes on epoch equality, so this is safe. **You must therefore be on `v2.0.8-elemont` or later to revive a long-dead validator; use the current release `v2.0.44-elemont`.** If you still see the `subprotocol error` churn above, you are on a pre-`v2.0.8` binary and must upgrade first.
+`v2.0.8-elemont` removed those drift caps (`validatePeerProgress` now only rejects a structurally invalid zero-epoch progress), so a node re-peers with the tip regardless of how far behind it is — the deeper acceptance checks still gate actual state changes on epoch equality, so this is safe. **You must therefore be on `v2.0.8-elemont` or later to revive a long-dead validator; use the current release `v2.0.49-elemont`.** If you still see the `subprotocol error` churn above, you are on a pre-`v2.0.8` binary and must upgrade first.
 
 {% hint style="info" %}
 **Scope.** External validators run on the **public testnet**, and this runbook is written for testnet operators on the `v2.x-elemont` binary line — the drift-cap regression and its fix were confined to that lineage. The on-chain offline-deactivation behaviour in [8.1](#id-8-1) / [8.5](#id-8-5) is enforced by the SFC contract itself and is independent of the node binary.
@@ -355,11 +355,11 @@ Build and verify the current release tag, following [Chain Upgrade Guide → Dow
 
 ```bash
 git clone https://github.com/VinuChain/VinuChain.git $HOME/vinuchain-upgrade
-cd $HOME/vinuchain-upgrade && git checkout v2.0.44-elemont && make opera
-./build/opera version   # Expected: Version: 2.0.44-elemont
+cd $HOME/vinuchain-upgrade && git checkout v2.0.49-elemont && make opera
+./build/opera version   # Expected: Version: 2.0.49-elemont
 ```
 
-Anything `>= v2.0.8-elemont` clears the drift-cap lockout; `v2.0.44-elemont` is the current consensus release and the version your chaindata must match.
+Anything `>= v2.0.8-elemont` clears the drift-cap lockout; `v2.0.49-elemont` is the current release and is compatible with the post-Patch10 chaindata snapshot.
 {% endstep %}
 
 {% step %}
@@ -370,7 +370,7 @@ Anything `>= v2.0.8-elemont` clears the drift-cap lockout; `v2.0.44-elemont` is 
 - **Long-dead, corrupted, or stale across a fork seal** → a stale datadir replays historical forks under the wrong rules and halts with `WARN Incoming event rejected ... err="wrong event epoch hash"`. Restore from the latest chaindata snapshot per [Chain Upgrade Guide → wrong event epoch hash](../vinuchain-testnet/chain-upgrade-guide.md#warn-incoming-event-rejected-err-wrong-event-epoch-hash). For any validator dead more than a few hours this is the reliable path.
 
 {% hint style="warning" %}
-**Preserve your identity files.** Back up `<datadir>/keystore/` and `<datadir>/go-opera/nodekey` before deleting any chaindata. The published snapshots deliberately exclude `nodekey`, `keystore/`, `static-nodes.json`, and `trusted-nodes.json`, so extracting one over your datadir keeps your validator identity intact. **Do not resync from a stale genesis on testnet** (the 2024-06-21 / 2026-04-19 files) — it stages not-yet-sealed forks at the wrong heights and diverges immediately. The regenerated 2026-07-11 genesis (all activations sealed in its history) is the exception and may be used to bootstrap a fresh datadir — see the [Chain Upgrade Guide's *Fresh install?* note](../vinuchain-testnet/chain-upgrade-guide.md).
+**Preserve your identity files.** Back up `<datadir>/keystore/` and `<datadir>/go-opera/nodekey` before deleting any chaindata. The published snapshots deliberately exclude `nodekey`, `keystore/`, `static-nodes.json`, and `trusted-nodes.json`, so extracting one over your datadir keeps your validator identity intact. **Do not resync from any published testnet genesis** — every one predates the sealed `SfcV2Patch10` activation. Restore the verified post-Patch10 snapshot instead; see the [Chain Upgrade Guide's *Fresh install?* note](../vinuchain-testnet/chain-upgrade-guide.md).
 {% endhint %}
 {% endstep %}
 
