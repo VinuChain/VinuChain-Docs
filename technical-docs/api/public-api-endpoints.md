@@ -44,8 +44,9 @@ wss://vinufoundation-rpc.com:4100
 
 ### ELEMONT RPC Surface
 
-Both mainnet and testnet expose the ELEMONT RPC extensions introduced with
-the ELEMONT hard-fork.
+Testnet exposes the complete ELEMONT RPC surface. Mainnet exposes the existing
+core subset and gains the remaining methods when its node is upgraded to the
+ELEMONT binary.
 
 #### `vc_*` namespace
 
@@ -68,11 +69,11 @@ tooling; reach for `vc_*` specifically for `vc_getRules` and
 `vc_getPaybackBalance`.
 
 {% hint style="warning" %}
-**Availability differs by network right now.** `vc_getRules` works on both. But
-`vc_getPaybackBalance` and `eth_config` / `vc_config` are **testnet-only until the
-mainnet ELEMONT upgrade on 2026-08-29** — on `https://rpc.vinuchain.org` today they
-return `-32601` (method not found), because mainnet still runs the pre-ELEMONT
-binary. The wider `vc_*` mirror is likewise only partially present on mainnet.
+**Status checked 25 August 2026:** availability still differed by network.
+`vc_getRules` worked on both, but `vc_getPaybackBalance` and `eth_config` /
+`vc_config` were **testnet-only pending the mainnet ELEMONT upgrade on
+2026-08-29**. On `https://rpc.vinuchain.org` they returned `-32601` (method not
+found), because mainnet still ran the pre-ELEMONT binary.
 
 Check before depending on one:
 

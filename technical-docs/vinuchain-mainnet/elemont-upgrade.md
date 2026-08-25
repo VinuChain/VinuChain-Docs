@@ -1,219 +1,209 @@
+<!-- markdownlint-disable MD013 -->
+
 # VinuChain ELEMONT Upgrade
 
-The **ELEMONT** upgrade is VinuChain mainnet's hard-fork to the modern EVM and the
-V2 staking contract. It is **live on testnet (chain ID `206`)** and is **scheduled
-for mainnet (chain ID `207`) on 29 August 2026 at 10:00 UTC**. This page is the
-single reference for what ELEMONT changes, the new RPC surface it exposes, and
-what node operators need to know.
+ELEMONT is VinuChain mainnet's move to the V2 staking contract, modern EVM
+rules, and PaybackV2. It is scheduled to begin on **29 August 2026 at 10:00
+UTC** on mainnet chain ID `207`.
+
+## What you need to do
+
+Use this page to identify your action and the observable state that completes
+it.
+
+| You are a | Required action | Finished when |
+| --- | --- | --- |
+| Mainnet node operator | Native systemd/script node: follow the [Mainnet Upgrade Guide](chain-upgrade-guide.md). Container node: require a coordinator-approved deployment-specific runbook and use the same checkpoints. | Your node runs `v2.0.49-elemont`, all five seals are active, and its block hash matches mainnet at the same height. |
+| Payback fee-refund staker | [Withdraw from the old Quota contract and stake on V2](#if-you-stake-in-the-payback-fee-refund-contract). | The old withdrawal is complete and `getStake(yourAddress)` on V2 shows the intended amount. |
+| Validator delegator | No mandatory migration. Consider claiming accumulated rewards before the upgrade. | Your balance and delegation remain visible. If you choose to claim, repeat until the pending amount reaches zero. |
+| dApp, bridge, exchange, indexer, or bot operator | Test the [breaking changes](#dapp-and-infrastructure-checks) against testnet and gate features by active rules. | Your integration works with the new SFC/Quota addresses and the EVM rules it uses have sealed. |
+| Wallet holder | No action. | Your address, VC balance, and chain ID remain unchanged. |
 
 {% hint style="warning" %}
-**Mainnet has not activated ELEMONT yet.** Until the 29 August activation seals,
-mainnet runs the pre-ELEMONT rule set — `Berlin`, `London`, `Llr`, `Podgorica` —
-and the **V1** SFC staking contract. Everything on this page described as an
-ELEMONT feature is live on testnet today and arrives on mainnet at that
-activation.
-
-Node operators: the step-by-step procedure is in the
-[Mainnet Upgrade Guide (ELEMONT)](chain-upgrade-guide.md). Two pre-flight items
-(transaction indexing and the Go toolchain) need lead time — start now.
+**Status checked 25 August 2026:** mainnet had not activated ELEMONT and still
+used the V1 SFC and V1 Payback/Quota proxy. Trust the live rule probe below over
+this dated observation or a calendar estimate.
 {% endhint %}
 
-> **TL;DR** — The 2026-08-29 release brings mainnet to **full parity with
-> testnet**: SfcV2 (V2 staking + 30% base-fee burn), the Shanghai / Cancun /
-> Prague EVM (including EIP-7702 set-code transactions), the Elemont consensus
-> fixes, canonical-pubkey validation, the BLS12-381 and latest-EVM precompiles,
-> and PaybackV2 (a new fee-refund contract) — on top of the already-live Llr and
-> Podgorica features. The new binary also exposes a branded `vc_*` JSON-RPC
-> namespace, `vc_getPaybackBalance`, and `eth_config`. **Fee-refund stakers must
-> migrate to the new Payback contract** — see the
-> [Mainnet Upgrade Guide](chain-upgrade-guide.md#if-you-stake-in-the-payback-fee-refund-contract).
-> Activation crosses five consecutive epoch seals over roughly 17 hours.
+## Upgrade status
 
-## Check what mainnet is running right now
+| Item | Value |
+| --- | --- |
+| Network | VinuChain Mainnet |
+| Chain ID | `207` (`0xcf`) |
+| Window opens | 29 August 2026, 10:00 UTC |
+| Node release | [`v2.0.49-elemont`](https://github.com/VinuChain/VinuChain/releases/tag/v2.0.49-elemont) |
+| Release commit | `8b88cc49d11e56635385413fe8f9eaec1969c1ac` |
+| Pre-upgrade mainnet client | `v2.0.0-rc.1` |
+| Mainnet RPC | `https://rpc.vinuchain.org` |
+| Testnet RPC | `https://vinufoundation-rpc.com` |
 
-Do not take this page's word for it — ask the chain:
+Ask mainnet what is active now:
 
 ```bash
-curl -s -X POST https://rpc.vinuchain.org \
+curl --fail --max-time 15 -sS -X POST https://rpc.vinuchain.org \
   -H 'Content-Type: application/json' \
   -d '{"jsonrpc":"2.0","method":"vc_getRules","params":["latest"],"id":1}' \
   | python3 -m json.tool
 ```
 
-* **Before the activation:** `Upgrades` contains exactly `Berlin`, `London`,
-  `Llr`, `Podgorica`.
-* **After the activation:** it additionally reports `Shanghai`, `Cancun`,
-  `Prague`, `SfcV2`, `Elemont`, `ElemontPubkeyValidation`, `VinuBLS12381`,
-  `VinuLatestEVM`, and `PaybackV2` — and `Economy.QuotaCacheAddress` **changes**
-  from the V1 proxy `0x1c4269fbbd4a8254f69383eef6af720bcd0acda6` to the new
-  `QuotaContractV2`. The flags arrive across five consecutive epoch seals, not
-  all at once.
+Before activation, `Upgrades` contains `Berlin`, `London`, `Llr`, and
+`Podgorica`, and `Economy.QuotaCacheAddress` is:
 
-The SFC staking contract's own version is the clearest single signal:
+```text
+0x1c4269fbbd4a8254f69383eef6af720bcd0acda6
+```
+
+The SFC version is another direct signal:
 
 ```bash
-curl -s -X POST https://rpc.vinuchain.org -H 'Content-Type: application/json' \
+curl --fail --max-time 15 -sS -X POST https://rpc.vinuchain.org \
+  -H 'Content-Type: application/json' \
   -d '{"jsonrpc":"2.0","method":"eth_call","params":[{"to":"0xFC00FACE00000000000000000000000000000000","data":"0x54fd4d50"},"latest"],"id":1}'
-# 0x3330340...  = "304" = SFC V1  (pre-ELEMONT)
-# 0x3330350...  = "305" = SFC V2  (post-ELEMONT)
 ```
 
-## What ELEMONT activates on mainnet
+- `0x333034...` is `"304"`, the current V1 SFC.
+- `0x333035...` is `"305"`, the ELEMONT V2 SFC after seal 1.
 
-| Feature | What it means |
-|---|---|
-| **SfcV2** | V2 SFC (staking) bytecode at `0xFC00FACE…0000`, with a **30% burn of the validator base-fee share**. |
-| **Shanghai** | `PUSH0`, warm coinbase, and Shanghai transaction rules. |
-| **Cancun** | Selected (non-blob) Cancun: transient storage (`TLOAD`/`TSTORE`), `MCOPY`, and the Cancun `SELFDESTRUCT` (EIP-6780) semantics. Blob transactions (EIP-4844) and the `BLOBBASEFEE` opcode (EIP-7516) are **not** enabled. |
-| **Prague** | **EIP-7702 set-code transactions** (type `0x04`) — EOAs can delegate to contract code, the foundation for account-abstraction UX on ordinary wallets. |
-| **Elemont** | Consensus-critical correctness fixes (merged no-cheaters view, full ABI decode of epoch advances, cheater-fee zeroing, deterministic vector-clock tie-breaking, stable median-time sort, empty-pubkey validator skip at epoch seal). |
-| **ElemontPubkeyValidation** | Validator pubkeys must be the canonical 66-byte `0xc0`-prefixed Secp256k1 form at every on-chain ingress (`createValidator`, `_rawCreateValidator`, `updateValidatorPubkey`). Malformed keys are rejected. |
-| **VinuBLS12381** | The EIP-2537 BLS12-381 precompile family at `0x0b`–`0x11`. |
-| **VinuLatestEVM** | `P256VERIFY` at `0x0100`, `CLZ`, MODEXP bounds/repricing, and the EIP-7825 per-transaction gas cap. |
-| **PaybackV2** | Payback / fee-refund moves off the V1 Quota proxy onto a newly deployed non-proxy `QuotaContractV2`. **Fee-refund stakers must migrate.** |
+## Activation sequence
 
-Berlin, London (EIP-1559 base fee), **Llr**, and **Podgorica** (the Payback /
-fee-refund system) are already active on mainnet today and remain so.
+Restarting on the new binary stages the upgrade. Consensus rules change only
+when an epoch seals. The EVM stages are ordered, so completion takes five
+consecutive seals and can take up to roughly 20 hours after the 10:00 UTC swap.
 
-## New RPC surface
+| Seal | Newly active capabilities |
+| --- | --- |
+| 1 | `SfcV2`, `Elemont`, `ElemontPubkeyValidation`, `Shanghai`, `PaybackV2` |
+| 2 | `Cancun` |
+| 3 | `Prague` |
+| 4 | `VinuBLS12381` |
+| 5 | `VinuLatestEVM` |
 
-ELEMONT ships a richer RPC surface. It is live on the testnet endpoint
-`https://vinufoundation-rpc.com` today, and arrives on the public mainnet
-endpoint `https://rpc.vinuchain.org` with the 29 August activation. Of these,
-only `vc_getRules` is available on mainnet's current binary.
+Do not use projected clock times as activation proof. Query `vc_getRules` and
+wait for the flag required by your application.
 
-| Method | Purpose | On mainnet today? |
-|---|---|---|
-| `vc_*` namespace | The full `eth_*` JSON-RPC surface mirrored under a branded `vc_` namespace — e.g. `vc_blockNumber`, `vc_call`, `vc_getBalance`, `vc_getTransactionReceipt`, `vc_sendRawTransaction`, `vc_getRules`. (Filter/subscription methods such as `eth_getLogs` / `eth_subscribe` remain under `eth` only.) | Partial — `vc_getRules` yes |
-| `vc_getRules(blockTag)` | Active network rules for the epoch, including every upgrade flag and `Economy.QuotaCacheAddress`. | **Yes** |
-| `vc_getPaybackBalance(address, blockTag)` | The wallet's currently available Payback quota in wei (its fee-refund cap for the next transaction). Process rate-limited; overload returns error `-32005`. | No — arrives with ELEMONT |
-| `eth_config` / `vc_config` | Returns the current / next / last fork configuration — `chainId`, `forkId`, the per-fork `activationBlock` (VinuChain forks at block height), and the precompile map. | No — arrives with ELEMONT |
+## What ELEMONT changes
 
-See [Public API Endpoints](../api/public-api-endpoints.md) for the full endpoint
-list.
+| Feature | Mainnet effect |
+| --- | --- |
+| `SfcV2` | Replaces the SFC runtime at `0xFC00FACE00000000000000000000000000000000` with Cycle-165 V2, including corrected reward cursors, self-service validator reactivation, and a 30% burn of the validator base-fee share. `version()` becomes `"305"`. |
+| `Shanghai` | Adds `PUSH0`, warm coinbase, Shanghai transaction rules, and the EIP-3860 initcode limit. |
+| `Cancun` | Adds selected non-blob Cancun behavior: transient storage, `MCOPY`, and EIP-6780 `SELFDESTRUCT`. Blob transactions and `BLOBBASEFEE` remain disabled. |
+| `Prague` | Adds EIP-7702 set-code transactions, type `0x04`. |
+| `Elemont` | Activates consensus correctness fixes for epoch processing, cheater accounting, vector clocks, time ordering, and malformed validator records. |
+| `ElemontPubkeyValidation` | Requires canonical 66-byte `0xc0`-prefixed Secp256k1 validator public keys at every on-chain validator ingress. |
+| `VinuBLS12381` | Adds the EIP-2537 BLS12-381 precompiles at `0x0b` through `0x11`. |
+| `VinuLatestEVM` | Adds `P256VERIFY` at `0x0100`, `CLZ`, MODEXP changes, and the EIP-7825 per-transaction gas cap. |
+| `PaybackV2` | Changes `Economy.QuotaCacheAddress` from the V1 proxy to `QuotaContractV2` at `0x5D989A2d65d049e2198D91d8ddc31C918f2544AB`. Stake left on V1 remains withdrawable but stops earning fee refunds. |
 
-## What this means for you
+Berlin, London, Llr, and Podgorica are already active and remain active.
 
-### dApp developers
-* **Modern EVM — after the activation.** Solidity targeting the `shanghai`,
-  `cancun`, or `prague` EVM versions compiles and runs on mainnet once ELEMONT
-  seals; `PUSH0`, transient storage, and EIP-7702 all become available. **Do not
-  deploy Shanghai-or-later bytecode to mainnet before then** — mainnet is a
-  London-era EVM until the seal. See
-  [Deploy a Smart Contract](../smart-contracts/deploy-a-smart-contract.md).
-* **Account abstraction.** ERC-4337 is live on testnet at the canonical
-  cross-chain addresses. See
-  [Account Abstraction (ERC-4337)](../smart-contracts/account-abstraction.md) for
-  current per-network availability.
-* **Feeless transactions.** Already live on mainnet via Podgorica: stake into the
-  Payback/Quota contract and eligible transactions get their gas refunded
-  on-chain. ELEMONT does not change this, and mainnet keeps using the V1 Quota
-  proxy `0x1c4269fbbd4a8254f69383eef6af720bcd0acda6`. See
-  [Feeless Transactions for Developers](../smart-contracts/feeless-transactions.md).
+## RPC changes
 
-### Stakers & validators
-* After the activation, the V2 SFC governs staking, delegation, lockups, and
-  rewards, and 30% of the validator base-fee share is burned. If you integrate
-  against the SFC ABI directly, re-check your bindings against V2.
-* From the activation onward, new validators must register a canonical 66-byte
-  `0xc0`-prefixed pubkey; malformed keys are rejected at `createValidator`. See
-  [Become a Validator](../nodes-and-validators/become-a-validator.md).
-* Fee-refund eligibility is driven by Payback staking — see
-  [Staking → Overview](../staking/overview.md).
+The core branded RPC namespace and `vc_getRules` are already live on mainnet.
+The ELEMONT binary adds the methods marked below. Method availability does not
+prove that its corresponding consensus flag has sealed; use `vc_getRules` for
+that.
 
-### Wallet users
-No action is required. Existing VC balances, addresses, and the chain ID (`207`)
-are unchanged by ELEMONT.
+| Method | Status | Purpose |
+| --- | --- | --- |
+| Core `vc_*` methods, including `vc_blockNumber` and `vc_getTransactionByHash` | Already live | Provide VinuChain-branded aliases for core Ethereum-compatible queries. Filters and subscriptions stay under `eth_*`. |
+| `vc_getRules(blockTag)` | Already live | Returns the active rule set and `Economy.QuotaCacheAddress`. |
+| `vc_getPaybackBalance(address, blockTag)` | Added by `v2.0.49-elemont` | Returns the address's available fee-refund quota in wei. Overload is returned as JSON-RPC error `-32005`. |
+| `eth_config` / `vc_config` | Added by `v2.0.49-elemont` | Returns chain/fork configuration, activation blocks, and the active precompile map. |
 
-## Node operators
+See [Public API Endpoints](../api/public-api-endpoints.md) for the endpoint
+inventory.
 
-**Mainnet operators: follow the [Mainnet Upgrade Guide (ELEMONT)](chain-upgrade-guide.md).**
-It covers the pre-flight checks, the swap procedure, activation timing, the
-verification checklist, and rollback. The summary:
+## dApp and infrastructure checks
 
-The mainnet ELEMONT release is **`v2.0.49-elemont`** — the final one-install binary for 2026-08-29, superseding v2.0.48 with no EVM, state-transition, receipt-encoding, chain-rule, activation-height, or protocol-capability changes. Build it from source at commit `8b88cc49d11e56635385413fe8f9eaec1969c1ac`:
+Test on VinuChain testnet, chain ID `206`, before 29 August. Testnet already
+exposes the target capabilities at `https://vinufoundation-rpc.com`.
 
-**Prebuilt binary** (linux/amd64) is attached to the [`v2.0.49-elemont` release](https://github.com/VinuChain/VinuChain/releases/tag/v2.0.49-elemont):
+| Change | Active from | Required check |
+| --- | --- | --- |
+| EIP-3860 initcode limit of 49,152 bytes | Seal 1 | Ensure planned contract deployment initcode is within the limit. |
+| SFC ABI V1 to V2 | Seal 1 | Regenerate or verify direct SFC bindings and test reward/validator calls against V2. |
+| Payback contract replacement | Seal 1 | Stop hard-coding the V1 proxy as active; read `Economy.QuotaCacheAddress` or use the V2 address after the flag seals. |
+| Canonical validator public keys | Seal 1 | Supply a 66-byte `0xc0`-prefixed key to validator create/update calls. |
+| Cancun opcodes | Seal 2 | Do not deploy bytecode using transient storage or `MCOPY` before `Cancun` is true. |
+| EIP-7702 transaction type `0x04` | Seal 3 | Gate set-code transactions until `Prague` is true. |
+| BLS12-381 precompiles | Seal 4 | Gate calls until `VinuBLS12381` is true. |
+| EIP-7825 transaction gas cap of 16,777,216 | Seal 5 | Keep every transaction gas limit at or below `2^24`; this is lower than mainnet's 20,500,000 block gas limit. |
+| `P256VERIFY` and latest-EVM behavior | Seal 5 | Gate calls until `VinuLatestEVM` is true. |
+
+Mainnet remains a London-era EVM until the relevant seals. Do not send
+Shanghai-or-later bytecode or transaction types early.
+
+## Staking and rewards
+
+Existing validator delegations and balances do not migrate to a new address;
+the SFC stays at `0xFC00FACE00000000000000000000000000000000` and its runtime changes in place.
+
+V2 settles outstanding rewards in chunks of at most 100 epochs per transaction.
+If a position is more than 100 epochs behind, the first `claimRewards`
+transaction can pay only part of the displayed pending amount. Nothing is
+lost: repeat the claim until the pending amount reaches zero.
+
+To avoid multiple post-upgrade claim transactions, claim accumulated rewards
+through the [VinuChain staking app](https://vinuchain.org/staking) before
+seal 1. This is optional and does not change the total entitlement.
+
+## If you stake in the Payback fee-refund contract <a href="#if-you-stake-in-the-payback-fee-refund-contract" id="if-you-stake-in-the-payback-fee-refund-contract"></a>
+
+**Action required.** At seal 1, fee-refund accounting moves from the V1 Quota
+proxy to V2. Your principal on V1 remains safe and withdrawable, but stake left
+there no longer earns fee refunds after the switch.
+
+| Contract | Address |
+| --- | --- |
+| V1 Quota proxy to exit | `0x1c4269fbbd4a8254f69383eef6af720bcd0acda6` |
+| Mainnet `QuotaContractV2` to enter | `0x5D989A2d65d049e2198D91d8ddc31C918f2544AB` |
+
+Both contracts were verified on 25 August 2026 with a 10 VC minimum and a
+one-day withdrawal hold. The protocol values the chain enforces are still
+determined by the active address returned from `vc_getRules`.
+
+### Migrate
+
+Before signing any transaction, confirm the wallet is on VinuChain mainnet,
+chain ID `207`, and compare the entire contract address with the table above.
+
+1. Open the [V1 contract page](https://mainnet.vinuexplorer.org/address/0x1c4269fbbd4a8254f69383eef6af720bcd0acda6?tab=contract), connect the staking wallet, and call `unstake(uint256 amount)`. Enter the amount in wei (`1 VC = 10^18 wei`). Save the transaction hash and the returned withdrawal-request ID (`wrID`) from the `Undelegated` event.
+2. Wait until the request's `unlockTime` has passed. The configured hold is one day. On the same V1 contract, call `withdrawStake(uint256 wrID)` with the saved ID. Verify the VC returns to the same wallet.
+3. Wait until `vc_getRules` reports `PaybackV2: true` and `Economy.QuotaCacheAddress` equals `0x5D989A2d65d049e2198D91d8ddc31C918f2544AB`.
+4. Open the [verified V2 contract page](https://mainnet.vinuexplorer.org/address/0x5D989A2d65d049e2198D91d8ddc31C918f2544AB?tab=contract), connect the same wallet, and call payable `stake()` with at least 10 VC as the transaction value.
+5. Read `getStake(yourAddress)` on V2 and confirm it shows the intended amount. Then check the available quota:
 
 ```bash
-curl -LO https://github.com/VinuChain/VinuChain/releases/download/v2.0.49-elemont/opera-v2.0.49-elemont-linux-amd64
-sha256sum -c <<< "678040e9f88a98331a8cc32b7bf5b9e0ae4acdf84919390465eeee584b7f56c1  opera-v2.0.49-elemont-linux-amd64"
-chmod +x opera-v2.0.49-elemont-linux-amd64
-./opera-v2.0.49-elemont-linux-amd64 version   # Version: 2.0.49-elemont
+curl --fail --max-time 15 -sS -X POST https://rpc.vinuchain.org \
+  -H 'Content-Type: application/json' \
+  -d '{"jsonrpc":"2.0","method":"vc_getPaybackBalance","params":["0xYOUR_ADDRESS","latest"],"id":1}' \
+  | python3 -m json.tool
 ```
 
-It requires **GLIBC_2.34** or newer, so it runs on Ubuntu 22.04 and later.
+Starting the V1 unstake about one hold period before seal 1 can shorten the
+post-switch gap, but the unstaked amount stops contributing as soon as you call
+`unstake`. Do not stake on V2 until seal 1 is confirmed. If you lose the `wrID`,
+read the wallet's active withdrawal requests from the V1 contract; do not
+create another request to guess the ID.
 
-**Or build from source:**
+## Testnet parity
 
-```bash
-git clone https://github.com/VinuChain/VinuChain.git
-cd VinuChain
-git checkout v2.0.49-elemont
-test "$(git rev-parse HEAD)" = 8b88cc49d11e56635385413fe8f9eaec1969c1ac
-make opera          # -> build/opera
-```
+After seal 5, mainnet and testnet expose the same user-facing protocol
+capabilities. They do **not** have identical chain state, contract addresses,
+or activation history.
 
-Requirements: **Go 1.25.13+**, a C compiler, git, and ≥ 50 GB free disk. The
-build pins `go-vinu v1.20.26-quota` and `lachesis-base v0.1.6-elemont` via
-`go.mod`. Note that mainnet's current binary was built with Go 1.19 — the
-toolchain upgrade is part of this work.
-
-**Upgrading an existing node** is an in-place binary swap — stop the node with a
-clean `SIGINT` (never `SIGKILL`, which corrupts LevelDB), replace the `opera`
-binary, and restart. The node continues from its existing datadir. Activation
-then fires at the **first epoch seal** after the validator set is on the new
-binary — mainnet epochs seal at most every 4 hours.
-
-**Fresh installs** should restore from a post-activation chaindata snapshot
-rather than replaying from the original genesis. Replaying a pre-activation
-genesis under the post-ELEMONT binary re-stages the fork activations at the wrong
-epoch seal and diverges with `wrong event epoch hash`. See
-[Read-Only Node](../nodes-and-validators/read-only-node.md) and the
-[Mainnet Upgrade Guide](chain-upgrade-guide.md).
-
-> **TxIndex must stay enabled.** ELEMONT's PaybackCache restart warm-up replays
-> recently-sealed blocks into the in-memory Payback cache on boot to keep
-> fee-refund accounting deterministic across restarts. A node started with
-> transaction indexing disabled **refuses to start** (fail-closed) rather than
-> risk divergence; if a node previously ran without TxIndex it must be re-synced
-> (from a snapshot) with indexing on. Check this **before** upgrade day — there
-> is no in-place fix.
-
-Verify a node is on ELEMONT after it syncs:
-
-```bash
-# Client version should report v2.0.49-elemont
-./opera attach --exec 'web3.version.node' /path/to/datadir/opera.ipc
-```
-
-This uses the local IPC socket. Validator-only nodes do not need HTTP or WebSocket RPC enabled.
-
-## Also running on testnet
-
-VinuChain testnet (chain ID `206`) has been running this entire feature set for
-months, and the 29 August release brings mainnet to parity with it. After the
-activation the two networks carry the same capabilities.
-
-The only flags testnet has that mainnet will **not** set are repair mechanisms,
-not features:
-
-* **`SfcV2Patch1`–`SfcV2Patch10`** — re-flash flags that brought testnet's SFC
-  bytecode up to date after its early SfcV2 activation. Mainnet's first SfcV2
-  activation installs the latest corrected bytecode directly. This is verifiable
-  rather than assumed: the bytecode a fresh activation installs is byte-identical
-  to what testnet reached after all ten patches (48,757 bytes, sha256
-  `134a508b13d46647052b64f8d6691f0b939d2afaa0fa400882c6653a40a77887`).
-* **`PaybackV2Patch`** — re-runs the PaybackV2 address rebinding for a chain that
-  crossed that edge with a wrong address. Mainnet crosses it once, correctly.
-
-So mainnet reaches **identical on-chain state** to testnet in one step rather than
-replaying testnet's correction history.
+Testnet's `SfcV2Patch`, `SfcV2Patch2` through `SfcV2Patch10`, and
+`PaybackV2Patch` flags record repairs applied after earlier testnet activations.
+Mainnet does not replay those flags: its first SFC V2 activation installs the
+same final Cycle-165 runtime, and its first PaybackV2 activation uses the correct
+mainnet V2 address.
 
 ## See also
 
-* [Mainnet Upgrade Guide (ELEMONT)](chain-upgrade-guide.md) — the operator procedure for 29 August
-* [Network Details](../network-details.md) — chain IDs, RPC/WS, explorers, key contracts
-* [Public API Endpoints](../api/public-api-endpoints.md) — full RPC reference incl. the `vc_*` surface
-* [Connect to Mainnet](./connect-to-mainnet.md) — wallet quick-add
-* [Master Contracts Reference](../smart-contracts/contracts-master-list.md)
+- [Mainnet Upgrade Guide](chain-upgrade-guide.md) — the node-operator procedure
+- [Feeless Transactions for Developers](../smart-contracts/feeless-transactions.md) — Payback integration
+- [Staking Overview](../staking/overview.md) — validator delegation and Payback staking
+- [Network Details](../network-details.md) — chain IDs, endpoints, and contract addresses
+- [Account Abstraction](../smart-contracts/account-abstraction.md) — EIP-7702 and ERC-4337 context

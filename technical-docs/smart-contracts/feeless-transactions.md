@@ -84,10 +84,11 @@ would use as the refund cap for that wallet's next transaction.
 > on its original Quota proxy; testnet runs the newer `QuotaContractV2`, which adds
 > receiver-funded staking (`stakeFor`/`unstakeFor`).
 >
-> **Mainnet moves to `QuotaContractV2` on 2026-08-29** as part of the ELEMONT
-> upgrade. Stake left on the old proxy stops earning fee refunds at that point and
+> **Mainnet's ELEMONT window opens on 2026-08-29.** At the first activation
+> seal, `QuotaContractV2` replaces the old proxy for fee refunds. Stake left on
+> the old proxy stops earning fee refunds at that point and
 > must be migrated — see
-> [the migration steps](../vinuchain-mainnet/chain-upgrade-guide.md#if-you-stake-in-the-payback-fee-refund-contract).
+> [the migration steps](../vinuchain-mainnet/elemont-upgrade.md#if-you-stake-in-the-payback-fee-refund-contract).
 >
 > Confirm the address the node is actually enforcing at any time with
 > `vc_getRules("latest")` → `Economy.QuotaCacheAddress` (see below).
