@@ -11,7 +11,7 @@
 | **Public RPC**            | `https://rpc.vinuchain.org`                  | `https://vinufoundation-rpc.com`                             |
 | **Block explorer**        | [vinuexplorer.org](https://vinuexplorer.org) | [testnet.vinuexplorer.org](https://testnet.vinuexplorer.org) |
 | **Faucet**                | —                                            | [Request in Discord](https://discord.gg/vinu)                |
-| WSS                       | `wss://rpc.vinuchain.org`                    | `wss://vinufoundation-rpc.com`                               |
+| WSS                       | `wss://rpc.vinuchain.org`                    | `wss://vinufoundation-rpc.com:4100`                           |
 
 ## Key contracts
 
