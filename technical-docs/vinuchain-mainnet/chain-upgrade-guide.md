@@ -127,7 +127,10 @@ Work through this list **this week**. Items 1 and 2 have multi-day remediation p
 
 In practice: **a node that has been running with transaction indexing disabled will not boot on the new binary.**
 
-Check your node's launch command for any flag that disables indexing (e.g. `--txlookuplimit` set in a way that prunes the window, or an explicitly disabled index):
+Transaction indexing is enabled by default (`[Opera] TxIndex = true`) and there is no
+`--txindex` or `--txlookuplimit` CLI flag to add. If your launch command does not use
+`--config`, the default is active. If it does use a TOML config, confirm it does not contain
+`TxIndex = false`:
 
 ```bash
 # systemd
@@ -135,25 +138,28 @@ systemctl cat vinu-opera.service | grep -A20 ExecStart
 # or, for a nohup/script launch
 cat run_node.sh
 ps -o args= -C opera
+
+# only when the command above uses --config
+grep -nE '^[[:space:]]*TxIndex[[:space:]]*=' /path/to/config.toml
 ```
 
-A more direct check than reading flags — ask your own node to look a transaction up **by hash**,
-which is the path that needs the index. Pick a transaction from a block well behind head, then:
+No output from that config check means the compiled `true` default remains active.
+
+A direct check is to ask your own node for a known older mainnet transaction **by hash**, which
+uses the index. Validator-only nodes normally expose no HTTP or WebSocket RPC, so use the local
+IPC socket; this opens no network port. Run the command as the same OS user that runs opera:
 
 ```bash
-# 1. grab a tx hash from an older block on YOUR node
-curl -s -X POST http://localhost:18545 -H 'Content-Type: application/json' \
-  -d '{"jsonrpc":"2.0","method":"eth_getBlockByNumber","params":["0xDE0B6B",true],"id":1}' \
-  | python3 -c 'import sys,json;t=json.load(sys.stdin)["result"]["transactions"];print(t[0]["hash"] if t else "no txs in that block, try another")'
-
-# 2. look it up by hash — this is the indexed path
-curl -s -X POST http://localhost:18545 -H 'Content-Type: application/json' \
-  -d '{"jsonrpc":"2.0","method":"eth_getTransactionByHash","params":["0xYOUR_TX_HASH"],"id":1}'
+./opera attach --exec \
+  'vc.getTransaction("0xfa3cbe1ec4220bee33a30d7f922ff4274489503f6c48729abce40e71589988f0")' \
+  /path/to/datadir/opera.ipc
 ```
 
-A non-null result means the index covers that height. A `null` for a transaction you know exists
-means indexing is missing there. For reference, the public mainnet RPC resolves by-hash lookups
-and receipts correctly as far back as 10 million blocks, so a healthy node should too.
+If you use the default datadir, omit the final socket argument; opera resolves its default
+`opera.ipc` path. A transaction object containing `blockNumber: 14551915` means the index covers
+that height. A `null` result or `transactions index is disabled` error means it does not. If
+attach itself cannot connect, check the datadir/socket path and OS user first; that is not an
+indexing failure.
 
 If indexing is off, you must re-sync that node **with indexing on**, from a snapshot — plan for this now, not on the 29th.
 
@@ -244,13 +250,24 @@ Rollback **before** the activation seal is a plain binary swap back. After the s
 {% endstep %}
 {% step %}
 
-### 6. Confirm your ports are open
+### 6. Confirm your P2P port is open
 
 | Port | Protocol | Purpose |
 | --- | --- | --- |
-| 3000 | **TCP and UDP** | P2P networking. UDP is not optional — opera's peer discovery is UDP, and a TCP-only firewall leaves you with a couple of bootnode peers and no working discovery. |
-| 18545 | TCP | HTTP JSON-RPC (only if you expose RPC) |
-| 18546 | TCP | WebSocket JSON-RPC (only if you expose WS) |
+| `5050` by default, or your `--port` value | **TCP and UDP** | Your node's P2P listener. UDP is required for peer discovery. |
+| `18545` by default when `--http` (or legacy `--rpc`) is enabled | TCP | Optional HTTP JSON-RPC. A validator-only node does not need this. |
+| `18546` by default when `--ws` is enabled | TCP | Optional WebSocket JSON-RPC. A validator-only node does not need this. |
+
+The port values do not enable HTTP or WebSocket RPC: without `--http`, legacy `--rpc`, or `--ws`,
+nothing should listen on `18545` or `18546`. Do not enable or expose them just for this upgrade.
+Confirm the P2P ports that your running node actually advertises through IPC:
+
+```bash
+./opera attach --exec 'admin.nodeInfo.ports' /path/to/datadir/opera.ipc
+```
+
+If your launch command has no `--port`, the local P2P listener is `5050`. The mainnet bootnodes
+use remote port `3000`; that does not make `3000` your node's local port.
 
 {% endstep %}
 {% endstepper %}
@@ -264,7 +281,7 @@ Rollback **before** the activation seal is a plain binary swap back. After the s
 | New binary built and staged | `./build/opera version` → `2.0.49-elemont` | Yes |
 | Old binary kept | `ls opera.v2.0.0-rc.1.bak` | Yes |
 | Chaindata backup / volume snapshot | `df -h`, provider snapshot | Strongly recommended |
-| P2P 3000 TCP **and** UDP open | firewall / security group | Yes |
+| Local P2P listener TCP **and** UDP open | `admin.nodeInfo.ports`; firewall / security group | Yes |
 | `--nat extip:<your public IPv4>` in your launch command | `ps -o args= -C opera` | Yes |
 
 ---
@@ -374,6 +391,9 @@ nohup ./opera \
 tail -f validator.log
 ```
 
+If the live command explicitly passes `--port`, preserve that exact value. If it omits
+`--port`, keep it omitted; the local P2P listener remains on the `5050` default.
+
 {% hint style="warning" %}
 **Preserve the exact live `--datadir` value and working directory during this upgrade.** Do not replace it with `.opera`, `.vinuchain`, or a newly absolute path in the window. For newly staged password/genesis paths, use absolute paths because relative paths resolve against opera's working directory.
 {% endhint %}
@@ -393,7 +413,7 @@ Confirm the datadir volume mount and port mappings are unchanged.
 **`--nat extip:YOUR_PUBLIC_IPV4` is effectively required.** Without it, opera advertises `ip=127.0.0.1` in the discovery table. The failure looks like a successful start: the process runs, logs scroll, and then the node sits at `net.peerCount == 1` on a single stale peer and never advances. Confirm the startup line shows your real address:
 
 ```text
-INFO New local node record  seq=… id=… ip=<YOUR_PUBLIC_IP> udp=3000 tcp=3000
+INFO New local node record  seq=… id=… ip=<YOUR_PUBLIC_IP> udp=<YOUR_P2P_PORT> tcp=<YOUR_P2P_PORT>
 ```
 
 `curl -s ifconfig.me` from the node host gives you the value to use.
@@ -409,13 +429,13 @@ during an upgrade window, so pass both seeds explicitly rather than relying on t
 ```
 
 The first is the built-in mainnet bootnode; the second is a public VinuChain mainnet RPC node.
-Both were verified listening on TCP 3000. One reachable seed is enough — discovery finds the
-rest over UDP 3000.
+Both were verified listening on remote port 3000. One reachable seed is enough for discovery to
+find the rest of the network.
 
 {% hint style="warning" %}
-**UDP 3000 must be open both inbound and outbound.** Peer discovery is UDP. A firewall that
-allows only TCP 3000 gets you a peer or two from the bootnode and no discovery walk-through,
-which looks exactly like a healthy node that never catches up.
+**Your local P2P listener must accept both TCP and UDP.** That is `5050` when `--port` is omitted,
+or the value explicitly passed to `--port`. Also allow outbound TCP and UDP. The bootnodes happen
+to listen on remote port `3000`; your local listener does not need to match them.
 {% endhint %}
 
 {% hint style="danger" %}
@@ -452,15 +472,14 @@ INFO Staged Shanghai upgrade …
 
 Cancun and Prague may log as deferred until their predecessor is active; that is expected and needs no restart.
 
-Then confirm the node is alive and following:
+Then confirm the node is alive and following through its local IPC socket. Do not enable HTTP RPC
+just for these checks:
 
 ```bash
-curl -s -X POST http://localhost:18545 -H 'Content-Type: application/json' \
-  -d '{"jsonrpc":"2.0","method":"web3_clientVersion","params":[],"id":1}'
+./opera attach --exec 'web3.version.node' /path/to/datadir/opera.ipc
 # Expect a version string containing v2.0.49-elemont
 
-curl -s -X POST http://localhost:18545 -H 'Content-Type: application/json' \
-  -d '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}'
+./opera attach --exec 'vc.blockNumber' /path/to/datadir/opera.ipc
 ```
 
 {% endstep %}
@@ -492,17 +511,19 @@ Then verify the rules and the contract:
 
 ```bash
 # 1. Upgrade flags
-curl -s -X POST http://localhost:18545 -H 'Content-Type: application/json' \
-  -d '{"jsonrpc":"2.0","method":"vc_getRules","params":["latest"],"id":1}' | python3 -m json.tool
+./opera attach --exec \
+  'web3.currentProvider.send({jsonrpc:"2.0",method:"vc_getRules",params:["latest"],id:1}).result' \
+  /path/to/datadir/opera.ipc
 
 # 2. SFC version: "304" (V1) must have become "305" (V2)
-curl -s -X POST http://localhost:18545 -H 'Content-Type: application/json' \
-  -d '{"jsonrpc":"2.0","method":"eth_call","params":[{"to":"0xFC00FACE00000000000000000000000000000000","data":"0x54fd4d50"},"latest"],"id":1}'
+./opera attach --exec \
+  'vc.call({to:"0xFC00FACE00000000000000000000000000000000",data:"0x54fd4d50"},"latest")' \
+  /path/to/datadir/opera.ipc
 
 # 3. SFC bytecode size: 24168 (V1) must have become 48757 (V2 Cycle-165)
-curl -s -X POST http://localhost:18545 -H 'Content-Type: application/json' \
-  -d '{"jsonrpc":"2.0","method":"eth_getCode","params":["0xFC00FACE00000000000000000000000000000000","latest"],"id":1}' \
-  | python3 -c 'import sys,json;print(len(json.load(sys.stdin)["result"][2:])//2, "bytes")'
+./opera attach --exec \
+  '(vc.getCode("0xFC00FACE00000000000000000000000000000000","latest").length-2)/2+" bytes"' \
+  /path/to/datadir/opera.ipc
 ```
 
 {% endstep %}
@@ -513,9 +534,9 @@ curl -s -X POST http://localhost:18545 -H 'Content-Type: application/json' \
 This is the step that catches a divergence early.
 
 ```bash
-curl -s -X POST http://localhost:18545 -H 'Content-Type: application/json' \
-  -d '{"jsonrpc":"2.0","method":"eth_getBlockByNumber","params":["latest",false],"id":1}' \
-  | python3 -c 'import sys,json;r=json.load(sys.stdin)["result"];print(int(r["number"],16), r["hash"])'
+./opera attach --exec \
+  'var b=vc.getBlock("latest"); b.number+" "+b.hash' \
+  /path/to/datadir/opera.ipc
 ```
 
 Run the identical request against the public RPC and compare:
@@ -526,7 +547,9 @@ curl -s -X POST https://rpc.vinuchain.org -H 'Content-Type: application/json' \
   | python3 -c 'import sys,json;r=json.load(sys.stdin)["result"];print(int(r["number"],16), r["hash"])'
 ```
 
-Same height, same hash → you are on the canonical chain. Different hash at the same height → you diverged; go to [Troubleshooting](#wrong-event-epoch-hash).
+Same height, same hash → you are on the canonical chain. If a new block arrived between the two
+commands, repeat them; different heights alone are not divergence. Different hashes at the same
+height mean you diverged; go to [Troubleshooting](#wrong-event-epoch-hash).
 
 {% endstep %}
 {% endstepper %}
@@ -691,8 +714,8 @@ Recovery: stop the node, move the diverged datadir aside, and restore from a **p
 Check, in order:
 
 1. `--nat extip:<public IPv4>` present, and the `New local node record` line shows your real IP (not `127.0.0.1`).
-2. P2P port 3000 open for **both** TCP and UDP.
-3. Peer count above 1: `./opera attach --exec net.peerCount <datadir>/opera.ipc`.
+2. Your local P2P port (`5050` by default, or your `--port` value) open for **both** TCP and UDP.
+3. Peer count above 1: `./opera attach --exec 'net.peerCount' /path/to/datadir/opera.ipc`.
 4. Validator flags unchanged and the password file reachable at an **absolute** path.
 
 ### Stuck at `net.peerCount == 1` with one stale peer
@@ -710,7 +733,7 @@ EOF
 
 ### `vc_getRules` still shows the old four flags after restart
 
-Expected until the activation seal. Staging happens at boot; activation happens at the next epoch seal (up to 4 hours). Confirm you saw `Staged SfcV2 upgrade …` in the boot log — that is the proof the new binary is doing its job. If that line is absent and `web3_clientVersion` still reports `v2.0.0-rc.1`, the binary swap did not take effect.
+Expected until the activation seal. Staging happens at boot; activation happens at the next epoch seal (up to 4 hours). Confirm you saw `Staged SfcV2 upgrade …` in the boot log — that is the proof the new binary is doing its job. If that line is absent and `web3.version.node` still reports `v2.0.0-rc.1`, the binary swap did not take effect.
 
 ### Fresh install rather than an upgrade
 

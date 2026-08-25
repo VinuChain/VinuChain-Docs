@@ -184,9 +184,10 @@ Verify a node is on ELEMONT after it syncs:
 
 ```bash
 # Client version should report v2.0.49-elemont
-curl -s -X POST http://localhost:18545 -H 'Content-Type: application/json' \
-  -d '{"jsonrpc":"2.0","method":"web3_clientVersion","params":[],"id":1}'
+./opera attach --exec 'web3.version.node' /path/to/datadir/opera.ipc
 ```
+
+This uses the local IPC socket. Validator-only nodes do not need HTTP or WebSocket RPC enabled.
 
 ## Also running on testnet
 
