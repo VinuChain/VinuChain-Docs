@@ -47,6 +47,19 @@ the upgrade coordination channel. If you do not have that channel, contact the
 VinuChain team through the [official Discord](https://discord.gg/vinu) before
 the window opens.
 
+Run every command block on this page in Bash. Your login shell may remain
+`sh`; start a temporary Bash session before the first command and return to
+`sh` afterwards:
+
+```bash
+bash
+test -n "$BASH_VERSION"
+```
+
+Do not run these blocks directly under `sh`; they use Bash features such as
+`pipefail`, here-strings, and brace expansion. After completing the guide, type
+`exit` once to return to the original `sh` session.
+
 This is not a container deployment procedure. If the binary lives inside a
 container, do not improvise from the native commands: require a
 deployment-specific runbook with the exact image digest, stop/start commands,
@@ -672,6 +685,25 @@ four-hour boundary passes without a seal, escalate to the upgrade coordinator;
 do not restart individual validators speculatively.
 
 **Verify:** seal 1 adds the five flags in the activation table.
+
+### Startup reports backtrace or smartcard messages
+
+**Symptom:** startup logs show `backtrace parse failed` and
+`Smartcard socket not found, disabling`.
+
+**Cause:** `v2.0.49-elemont` tries to parse the empty optional backtrace setting,
+and disables optional smartcard-wallet support when the `pcscd` socket is not
+installed. Neither message affects a validator that uses its normal keystore
+and did not configure `--log.backtrace` or `--backtrace`.
+
+**Correction:** do nothing. Do not add logging flags, install `pcscd`, or change
+the launch command during the cutover. If the recorded command explicitly uses
+a backtrace flag or the validator intentionally signs through a smartcard, stop
+and ask the coordinator before proceeding.
+
+**Verify:** the immediate restart checkpoint passes: the process stays active,
+height advances, peers return toward their baseline, and the fixed-height block
+hash matches the public RPC.
 
 ## See also
 
