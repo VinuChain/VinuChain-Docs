@@ -26,6 +26,7 @@
   * [Connect to Mainnet](technical-docs/vinuchain-mainnet/connect-to-mainnet.md)
   * [ELEMONT Upgrade](technical-docs/vinuchain-mainnet/elemont-upgrade.md)
   * [Mainnet Upgrade Guide (ELEMONT)](technical-docs/vinuchain-mainnet/chain-upgrade-guide.md)
+  * [Recovering a Node That Missed the Upgrade](technical-docs/vinuchain-mainnet/snapshot-recovery.md)
 * [VinuChain Testnet](technical-docs/vinuchain-testnet/README.md)
   * [Connect to Testnet](technical-docs/vinuchain-testnet/connect-to-testnet.md)
   * [Private Network (Fakenet)](technical-docs/vinuchain-testnet/private-network-fakenet.md)
