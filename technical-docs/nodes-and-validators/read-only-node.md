@@ -156,21 +156,35 @@ VERSION:
 v2.0.49-elemont
 ```
 
-### Download Genesis File
+### Bootstrap the Chain Data
 
-A genesis file is a configuration file that contains the initial settings and parameters for the VinuChain network when it is launched.&#x20;
+A new node needs an existing copy of the chain before it can follow the network.
 
-The genesis file is a crucial component of any blockchain network, as it defines the initial state of the network, including information about the initial block, accounts, validators, and other network-specific parameters.
+Historically that was done by replaying a **genesis file** — a configuration file describing the network's initial state — from block zero. **That is no longer valid on either network.** Both mainnet and testnet have since activated consensus upgrades at specific epoch seals, and a replay from an old genesis re-applies those upgrades at the wrong blocks, producing a node the network rejects.
 
-You can download the genesis file with the following command:
+Bootstrap from the published chaindata snapshot for your network instead:
 
 **Mainnet:**
 
+Current mainnet installs must restore the latest chaindata snapshot instead of replaying from a genesis file:
+
+```text
+https://vinu-blockchain-mainnet-genesis.s3.amazonaws.com/chaindata-snapshots/elemont-20260829/seal-5/mainnet-chaindata-elemont-seal5-20260830T103737Z.tar.zst
 ```
-# Download Mainnet genesis file
-(validator)$ curl https://vinu-blockchain-mainnet-genesis.s3.amazonaws.com/vitainu-genesis-mainnet-20240524.g \
-    --output vinuchain-genesis.g
+
+SHA256: `969fb6acc86f1cfbc29ceed77224c25046f410c6e78726d5078c04a07afd7b31` (tip epoch 7,894 / block 14,709,230)
+
+```bash
+# download, verify, extract  (needs zstd)
+(validator)$ curl -fL -O https://vinu-blockchain-mainnet-genesis.s3.amazonaws.com/chaindata-snapshots/elemont-20260829/seal-5/mainnet-chaindata-elemont-seal5-20260830T103737Z.tar.zst
+(validator)$ curl -fL -O https://vinu-blockchain-mainnet-genesis.s3.amazonaws.com/chaindata-snapshots/elemont-20260829/seal-5/mainnet-chaindata-elemont-seal5-20260830T103737Z.tar.zst.sha256
+(validator)$ sha256sum -c mainnet-chaindata-elemont-seal5-20260830T103737Z.tar.zst.sha256
+(validator)$ cd build && tar -I zstd -xf ../mainnet-chaindata-elemont-seal5-20260830T103737Z.tar.zst
 ```
+
+{% hint style="warning" %}
+**Do not bootstrap current mainnet from a genesis file.** The distributed 2024 mainnet genesis pre-dates every ELEMONT-era upgrade flag. A fresh replay under `v2.0.49-elemont` seals those flags at different blocks than the live chain did, so the node computes a different epoch-state hash and rejects current-tip events with `err="wrong event epoch hash"`. The snapshot above was taken after all five activation seals (2026-08-29/30) and is the only valid mainnet bootstrap. Old mainnet genesis files remain archival only.
+{% endhint %}
 
 **Testnet:**
 
@@ -195,8 +209,8 @@ First, start the **Opera read-only node** to interact with it and to create a va
 ```
 # Start opera node (Mainnet)
 (validator)$ cd build/
-(validator)$ nohup ./opera --port 3000 --nat any \
-    --genesis ../vinuchain-genesis.g \
+(validator)$ nohup ./opera --port 3000 --nat extip:<YOUR_PUBLIC_IPV4> \
+    --datadir ./datadir \
     --bootnodes "enode://678f242c2d60ed433c23bba0f9ea00982ea9bc5eb1d7f91337c23ccec5f41c9634705fa79994ba8f62ee893574451631a10f694cfa684f75524de79a7e50f890@54.244.138.80:3000,enode://e0d777bf4ef6318a748ffbd2c58d3b664f5132a02d711567a6df378504c49edbc3145b8f0105ea100988bd1bb57ac574a783d255b2b57abd65a5f0ae13954e77@35.161.54.139:3000" \
     > opera.log &
 ```

@@ -193,6 +193,25 @@ Alternatively, you can use `web3.toWei("200000.0", "vc")).`
 
 ```
 # Register your validator
+{% hint style="danger" %}
+**Your validator pubkey must be exactly 66 bytes.** Since the ELEMONT activation on 2026-08-29, `ElemontPubkeyValidation` is live on mainnet: at **every epoch seal** the network silently **skips** any validator whose pubkey is non-empty but malformed.
+
+Canonical shape is `0xc0` (the secp256k1 type byte) followed by 65 raw bytes — an uncompressed key `0x04` + 32-byte X + 32-byte Y. As a hex string that is `0x` plus **132 characters**, and it always begins `0xc004`.
+
+```bash
+# check before you register — must print 66 and c0
+(validator)$ PK=0xYOUR_PUBKEY
+(validator)$ echo -n "${PK#0x}" | wc -c | awk '{print $1/2" bytes"}'
+(validator)$ echo "${PK:2:4}"      # must be: c004
+```
+
+Get it from `./opera validator new` — do not hand-assemble or truncate it. A malformed pubkey still registers on-chain and still locks your stake, but your validator **will never join the validator set and will never earn rewards**. The only symptom is a line in your node log:
+
+```text
+Skipping validator with malformed pubkey at epoch seal   id=<your id>
+```
+{% endhint %}
+
 tx = sfcc.createValidator("0xYOUR_PUBKEY", {from:"0xYOUR_ADDRESS", value:
 web3.toWei("200000.0", "vc")}) // 200000.0 VC
 ```

@@ -83,3 +83,9 @@ Example:
 ```
 stakerInfoContract.getInfo(14)
 ```
+
+{% hint style="warning" %}
+**Keep the config URL reachable.** `updateInfo` stores only a **URL**; the staking UI and the GraphQL API fetch the JSON from it on every render. If that host later goes offline or the path moves, your validator silently loses its name and logo and shows as unnamed — the on-chain record still looks correct, so nothing appears broken.
+
+Publish it somewhere durable (a GitHub raw URL, S3, or a domain you control), serve it over **HTTPS**, and re-check it after any hosting change. Several mainnet validators currently render unnamed for exactly this reason, which also leaves no route to contact their operators during a network upgrade.
+{% endhint %}

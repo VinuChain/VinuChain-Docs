@@ -26,13 +26,29 @@ API nodes are useful for building applications that require querying historical 
 
 ## Mainnet
 
-### **Download genesis file**
+### **Restore latest snapshot**
 
+**Mainnet:**
+
+Current mainnet installs must restore the latest chaindata snapshot instead of replaying from a genesis file:
+
+```text
+https://vinu-blockchain-mainnet-genesis.s3.amazonaws.com/chaindata-snapshots/elemont-20260829/seal-5/mainnet-chaindata-elemont-seal5-20260830T103737Z.tar.zst
 ```
-#Download genesis file
-(validator)$ curl https://vinu-blockchain-mainnet-genesis.s3.amazonaws.com/vitainu-genesis-mainnet-with-contracts.g \
-    --output vitainu-genesis-mainnet-with-contracts.g
+
+SHA256: `969fb6acc86f1cfbc29ceed77224c25046f410c6e78726d5078c04a07afd7b31` (tip epoch 7,894 / block 14,709,230)
+
+```bash
+# download, verify, extract  (needs zstd)
+(validator)$ curl -fL -O https://vinu-blockchain-mainnet-genesis.s3.amazonaws.com/chaindata-snapshots/elemont-20260829/seal-5/mainnet-chaindata-elemont-seal5-20260830T103737Z.tar.zst
+(validator)$ curl -fL -O https://vinu-blockchain-mainnet-genesis.s3.amazonaws.com/chaindata-snapshots/elemont-20260829/seal-5/mainnet-chaindata-elemont-seal5-20260830T103737Z.tar.zst.sha256
+(validator)$ sha256sum -c mainnet-chaindata-elemont-seal5-20260830T103737Z.tar.zst.sha256
+(validator)$ cd build && tar -I zstd -xf ../mainnet-chaindata-elemont-seal5-20260830T103737Z.tar.zst
 ```
+
+{% hint style="warning" %}
+**Do not bootstrap current mainnet from a genesis file.** The distributed 2024 mainnet genesis pre-dates every ELEMONT-era upgrade flag. A fresh replay under `v2.0.49-elemont` seals those flags at different blocks than the live chain did, so the node computes a different epoch-state hash and rejects current-tip events with `err="wrong event epoch hash"`. The snapshot above was taken after all five activation seals (2026-08-29/30) and is the only valid mainnet bootstrap. Old mainnet genesis files remain archival only.
+{% endhint %}
 
 ### **Run node**
 
@@ -43,7 +59,6 @@ You can turn on and off **http** and **ws** options, use your ports and addresse
 (validator)$ cd build
 
 (validator)$ nohup ./opera \
-    --genesis ../vitainu-genesis-mainnet-with-contracts.g \
     --datadir ./datadir \
     --http \
     --http.addr=your_hostname \
