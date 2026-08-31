@@ -183,8 +183,38 @@ SHA256: `969fb6acc86f1cfbc29ceed77224c25046f410c6e78726d5078c04a07afd7b31` (tip 
 ```
 
 {% hint style="warning" %}
-**Do not bootstrap current mainnet from a genesis file.** The distributed 2024 mainnet genesis pre-dates every ELEMONT-era upgrade flag. A fresh replay under `v2.0.49-elemont` seals those flags at different blocks than the live chain did, so the node computes a different epoch-state hash and rejects current-tip events with `err="wrong event epoch hash"`. The snapshot above was taken after all five activation seals (2026-08-29/30) and is the only valid mainnet bootstrap. Old mainnet genesis files remain archival only.
+**Do not bootstrap current mainnet from a genesis file.** The distributed 2024 mainnet genesis pre-dates every ELEMONT-era upgrade flag. A fresh replay under `v2.0.49-elemont` seals those flags at different blocks than the live chain did, so the node computes a different epoch-state hash and rejects current-tip events with `err="wrong event epoch hash"`. The snapshot above, and the regenerated genesis below, were both produced after all five activation seals (2026-08-29/30); they are the only valid mainnet bootstraps. The older mainnet genesis files remain archival only.
 {% endhint %}
+
+#### Alternative: bootstrap from the regenerated genesis
+
+The snapshot above is the **fastest** path. The regenerated genesis is the
+**verifiable** one — its section hashes are compiled into the binary's
+`AllowedOperaGenesis`, so opera refuses to start on a tampered file. A snapshot's
+checksum lives beside the archive on the same bucket, so it can only be trusted as
+far as that bucket is.
+
+```bash
+(validator)$ curl -fL -O https://vinu-blockchain-mainnet-genesis.s3.amazonaws.com/genesis/elemont-20260829/vitainu-genesis-mainnet-elemont-20260830.g
+(validator)$ curl -fL -O https://vinu-blockchain-mainnet-genesis.s3.amazonaws.com/genesis/elemont-20260829/vitainu-genesis-mainnet-elemont-20260830.g.sha256
+(validator)$ sha256sum -c vitainu-genesis-mainnet-elemont-20260830.g.sha256
+```
+
+| | |
+|---|---|
+| Size | `50,791,105,980` bytes (47.3 GiB) |
+| sha256 | `14021d4f64e395ed705b7adfb5a29c648cfef6ae4f52abe2a2eb563c369fddd8` |
+| Exported from | epoch 7,896 / block 14,711,847 — after all five ELEMONT seals |
+
+Then start with `--genesis ./vitainu-genesis-mainnet-elemont-20260830.g` **instead of**
+`--datadir` pointing at an extracted snapshot. Replay takes considerably longer than
+extracting the snapshot; pick it when you want the binary to verify the source itself.
+
+**Which to use:** snapshot for speed, genesis when you want end-to-end verification.
+Both produce the same node — you need one or the other, never both. Once a datadir
+exists, neither is read again (`Genesis is already written`).
+
+
 
 **Testnet:**
 
