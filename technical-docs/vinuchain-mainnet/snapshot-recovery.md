@@ -4,9 +4,10 @@ This guide is for mainnet nodes that did **not** upgrade during the 2026-08-29
 activation window and can no longer follow the chain.
 
 Mainnet activated `SfcV2`, `Elemont`, `ElemontPubkeyValidation`, `Shanghai` and
-`PaybackV2` at the epoch seal on **2026-08-29 13:38:26 UTC** (block `14,701,167`),
-then `Cancun`, `Prague`, `VinuBLS12381` and `VinuLatestEVM` across four further seals,
-finishing **2026-08-30 05:38:56 UTC**. A node that was not running
+`PaybackV2` at the first epoch seal on **29 August 2026**, then `Cancun`, `Prague`,
+`VinuBLS12381` and `VinuLatestEVM` across four further seals. The final seal is
+recorded by the node itself: `eth_config` reports the current fork activating at
+block `14,707,397` on **2026-08-30 05:38:56 UTC**. A node that was not running
 `v2.0.49-elemont` when its epoch sealed computed a different result and is now on a
 chain the network rejects.
 

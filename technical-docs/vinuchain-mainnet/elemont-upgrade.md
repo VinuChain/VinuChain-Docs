@@ -83,7 +83,8 @@ curl --fail --max-time 15 -sS -X POST https://rpc.vinuchain.org \
 
 Restarting on the new binary staged the upgrade. Consensus rules change only
 when an epoch seals, and the EVM stages are ordered, so completion took five
-consecutive seals spanning roughly 16 hours. All five have now sealed on mainnet.
+consecutive seals, completing the day after the 10:00 UTC binary swap. All five
+have now sealed on mainnet.
 
 | Seal | Newly active capabilities |
 | --- | --- |

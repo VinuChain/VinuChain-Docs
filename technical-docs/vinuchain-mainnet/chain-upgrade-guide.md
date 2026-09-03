@@ -611,8 +611,7 @@ count continue to advance. This is the observable completion state.
 
 ### Before seal 1 (historical — retained as a record)
 
-Seal 1 sealed on mainnet on 29 August 2026 at 13:38:26 UTC (block `14,701,167`)
-and cannot be undone, so this branch is no longer reachable. The probe below now
+Seal 1 sealed on mainnet on 29 August 2026 and cannot be undone, so this branch is no longer reachable. The probe below now
 always prints `SfcV2 active: True` and exits non-zero, so the rollback it gates
 cannot be run.
 
