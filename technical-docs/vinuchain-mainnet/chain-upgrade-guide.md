@@ -7,12 +7,16 @@
 between 29 and 30 August 2026; the required mainnet client is now
 `v2.0.49-elemont`.
 
-This runbook still applies to a node that was cleanly stopped or is simply
-behind: swap the binary in place and let it sync forward.
+This runbook still applies to a node **already running an ELEMONT binary**
+that is merely behind the tip: swap the binary in place and let it sync forward.
 
-It will **not** repair a node that ran `v2.0.0-rc.1` through the activation
-window. If your logs show `wrong event epoch hash`, or `eth_currentEpoch` is
-behind the public RPC and not catching up, you have diverged — follow
+It will **not** repair a node whose datadir predates the seals — whether it ran
+`v2.0.0-rc.1` through the activation window or was cleanly stopped before it.
+Booting `v2.0.49-elemont` on a pre-seal datadir stages the ELEMONT flags at that
+node's next *local* epoch seal, which the live chain already sealed under V1
+rules, so the flags activate at different blocks and the node diverges. If you
+are still on `v2.0.0-rc.1`, or your logs show `wrong event epoch hash`, or
+`eth_currentEpoch` is behind the public RPC and not catching up, follow
 [Recovering a Node That Missed the ELEMONT Upgrade](snapshot-recovery.md)
 instead.
 {% endhint %}
@@ -349,9 +353,9 @@ will deliberately exclude identity files.
 These steps ran at **2026-08-29 10:00 UTC** during the coordinated cutover and
 are retained as historical record. The coordinated timing above no longer
 applies: ELEMONT has sealed on mainnet, so there is no **GO** message, staggered
-restart, or between-seal wait to observe. A node that is simply behind can still
-follow the swap steps below, as noted at the top of this page. A node that missed
-the window must use
+restart, or between-seal wait to observe. A node already on an ELEMONT binary and merely
+behind the tip can still follow the swap steps below, as noted at the top of this
+page. A node whose datadir predates the seals must use
 [Recovering a Node That Missed the ELEMONT Upgrade](snapshot-recovery.md).
 
 ### 1. Stop the existing node cleanly

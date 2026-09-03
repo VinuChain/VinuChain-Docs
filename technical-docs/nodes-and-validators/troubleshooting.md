@@ -343,7 +343,7 @@ sfcc.getValidator(<VID>)
 ```
 
 - **`status == 0` and `deactivatedEpoch == 0`** → your validator is still **active**. Proceed with [8.4](#id-8-4) — you keep your ID and stake.
-- **`status != 0`, or a non-zero `deactivatedEpoch` / `deactivatedTime`** → the SFC has already **deactivated** your validator. Check **why** with `sfcc.isSlashed(<VID>)` and the status bits (`8` = offline, `128` = double-sign / cheater, `1` = withdrawn). Skip to [8.5](#id-8-5); the node-level steps alone cannot put a deactivated validator back into the set, and whether it can be reactivated at all depends on the reason and the network.
+- **`status != 0`, or a non-zero `deactivatedEpoch` / `deactivatedTime`** → the SFC has already **deactivated** your validator. Check **why** with `sfcc.isSlashed(<VID>)` and the status bits (`8` = offline, `128` = double-sign / cheater, `1` = withdrawn). Skip to [8.5](#id-8-5); the node-level steps alone cannot put a deactivated validator back into the set, and whether it can be reactivated at all depends on the reason for deactivation.
 
 Confirm your stake is still committed (a fully undelegated/withdrawn self-stake is terminal):
 
