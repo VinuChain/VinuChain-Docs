@@ -477,7 +477,7 @@ The `--bootnodes` value is the **same complete four-enode string** shown in step
 
 ### 8.5 If your validator was already deactivated <a href="#id-8-5" id="id-8-5"></a>
 
-If [8.1](#id-8-1) showed a non-zero `status` / `deactivatedEpoch`, the SFC removed your validator from the active set. What you can do next depends on **why** it was deactivated and on **which network** you are on.
+If [8.1](#id-8-1) showed a non-zero `status` / `deactivatedEpoch`, the SFC removed your validator from the active set. What you can do next depends on **why** it was deactivated; the outcome is the same on both networks.
 
 An **offline-deactivated** validator (status bit `8` only — not slashed, not withdrawn) can be reactivated **in place** on **testnet** (chain 206), keeping the same validator ID and stake. Since `SfcV2Patch8` this is **self-service**: you call `reactivateValidator(<VID>)` from the validator's own `auth` key, provided (a) its status is offline-only, (b) its self-stake still meets `minSelfStake()`, and (c) the anti-flap cooldown has elapsed (`offlinePenaltyThresholdTime`, ~5 days after `deactivatedTime`). The SFC owner can also call it, without the cooldown, as a lost-key fallback. **The same self-service reactivation is available on mainnet — the deployed SFC bytecode is identical on both chains, independent of the `SfcV2Patch*` flags (mainnet flashed the Cycle-165 SFC directly at the `SfcV2` seal). Slashed/double-sign or withdrawn validators cannot be reactivated on either chain — use the recreate path below.**
 

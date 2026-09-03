@@ -48,6 +48,22 @@ feature and user-impact summary, see [ELEMONT Upgrade](elemont-upgrade.md).
 
 ## Before you start
 
+{% hint style="info" %}
+**Everything from here to [Final verification](#final-verification) is the
+coordinated 2026-08-29 cutover, retained as a record.** It is written for the
+`v2.0.0-rc.1` → `v2.0.49-elemont` migration, so its pre-flight baselines,
+requirement rows, and backup checks all assert `v2.0.0-rc.1`, and its bullets
+still carry the **GO** message and staggered-restart rules that applied on the
+day. None of that is live guidance now.
+
+If you are on an ELEMONT binary and merely behind the tip, the only steps you
+need are [Install the verified binary atomically](#id-2.-install-the-verified-binary-atomically)
+and [Start with the unchanged launch method](#id-3.-start-with-the-unchanged-launch-method);
+skip the `v2.0.0-rc.1` assertions, which will fail on your node. If your datadir
+predates the seals, stop and use
+[Recovering a Node That Missed the ELEMONT Upgrade](snapshot-recovery.md).
+{% endhint %}
+
 You need shell access as the node operator, permission through `sudo` or root to
 stop the service and replace its executable, Bash, `curl`, Python 3, `awk`,
 `sed`, GNU `sha256sum` and `timeout`, the existing stop/start method, and the

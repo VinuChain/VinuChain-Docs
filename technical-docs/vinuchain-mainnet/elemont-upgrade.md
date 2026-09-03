@@ -61,10 +61,21 @@ expected, not an incomplete upgrade (see [Testnet parity](#testnet-parity)).
 0x5d989a2d65d049e2198d91d8ddc31c918f2544ab
 ```
 
-The public RPC answers `vc_getRules` only for `latest` (and `pending`); any
-other block tag returns `null`, so the pre-activation state cannot be re-queried
-there. For reference, before activation `Upgrades` held only `Berlin`, `London`,
-`Llr`, and `Podgorica`, and `Economy.QuotaCacheAddress` was
+The parameter is an **epoch number**, not a block tag, and any sealed epoch
+returns that epoch's full rule set — so the pre-activation state is still
+directly verifiable. Out-of-range values (including a block number, which is far
+above the epoch count) return `null`. Compare a pre-seal epoch with the current
+one:
+
+```bash
+curl --fail --max-time 15 -sS -X POST https://rpc.vinuchain.org \
+  -H 'Content-Type: application/json' \
+  -d '{"jsonrpc":"2.0","method":"vc_getRules","params":["0x1ed0"],"id":1}' \
+  | python3 -m json.tool
+```
+
+Epoch `0x1ed0` (7888, the last pre-seal epoch) reports `SfcV2: false`,
+`Shanghai: false`, and `Economy.QuotaCacheAddress`
 `0x1c4269fbbd4a8254f69383eef6af720bcd0acda6`. That V1 proxy still holds
 withdrawable principal but no longer backs fee refunds.
 
@@ -83,16 +94,19 @@ curl --fail --max-time 15 -sS -X POST https://rpc.vinuchain.org \
 
 Restarting on the new binary staged the upgrade. Consensus rules change only
 when an epoch seals, and the EVM stages are ordered, so completion took five
-consecutive seals, completing the day after the 10:00 UTC binary swap. All five
-have now sealed on mainnet.
+consecutive seals at the network's four-hour epoch cadence, finishing the day
+after the 10:00 UTC binary swap. All five have now sealed on mainnet.
 
-| Seal | Newly active capabilities |
-| --- | --- |
-| 1 | `SfcV2`, `Elemont`, `ElemontPubkeyValidation`, `Shanghai`, `PaybackV2` |
-| 2 | `Cancun` |
-| 3 | `Prague` |
-| 4 | `VinuBLS12381` |
-| 5 | `VinuLatestEVM` |
+Each seal is identified by the epoch it opened. Verify any of them with
+`vc_getRules` at that epoch number.
+
+| Seal | Epoch | First block | Sealed (UTC) | Newly active capabilities |
+| --- | --- | --- | --- | --- |
+| 1 | 7889 | 14,701,168 | 2026-08-29 13:38:26 | `SfcV2`, `Elemont`, `ElemontPubkeyValidation`, `Shanghai`, `PaybackV2` |
+| 2 | 7890 | 14,702,730 | 2026-08-29 17:38:27 | `Cancun` |
+| 3 | 7891 | 14,704,227 | 2026-08-29 21:38:28 | `Prague` |
+| 4 | 7892 | 14,705,762 | 2026-08-30 01:38:43 | `VinuBLS12381` |
+| 5 | 7893 | 14,707,397 | 2026-08-30 05:38:56 | `VinuLatestEVM` |
 
 Do not use projected clock times as activation proof. Query `vc_getRules` and
 wait for the flag required by your application.
