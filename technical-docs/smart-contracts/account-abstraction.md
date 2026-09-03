@@ -8,22 +8,22 @@ canonical, cross-chain addresses, so existing tooling (account SDKs, bundler
 clients, paymaster services) works against VinuChain unmodified.
 
 ERC-4337 is **live on testnet today**. It is **not yet available on mainnet** — the
-contracts are not deployed there. Verified 2026-08-19: `eth_getCode` for the
+contracts are not deployed there. Verified 2026-09-03: `eth_getCode` for the
 EntryPoint, the SimpleAccountFactory, and the Arachnid deterministic-deployment
 proxy all return `0x` (no code) on chain `207`.
 
-Mainnet gains the prerequisites with the [ELEMONT upgrade](../vinuchain-mainnet/chain-upgrade-guide.md)
-on 2026-08-29: Prague's **EIP-7702 set-code transactions** activate at the third
-epoch seal, and the canonical
+Mainnet gained the prerequisites with the [ELEMONT upgrade](../vinuchain-mainnet/chain-upgrade-guide.md)
+on 2026-08-29: Prague's **EIP-7702 set-code transactions** are now active
+(`vc_getRules` → `Upgrades.Prague` is `true`), and the canonical
 [Arachnid deterministic-deployment proxy](https://github.com/Arachnid/deterministic-deployment-proxy)
-transaction is allowlisted so the EntryPoint can then be placed at its canonical
+transaction is allowlisted so the EntryPoint can be placed at its canonical
 address. Deploying the EntryPoint singleton is a separate CREATE2 step after that.
 
 ## Availability
 
 | Network | Chain ID | ERC-4337 | Notes |
 | --------- | ---------- | ---------- | --- |
-| Mainnet | 207 | **Not yet** | EntryPoint / factory not deployed (`eth_getCode` = `0x`). Prague activates 2026-08-29; deployment follows. |
+| Mainnet | 207 | **Not yet** | EntryPoint / factory not deployed (`eth_getCode` = `0x`). Prague has been active since 2026-08-29; the EntryPoint deployment is still pending. |
 | Testnet | 206 | **Live** | EntryPoint v0.7 (16,035 bytes) and SimpleAccountFactory (2,288 bytes) deployed. |
 
 {% hint style="warning" %}

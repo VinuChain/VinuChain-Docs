@@ -42,7 +42,7 @@ To save machine's storage, you may use pruning.
 
 One can specify the cache size by --cache \<size in MB>.&#x20;
 
-The default value of cache size is 3200 MB.&#x20;
+The default value of cache size is 3600 MB.&#x20;
 
 Nodes tend to sync faster with a larger cache size.
 

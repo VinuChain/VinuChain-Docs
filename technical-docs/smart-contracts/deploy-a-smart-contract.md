@@ -13,12 +13,10 @@ for testing before mainnet deployment; request testnet VC in the
 
 ## EVM target support
 
-**Testnet** supports the full ELEMONT EVM feature set today. **Mainnet does not
-yet** — it runs a London-era EVM until the
-[ELEMONT upgrade](../vinuchain-mainnet/chain-upgrade-guide.md) on 2026-08-29,
-which activates Shanghai, Cancun and Prague across successive epoch seals. Do not
-deploy Shanghai-or-later bytecode to mainnet before confirming the relevant seal
-has landed (`vc_getRules` → `Upgrades`).
+**Both networks** support the full ELEMONT EVM feature set today. Mainnet
+activated Shanghai, Cancun and Prague across successive epoch seals during the
+[ELEMONT upgrade](../vinuchain-mainnet/chain-upgrade-guide.md) on 2026-08-29. You
+can confirm the active set at any time with `vc_getRules` → `Upgrades`.
 
 Once active on a network, you can use:
 
@@ -27,16 +25,17 @@ Once active on a network, you can use:
   (EIP-5656)
 * EIP-7702 set-code transactions for smart-account delegation
 * ERC-4337 account abstraction via the canonical EntryPoint v0.7
-  (`0x0000000071727De22E5E9d8BAf0edAc6f37da032`) deployed on mainnet via the
-  Arachnid deterministic deployer
+  (`0x0000000071727De22E5E9d8BAf0edAc6f37da032`) — **deployed on testnet only**;
+  the EntryPoint has not yet been placed on mainnet. See
+  [Account Abstraction](./account-abstraction.md).
 
 VinuChain implements **selected (non-blob) Cancun**: EIP-4844 blob transactions
 and the `BLOBBASEFEE` opcode (EIP-7516) are **not** supported. Avoid relying on
 `block.blobbasefee` or blob-carrying transactions in your contracts.
 
-Testnet runs the same EVM feature set and additionally includes EIP-2537
-BLS12-381 precompiles and the P256VERIFY precompile (EIP-7212) — these are
-testnet-only features not yet on mainnet.
+Both networks also include the EIP-2537 BLS12-381 precompiles (`VinuBLS12381`)
+and the P256VERIFY precompile, EIP-7212 (`VinuLatestEVM`). Check the active set
+on either network with `vc_getRules`.
 
 ## **Requirements**
 

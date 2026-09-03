@@ -23,14 +23,15 @@ The rewards percentage increases linearly with time, rewarding the most committe
 
 ### Stake for Payback (zero gas fee transactions)
 
-When a user stakes for Payback, they are staking VC to have their gas fees refunded for a number of transactions. The refunding wallet must meet the Payback contract's current `minStake()` before refunds are available. On mainnet, the V1 Quota proxy (`0x1c4269fbbd4a8254f69383eef6af720bcd0acda6`) has `minStake = 10 VC`. On the testnet PaybackV2 deployment (`0x89D1cBD9DEAaB4dFf6f800a336FBDd9A5c6829e4`), `minStake()` starts at `1000 VC`. Below the current minimum, transactions still pay normal gas and show `feeRefund: 0x0`.
+When a user stakes for Payback, they are staking VC to have their gas fees refunded for a number of transactions. The refunding wallet must meet the Payback contract's current `minStake()` before refunds are available. The active Payback contract is always the address returned as `Economy.QuotaCacheAddress` by `vc_getRules`. On mainnet that is PaybackV2 at `0x5D989A2d65d049e2198D91d8ddc31C918f2544AB`, with `minStake() = 10 VC`; on testnet it is PaybackV2 at `0x89D1cBD9DEAaB4dFf6f800a336FBDd9A5c6829e4`, with `minStake() = 1000 VC`. The retired mainnet V1 Quota proxy (`0x1c4269fBBD4a8254F69383eeF6aF720bCD0aCda6`) is no longer the active Payback contract: stake left there stays withdrawable but no longer earns fee refunds. Below the current minimum, transactions still pay normal gas and show `feeRefund: 0x0`.
 
-On testnet (PaybackV2), VinuChain supports staking VC from one funding wallet for
-another receiver wallet. The receiver wallet receives Payback quota credit and
-gas refunds for transactions it signs once the receiver wallet's total Payback
-stake reaches `minStake()`. The funding wallet keeps ownership of the VC it
-funded and must use `unstakeFor(receiver, amount)` to begin withdrawing that
-stake back to itself; the receiver has no claim to third-party-funded stake.
+On mainnet and testnet (PaybackV2), VinuChain supports staking VC from one
+funding wallet for another receiver wallet via `stakeFor(receiver)`. The
+receiver wallet receives Payback quota credit and gas refunds for transactions
+it signs once the receiver wallet's total Payback stake reaches `minStake()`.
+The funding wallet keeps ownership of the VC it funded and must use
+`unstakeFor(receiver, amount)` to begin withdrawing that stake back to itself;
+the receiver has no claim to third-party-funded stake.
 
 The Payback quota is dynamic to counteract spam:
 
@@ -61,7 +62,7 @@ There are two ways to participate in staking
 | Comparison           | Delegation                                             | Validator Node                                          |
 | -------------------- | ------------------------------------------------------ | ------------------------------------------------------- |
 | Passive              | +                                                      | -                                                       |
-| Minimum requirements | 1 VC                                                   | 200,000 VC                                              |
+| Minimum requirements | 0.01 VC                                                | 200,000 VC                                              |
 | Needed expertise     | None                                                   | DevOps                                                  |
 | Rewards              | Staking rewards minus a 15% fee to delegated validator | Staking rewards plus a 15% fee from delegators' rewards |
 

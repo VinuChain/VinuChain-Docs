@@ -35,7 +35,7 @@ sfcc.restakeRewards(validatorID, {from: "0xAddress"})
 **Checks**
 
 * Delegation `pendingRewards` is greater than zero
-* `Validator's stake` is less or equal to `15.0` \* `validator's self-stake`
+* `Validator's stake` is less or equal to `16.0` \* `validator's self-stake`
 
 ### Transfer rewards
 

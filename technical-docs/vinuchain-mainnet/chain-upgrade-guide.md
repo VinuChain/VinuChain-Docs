@@ -3,11 +3,18 @@
 # Mainnet Upgrade Guide (ELEMONT)
 
 {% hint style="danger" %}
-**Upgrade window: Saturday 29 August 2026 at 10:00 UTC.**
+**This upgrade window has closed.** ELEMONT activated across five epoch seals
+between 29 and 30 August 2026; the required mainnet client is now
+`v2.0.49-elemont`.
 
-Every VinuChain mainnet validator and RPC/API node must move from
-`v2.0.0-rc.1` to `v2.0.49-elemont`. A node still using the old binary when the
-first activation epoch seals will leave the canonical chain.
+This runbook still applies to a node that was cleanly stopped or is simply
+behind: swap the binary in place and let it sync forward.
+
+It will **not** repair a node that ran `v2.0.0-rc.1` through the activation
+window. If your logs show `wrong event epoch hash`, or `eth_currentEpoch` is
+behind the public RPC and not catching up, you have diverged — follow
+[Recovering a Node That Missed the ELEMONT Upgrade](snapshot-recovery.md)
+instead.
 {% endhint %}
 
 ## Outcome
@@ -326,11 +333,12 @@ will deliberately exclude identity files.
   node may use a storage-level snapshot taken while fully stopped. A validator
   must never restore a pre-swap datadir after it has emitted again; preserve its
   identity backup and old binary instead.
-- Freeze every fresh mainnet node start during activation. After seal 5, new
-  nodes may start only from the verified post-activation snapshot and only when
-  the coordinator opens snapshot-based onboarding. Original-genesis replay
-  under `v2.0.49-elemont` remains prohibited until the team publishes a
-  compatible maintenance binary and regenerated genesis.
+- Fresh mainnet node starts are open again. ELEMONT sealed on 2026-08-30 and
+  both supported bootstraps are published: the post-seal-5 chaindata snapshot
+  and the regenerated post-ELEMONT genesis — see
+  [Read-only / API node](../nodes-and-validators/api-node.md). Replaying the
+  **original** 2024 mainnet genesis under `v2.0.49-elemont` remains prohibited;
+  it seals the ELEMONT flags at different blocks and diverges.
 - Leave the new process running between seals. In particular, **do not restart
   a validator from seal 1 until seal 3 is observed**. Seal 1 changes the
   Payback contract address, and the two-epoch cache replay window makes a
@@ -338,8 +346,13 @@ will deliberately exclude identity files.
 
 ## Upgrade day
 
-Start these steps at **2026-08-29 10:00 UTC**, after recording the required
-coordinator **GO** message.
+These steps ran at **2026-08-29 10:00 UTC** during the coordinated cutover and
+are retained as historical record. The coordinated timing above no longer
+applies: ELEMONT has sealed on mainnet, so there is no **GO** message, staggered
+restart, or between-seal wait to observe. A node that is simply behind can still
+follow the swap steps below, as noted at the top of this page. A node that missed
+the window must use
+[Recovering a Node That Missed the ELEMONT Upgrade](snapshot-recovery.md).
 
 ### 1. Stop the existing node cleanly
 
@@ -596,9 +609,18 @@ count continue to advance. This is the observable completion state.
 
 ## Rollback and recovery
 
-### Before seal 1
+### Before seal 1 (historical — retained as a record)
 
-First prove from the public chain that seal 1 has not happened:
+Seal 1 sealed on mainnet on 29 August 2026 at 13:38:26 UTC (block `14,701,167`)
+and cannot be undone, so this branch is no longer reachable. The probe below now
+always prints `SfcV2 active: True` and exits non-zero, so the rollback it gates
+cannot be run.
+
+If your node crossed the seal and is in trouble, use "After seal 1" below. If it
+ran an older binary through the window and can no longer follow the chain, use
+[Recovering a Node That Missed the ELEMONT Upgrade](snapshot-recovery.md).
+
+The original pre-seal procedure follows unchanged, as a record of the cutover:
 
 ```bash
 curl --fail --max-time 15 -sS -X POST https://rpc.vinuchain.org \
@@ -633,8 +655,9 @@ Stop the affected node and contact the VinuChain upgrade coordinator. Recovery
 must use `v2.0.49-elemont` plus a verified snapshot from a healthy upgraded
 peer at the correct activation stage. Neither the old binary nor a pre-seal
 datadir backup is reusable. Unless the coordinator supplies a stage-matched
-recovery artifact, wait for the official post-activation snapshot and SHA256
-published after seal 5; there is no safe improvised post-seal rollback.
+recovery artifact, use the published post-seal-5 snapshot and its SHA256 — see
+[Recovering a Node That Missed the ELEMONT Upgrade](snapshot-recovery.md); there
+is no safe improvised post-seal rollback.
 
 Do not use a snapshot unless its coordinator-published manifest names the exact
 activation stage, download location, SHA256, datadir root layout, ownership,

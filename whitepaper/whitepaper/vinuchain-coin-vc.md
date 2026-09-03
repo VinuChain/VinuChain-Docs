@@ -47,7 +47,7 @@ rather than from a separate pool. Refunds are suppressed when the EIP-1559
 base fee is above its configured floor (congestion guard). See the
 [Feeless Transactions](../../technical-docs/smart-contracts/feeless-transactions.md)
 page for current parameters (mainnet Quota proxy
-`0x1c4269fbbd4a8254f69383eef6af720bcd0acda6`, minStake 10 VC).
+`0x5d989a2d65d049e2198d91d8ddc31c918f2544ab`, minStake 10 VC).
 {% endhint %}
 
 <br>

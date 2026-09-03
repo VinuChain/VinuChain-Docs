@@ -5,9 +5,10 @@ description: Install nodes, become a validator, and view call references.
 # Nodes & Validators
 
 {% hint style="danger" %}
-**Mainnet consensus upgrade — 29 August 2026, 10:00 UTC.** Every mainnet validator and
-RPC/API operator must swap binaries in that window, and two pre-flight checks
-(transaction indexing, Go toolchain) need days of lead time. Follow the
-[Mainnet Upgrade Guide (ELEMONT)](../vinuchain-mainnet/chain-upgrade-guide.md).
+**Mainnet ELEMONT upgrade completed — 29-30 August 2026.** Mainnet and testnet
+both run `v2.0.49-elemont`. Fresh mainnet installs must bootstrap from the
+post-seal chaindata snapshot or the regenerated genesis (see
+[Read-Only Node](read-only-node.md)), not from the 2024 genesis. Historical
+detail: [Mainnet Upgrade Guide (ELEMONT)](../vinuchain-mainnet/chain-upgrade-guide.md).
 {% endhint %}
 

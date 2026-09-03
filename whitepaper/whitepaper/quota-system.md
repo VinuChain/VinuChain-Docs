@@ -6,7 +6,7 @@ This chapter is the original quota-system specification and uses Vite-era
 vocabulary (UTPS/UTPE, a 74–75 "snapshot block" window, a genesis "airdrop"
 mint for cash-back). The **epoch-based Payback** model is live on VinuChain
 mainnet today: eligibility and parameters live in the Quota contract
-(mainnet proxy `0x1c4269fbbd4a8254f69383eef6af720bcd0acda6`;
+(mainnet PaybackV2 deployment `0x5d989a2d65d049e2198d91d8ddc31c918f2544ab`;
 see [Feeless Transactions for Developers](../../technical-docs/smart-contracts/feeless-transactions.md)
 for `minStake()`, `stake()`/`stakeFor()`, `quotaFactor()`), quota accrues over
 **epochs** rather than a fixed snapshot-block window, and the refund is applied

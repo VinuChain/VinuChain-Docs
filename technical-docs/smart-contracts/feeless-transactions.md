@@ -75,19 +75,17 @@ would use as the refund cap for that wallet's next transaction.
 
 | | Mainnet | Testnet |
 |---|---|---|
-| **Active Quota contract** | `0x1c4269fbbd4a8254f69383eef6af720bcd0acda6` | `0x89D1cBD9DEAaB4dFf6f800a336FBDd9A5c6829e4` |
+| **Active Quota contract** | `0x5D989A2d65d049e2198D91d8ddc31C918f2544AB` (PaybackV2) | `0x89D1cBD9DEAaB4dFf6f800a336FBDd9A5c6829e4` (PaybackV2) |
 | **Chain ID** | `207` | `206` |
 | **RPC** | `https://rpc.vinuchain.org` | `https://vinufoundation-rpc.com` |
 | **Explorer** | [vinuexplorer.org](https://vinuexplorer.org) | [testnet.vinuexplorer.org](https://testnet.vinuexplorer.org) |
 
-> Feeless transactions are live on **both** networks. Mainnet currently runs Payback
-> on its original Quota proxy; testnet runs the newer `QuotaContractV2`, which adds
-> receiver-funded staking (`stakeFor`/`unstakeFor`).
+> Feeless transactions are live on **both** networks, and **both** now run
+> `QuotaContractV2`, which adds receiver-funded staking (`stakeFor`/`unstakeFor`).
+> Mainnet switched at the ELEMONT `PaybackV2` seal on 2026-08-29.
 >
-> **Mainnet's ELEMONT window opens on 2026-08-29.** At the first activation
-> seal, `QuotaContractV2` replaces the old proxy for fee refunds. Stake left on
-> the old proxy stops earning fee refunds at that point and
-> must be migrated — see
+> **If you staked on the old mainnet proxy, your stake no longer earns fee
+> refunds.** It remains withdrawable and must be migrated to V2 — see
 > [the migration steps](../vinuchain-mainnet/elemont-upgrade.md#if-you-stake-in-the-payback-fee-refund-contract).
 >
 > Confirm the address the node is actually enforcing at any time with
@@ -97,33 +95,33 @@ would use as the refund cap for that wallet's next transaction.
 
 The canonical ABIs are published in the ecosystem registry
 [Vinuchain-Lists](https://github.com/VinuChain/Vinuchain-Lists) under
-`contracts/vinuchain/` — `QuotaContract_abi.json` for the mainnet Quota contract
-and `QuotaContractV2_abi.json` for the testnet V2 contract (with matching `.sol`
-sources). The node calls the same core methods on both, so the inline minimal ABI
-in the example below is enough to get started.
+`contracts/vinuchain/` — `QuotaContractV2_abi.json` for the active Quota contract
+on **both** networks, and `QuotaContract_abi.json` for the retired V1 proxies
+(with matching `.sol` sources). The node calls the same core methods on both, so
+the inline minimal ABI in the example below is enough to get started.
 
 ### Staking interface
 
 The Quota contract exposes the following developer-facing functions (the node
 recognizes `stake()`, `stakeFor(address)`, `unstake(uint256)`, and
 `unstakeFor(address,uint256)` as Payback-staking transactions). The core
-self-staking functions (`stake`/`unstake`/`withdrawStake`) work on **both**
-networks; the receiver-funded `stakeFor`/`unstakeFor` pair is part of
-**testnet QuotaContractV2** only:
+self-staking functions (`stake`/`unstake`/`withdrawStake`) and the receiver-funded
+`stakeFor`/`unstakeFor` pair all work on **both** networks, since mainnet and
+testnet both run `QuotaContractV2`:
 
 | Function | Signature | Notes |
 |---|---|---|
 | Stake for yourself | `stake() payable` | Credits `msg.sender`; `msg.value` is the staked VC. Both networks. |
-| Stake for another wallet | `stakeFor(address delegator) payable` | **Testnet V2 only.** `msg.sender` funds and **keeps withdrawal ownership**; `delegator` receives the Payback quota credit. |
+| Stake for another wallet | `stakeFor(address delegator) payable` | **Both networks** (V2). `msg.sender` funds and **keeps withdrawal ownership**; `delegator` receives the Payback quota credit. |
 | Unstake your own stake | `unstake(uint256 amount) → uint256 wrID` | Opens a withdrawal request; funds unlock after `holdTime()`. Both networks. |
-| Unstake third-party-funded stake | `unstakeFor(address delegator, uint256 amount) → uint256 wrID` | **Testnet V2 only.** Only the funding wallet (the original `stakeFor` caller) may call this for that `delegator`. |
+| Unstake third-party-funded stake | `unstakeFor(address delegator, uint256 amount) → uint256 wrID` | **Both networks** (V2). Only the funding wallet (the original `stakeFor` caller) may call this for that `delegator`. |
 | Complete a withdrawal | `withdrawStake(uint256 wrID)` | Callable once `block.timestamp ≥ unlockTime`. Both networks. |
 
 Read-only views used by the node and useful to dapps: `minStake()`,
 `getStake(address)`, `totalStake()`, `quotaFactor()`, `feeRefundBlockCount()`,
 `holdTime()`.
 
-> **`stakeFor` ownership (testnet V2).** With `stakeFor(receiver)`, the *funding* wallet
+> **`stakeFor` ownership (V2, both networks).** With `stakeFor(receiver)`, the *funding* wallet
 > supplies the VC and is the only party that can withdraw it (via
 > `unstakeFor(receiver, amount)`). The *receiver* gets the Payback quota for
 > transactions it signs but has **no claim** on the staked principal. This lets
@@ -185,15 +183,6 @@ curl -s -X POST https://rpc.vinuchain.org \
   -d '{"jsonrpc":"2.0","method":"vc_getPaybackBalance","params":["0xYOUR_ADDRESS","latest"],"id":1}'
 ```
 
-{% hint style="warning" %}
-`vc_getPaybackBalance` is **not yet available on mainnet** — it returns `-32601`
-(method not found) on `https://rpc.vinuchain.org` until the ELEMONT upgrade on
-2026-08-29. It works on testnet (`https://vinufoundation-rpc.com`) today. Fee
-refunds themselves *are* live on mainnet via Podgorica; it is only this RPC helper
-that is missing. Read the refund from the transaction receipt's `feeRefund` field
-in the meantime.
-{% endhint %}
-
 ## End-to-end example (ethers.js, mainnet)
 
 This script stakes the minimum for Payback, waits for the quota to accrue,
@@ -216,7 +205,7 @@ against mainnet at `https://rpc.vinuchain.org` (chain `207`).
 import { ethers } from "ethers";
 
 const RPC = "https://rpc.vinuchain.org";               // VinuChain mainnet
-const QUOTA = "0x1c4269fbbd4a8254f69383eef6af720bcd0acda6"; // Quota contract
+const QUOTA = "0x5D989A2d65d049e2198D91d8ddc31C918f2544AB"; // mainnet PaybackV2 Quota contract
 
 // Minimal ABI: the staking writes + the views we read.
 const QUOTA_ABI = [

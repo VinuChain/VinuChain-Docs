@@ -3,8 +3,8 @@
 # VinuChain ELEMONT Upgrade
 
 ELEMONT is VinuChain mainnet's move to the V2 staking contract, modern EVM
-rules, and PaybackV2. It is scheduled to begin on **29 August 2026 at 10:00
-UTC** on mainnet chain ID `207`.
+rules, and PaybackV2. It activated on mainnet chain ID `207` across five epoch
+seals between **29 August 2026** and **30 August 2026**, and is now fully live.
 
 ## What you need to do
 
@@ -15,14 +15,16 @@ it.
 | --- | --- | --- |
 | Mainnet node operator | Native systemd/script node: follow the [Mainnet Upgrade Guide](chain-upgrade-guide.md). Container node: require a coordinator-approved deployment-specific runbook and use the same checkpoints. | Your node runs `v2.0.49-elemont`, all five seals are active, and its block hash matches mainnet at the same height. |
 | Payback fee-refund staker | [Withdraw from the old Quota contract and stake on V2](#if-you-stake-in-the-payback-fee-refund-contract). | The old withdrawal is complete and `getStake(yourAddress)` on V2 shows the intended amount. |
-| Validator delegator | No mandatory migration. Consider claiming accumulated rewards before the upgrade. | Your balance and delegation remain visible. If you choose to claim, repeat until the pending amount reaches zero. |
+| Validator delegator | No migration required. Claiming is optional; V2 settles rewards in chunks of at most 100 epochs per transaction, so repeat `claimRewards` until the pending amount reaches zero. | Your balance and delegation remain visible. If you claim, the pending amount reaches zero. |
 | dApp, bridge, exchange, indexer, or bot operator | Test the [breaking changes](#dapp-and-infrastructure-checks) against testnet and gate features by active rules. | Your integration works with the new SFC/Quota addresses and the EVM rules it uses have sealed. |
 | Wallet holder | No action. | Your address, VC balance, and chain ID remain unchanged. |
 
 {% hint style="warning" %}
-**Status checked 25 August 2026:** mainnet had not activated ELEMONT and still
-used the V1 SFC and V1 Payback/Quota proxy. Trust the live rule probe below over
-this dated observation or a calendar estimate.
+**Status confirmed 3 September 2026:** mainnet has fully activated ELEMONT. All five
+seals completed between 2026-08-29 and 2026-08-30; the SFC runs V2 (`version()` ==
+`"305"`) and `Economy.QuotaCacheAddress` is the V2 contract
+`0x5D989A2d65d049e2198D91d8ddc31C918f2544AB`. Trust the live rule probe below over
+any dated observation.
 {% endhint %}
 
 ## Upgrade status
@@ -31,7 +33,8 @@ this dated observation or a calendar estimate.
 | --- | --- |
 | Network | VinuChain Mainnet |
 | Chain ID | `207` (`0xcf`) |
-| Window opens | 29 August 2026, 10:00 UTC |
+| Status | Fully activated — all five seals complete |
+| Activation | Binary swap 29 August 2026, 10:00 UTC; seal 1 same day; final seal 30 August 2026 |
 | Node release | [`v2.0.49-elemont`](https://github.com/VinuChain/VinuChain/releases/tag/v2.0.49-elemont) |
 | Release commit | `8b88cc49d11e56635385413fe8f9eaec1969c1ac` |
 | Pre-upgrade mainnet client | `v2.0.0-rc.1` |
@@ -47,12 +50,23 @@ curl --fail --max-time 15 -sS -X POST https://rpc.vinuchain.org \
   | python3 -m json.tool
 ```
 
-Before activation, `Upgrades` contains `Berlin`, `London`, `Llr`, and
-`Podgorica`, and `Economy.QuotaCacheAddress` is:
+`Upgrades` now returns `true` for every capability flag: `Berlin`, `London`,
+`Shanghai`, `Cancun`, `Prague`, `VinuBLS12381`, `VinuLatestEVM`, `Llr`,
+`Podgorica`, `SfcV2`, `Elemont`, `ElemontPubkeyValidation`, and `PaybackV2`. The
+`SfcV2Patch*` and `PaybackV2Patch` flags stay `false` on mainnet; that is
+expected, not an incomplete upgrade (see [Testnet parity](#testnet-parity)).
+`Economy.QuotaCacheAddress` is the V2 contract:
 
 ```text
-0x1c4269fbbd4a8254f69383eef6af720bcd0acda6
+0x5d989a2d65d049e2198d91d8ddc31c918f2544ab
 ```
+
+`vc_getRules` only reports the current rule set: it returns `null` for any
+historical block tag, so it cannot be used to inspect the pre-activation state.
+For reference, before activation `Upgrades` held only `Berlin`, `London`, `Llr`,
+and `Podgorica`, and `Economy.QuotaCacheAddress` was
+`0x1c4269fbbd4a8254f69383eef6af720bcd0acda6`. That V1 proxy still holds
+withdrawable principal but no longer backs fee refunds.
 
 The SFC version is another direct signal:
 
@@ -62,14 +76,14 @@ curl --fail --max-time 15 -sS -X POST https://rpc.vinuchain.org \
   -d '{"jsonrpc":"2.0","method":"eth_call","params":[{"to":"0xFC00FACE00000000000000000000000000000000","data":"0x54fd4d50"},"latest"],"id":1}'
 ```
 
-- `0x333034...` is `"304"`, the current V1 SFC.
-- `0x333035...` is `"305"`, the ELEMONT V2 SFC after seal 1.
+- `0x333034...` is `"304"`, the pre-ELEMONT V1 SFC. Mainnet no longer returns this.
+- `0x333035...` is `"305"`, the ELEMONT V2 SFC. This is what mainnet returns today.
 
 ## Activation sequence
 
-Restarting on the new binary stages the upgrade. Consensus rules change only
-when an epoch seals. The EVM stages are ordered, so completion takes five
-consecutive seals and can take up to roughly 20 hours after the 10:00 UTC swap.
+Restarting on the new binary staged the upgrade. Consensus rules change only
+when an epoch seals, and the EVM stages are ordered, so completion took five
+consecutive seals spanning roughly 16 hours. All five have now sealed on mainnet.
 
 | Seal | Newly active capabilities |
 | --- | --- |
@@ -117,8 +131,9 @@ inventory.
 
 ## dApp and infrastructure checks
 
-Test on VinuChain testnet, chain ID `206`, before 29 August. Testnet already
-exposes the target capabilities at `https://vinufoundation-rpc.com`.
+Test on VinuChain testnet, chain ID `206`, at `https://vinufoundation-rpc.com`.
+Mainnet has already sealed every capability below, so verify your integration
+against mainnet directly as well.
 
 | Change | Active from | Required check |
 | --- | --- | --- |
@@ -132,8 +147,10 @@ exposes the target capabilities at `https://vinufoundation-rpc.com`.
 | EIP-7825 transaction gas cap of 16,777,216 | Seal 5 | Keep every transaction gas limit at or below `2^24`; this is lower than mainnet's 20,500,000 block gas limit. |
 | `P256VERIFY` and latest-EVM behavior | Seal 5 | Gate calls until `VinuLatestEVM` is true. |
 
-Mainnet remains a London-era EVM until the relevant seals. Do not send
-Shanghai-or-later bytecode or transaction types early.
+Mainnet is no longer a London-era EVM: `Shanghai`, `Cancun`, `Prague`,
+`VinuBLS12381` and `VinuLatestEVM` have all sealed. Shanghai-or-later bytecode and
+transaction types are accepted. Keep every transaction gas limit at or below the
+EIP-7825 cap of 16,777,216, which is now enforced.
 
 ## Staking and rewards
 
@@ -145,15 +162,16 @@ If a position is more than 100 epochs behind, the first `claimRewards`
 transaction can pay only part of the displayed pending amount. Nothing is
 lost: repeat the claim until the pending amount reaches zero.
 
-To avoid multiple post-upgrade claim transactions, claim accumulated rewards
-through the [VinuChain staking app](https://vinuchain.org/staking) before
-seal 1. This is optional and does not change the total entitlement.
+Rewards accumulated across the upgrade are claimed through the
+[VinuChain staking app](https://vinuchain.org/staking) under V2's chunked
+settlement. Repeat the claim until the pending amount reaches zero; the total
+entitlement is unchanged.
 
 ## If you stake in the Payback fee-refund contract <a href="#if-you-stake-in-the-payback-fee-refund-contract" id="if-you-stake-in-the-payback-fee-refund-contract"></a>
 
-**Action required.** At seal 1, fee-refund accounting moves from the V1 Quota
-proxy to V2. Your principal on V1 remains safe and withdrawable, but stake left
-there no longer earns fee refunds after the switch.
+**Action required.** At seal 1 on 29 August 2026, fee-refund accounting moved from
+the V1 Quota proxy to V2. Your principal on V1 remains safe and withdrawable, but
+stake left there has not earned fee refunds since that seal.
 
 | Contract | Address |
 | --- | --- |

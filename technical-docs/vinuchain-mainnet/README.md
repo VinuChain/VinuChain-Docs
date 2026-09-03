@@ -4,14 +4,14 @@ VinuChain mainnet is the production network (chain ID `207`). This section cover
 connecting a wallet to mainnet and running mainnet nodes.
 
 {% hint style="danger" %}
-**Scheduled upgrade — 29 August 2026, 10:00 UTC.** Mainnet begins its move to
-testnet's target feature set: the **ELEMONT** release activates SfcV2, Shanghai, Cancun,
+**Completed upgrade — activated 29–30 August 2026.** Mainnet has moved to
+testnet's target feature set: the **ELEMONT** release activated SfcV2, Shanghai, Cancun,
 Prague (EIP-7702 set-code transactions), the Elemont consensus fixes, the
 BLS12-381 and latest-EVM precompiles, and PaybackV2. The binary also adds
 `vc_getPaybackBalance` and `eth_config`/`vc_config`; core `vc_*` RPC methods are
 already live.
 
-**Node operators must upgrade in that window** — this is a consensus upgrade.
+**Node operators must be running the ELEMONT binary** — this is a consensus upgrade.
 See the [Mainnet Upgrade Guide (ELEMONT)](./chain-upgrade-guide.md); pre-flight
 checks need lead time, especially transaction-index recovery. Container
 deployments also require their coordinator-approved image/deployment runbook.
@@ -19,8 +19,9 @@ deployments also require their coordinator-approved image/deployment runbook.
 **Fee-refund stakers must migrate** to a new Payback contract —
 see [the migration steps](./elemont-upgrade.md#if-you-stake-in-the-payback-fee-refund-contract).
 
-Until that upgrade activates, mainnet runs the pre-ELEMONT rule set (`Berlin`,
-`London`, `Llr`, `Podgorica`) on the V1 staking contract.
+Mainnet now runs the full ELEMONT rule set (`Berlin`, `London`, `Shanghai`, `Cancun`,
+`Prague`, `VinuBLS12381`, `VinuLatestEVM`, `Llr`, `Podgorica`, `SfcV2`, `Elemont`,
+`ElemontPubkeyValidation`, `PaybackV2`) on the V2 staking contract.
 {% endhint %}
 
 For the full ELEMONT feature set, user actions, and RPC availability,

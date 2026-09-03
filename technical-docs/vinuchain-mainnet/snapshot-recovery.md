@@ -4,9 +4,9 @@ This guide is for mainnet nodes that did **not** upgrade during the 2026-08-29
 activation window and can no longer follow the chain.
 
 Mainnet activated `SfcV2`, `Elemont`, `ElemontPubkeyValidation`, `Shanghai` and
-`PaybackV2` at the epoch seal on **2026-08-29 13:39:01 UTC** (block `14,701,167`),
+`PaybackV2` at the epoch seal on **2026-08-29 13:38:26 UTC** (block `14,701,167`),
 then `Cancun`, `Prague`, `VinuBLS12381` and `VinuLatestEVM` across four further seals,
-finishing **2026-08-30 05:39:35 UTC**. A node that was not running
+finishing **2026-08-30 05:38:56 UTC**. A node that was not running
 `v2.0.49-elemont` when its epoch sealed computed a different result and is now on a
 chain the network rejects.
 
@@ -243,8 +243,8 @@ existing validator, not creating a new one.
 | Symptom | What it means | Do |
 |---|---|---|
 | `wrong event epoch hash` persists after restore | datadir did not actually get replaced, or the wrong path was extracted | Re-check step 5; confirm `du -sh` shows ~110 GB and the SFC is 48,757 bytes |
-| `Bootstrap URL invalid … no such host` | a stale bootnode hostname in your launch command | Use the two enodes in step 7 |
-| Node starts but finds no peers | discovery has not populated | Add a `static-nodes.json` in `<datadir>/go-opera/` listing the same two enodes |
+| `Bootstrap URL invalid … no such host` | a stale bootnode hostname in your launch command | Use the three enodes in step 7 |
+| Node starts but finds no peers | discovery has not populated | Add a `static-nodes.json` in `<datadir>/go-opera/` listing the same three enodes |
 | `sha256sum -c` fails | truncated or corrupted download | Delete and re-download; do not extract it |
 
 Keep `${DD}.diverged.*` until your validator has been emitting normally for at least a

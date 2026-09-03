@@ -12,14 +12,14 @@ To stake, you do not need any dedicated special hardware or device. You can do i
 
 ## Staking parameters <a href="#staking-parameters" id="staking-parameters"></a>
 
-* Minimum amount: 1 VC.
-* Minimum lock-up period: 0 days, earning the base reward rate.
+* Minimum amount: 0.01 VC (the SFC's `minDelegation()`).
+* Minimum lock-up period: none required - unlocked stake earns the base reward rate. If you do lock up, the SFC requires a duration of at least 14 days.
 * Maximum lock-up period: 365 days, earning the maximum reward rate.
 * Unbonding time (time between unstaking and funds becoming available): 1 day and 6 epochs (both must elapse).
 * Delegation fee: The network has set a fixed fee of 15% on staking rewards paid from stakers to validators for running their nodes.
 * Payback: There is a separate staking option where you instead receive gas fee refunds on a number of transactions.
-* Payback minimum stake: The refunding wallet must meet the Payback contract's current `minStake()` before any gas refunds are available. On mainnet, the V1 Quota proxy has `minStake = 10 VC`. On testnet (PaybackV2), `minStake()` starts at `1000 VC`; the Quota owner can update this parameter with `setMinStake(uint256)`. Below the current minimum, transactions still pay normal gas and show `feeRefund: 0x0`.
-* Payback receiver staking (testnet PaybackV2): On testnet, a funding wallet can call `stakeFor(receiver)` to stake VC for another receiver wallet. The receiver wallet receives Payback quota credit and gas refunds for transactions it signs, but only after the receiver wallet's total Payback stake reaches `minStake()`. The funding wallet keeps ownership of the VC it funded and must use `unstakeFor(receiver, amount)` to begin withdrawing that stake back to itself; the receiver has no claim to third-party-funded stake.
+* Payback minimum stake: The refunding wallet must meet the Payback contract's current `minStake()` before any gas refunds are available. The active Payback contract is the address returned as `Economy.QuotaCacheAddress` by `vc_getRules`: mainnet PaybackV2 `0x5D989A2d65d049e2198D91d8ddc31C918f2544AB` with `minStake() = 10 VC`, testnet PaybackV2 `0x89D1cBD9DEAaB4dFf6f800a336FBDd9A5c6829e4` with `minStake() = 1000 VC`. The Quota owner can update this parameter with `setMinStake(uint256)`. Stake left on the retired mainnet V1 Quota proxy `0x1c4269fBBD4a8254F69383eeF6aF720bCD0aCda6` no longer earns fee refunds. Below the current minimum, transactions still pay normal gas and show `feeRefund: 0x0`.
+* Payback receiver staking (PaybackV2, mainnet and testnet): A funding wallet can call `stakeFor(receiver)` to stake VC for another receiver wallet. The receiver wallet receives Payback quota credit and gas refunds for transactions it signs, but only after the receiver wallet's total Payback stake reaches `minStake()`. The funding wallet keeps ownership of the VC it funded and must use `unstakeFor(receiver, amount)` to begin withdrawing that stake back to itself; the receiver has no claim to third-party-funded stake.
 * Payback quota: The minimum stake is only an eligibility floor. Every refunded transaction consumes the sender wallet's available Payback quota for the epoch; when that quota is exhausted, later transactions still pay normal gas and receive a partial refund or `feeRefund: 0x0` until quota accrues again. When network congestion pushes the base fee above the chain-configured floor, Payback refunds are suppressed so fee escalation can still deter spam.
 
 > Delegation fee example:&#x20;

@@ -13,7 +13,7 @@ description: How to become a Validator / Install Node
 *   Maximum Validator Size:
 
     ```
-    15x the self-stake amount
+    16x the self-stake amount (total stake; i.e. up to 15x the self-stake in delegations on top of it)
     ```
 *   Minimum Hardware Requirements:
 

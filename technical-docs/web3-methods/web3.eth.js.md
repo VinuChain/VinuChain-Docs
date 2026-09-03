@@ -68,7 +68,7 @@ const basic = async () => {
   const provider = new ethers.providers.JsonRpcProvider(TESTNET_RPC);
 
   const blockData = await provider.getBlock(
-    '0x0000483c00001c179537efc3f26a1f6c9111831b8cf8c30a13d9cec80bdbab55',
+    'latest',
     false
   );
   console.log(blockData);
@@ -77,7 +77,7 @@ const basic = async () => {
 const getPastLogs = async () => {
   web3.eth
     .getPastLogs({
-      fromBlock: 8958578,
+      fromBlock: (await web3.eth.getBlockNumber()) - 10000,
       address: CONTRACT_ADDRESS,
       topics: [TOPIC0]
     })

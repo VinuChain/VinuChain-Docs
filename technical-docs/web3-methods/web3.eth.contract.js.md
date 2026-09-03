@@ -53,7 +53,11 @@ const getEvents = async () => {
   await myContract.getPastEvents(
     'UpdateGreeting',
     {
-      fromBlock: 0,
+      // VinuChain public RPCs reject a filtered eth_getLogs spanning more than
+      // 100,000 blocks (only 100 blocks with no address/topics filter), so a
+      // fromBlock: 0 scan fails with -32000 'too wide blocks range'. Leave
+      // headroom: 'latest' advances between this call and the getLogs call.
+      fromBlock: (await web3.eth.getBlockNumber()) - 99000,
       toBlock: 'latest'
     },
     function (error, events) {

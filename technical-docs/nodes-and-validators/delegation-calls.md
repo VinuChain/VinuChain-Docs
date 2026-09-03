@@ -21,7 +21,7 @@ sfcc.delegate(validatorID, {from: "0xAddress", value: web3.toWei("amount", "vc")
 * Validator must exist
 * Validator is active
 * Amount is greater than zero
-* `Validator's stake` is less or equal to `15.0` \* `validator's self-stake`
+* `Validator's stake` is less or equal to `16.0` \* `validator's self-stake` (i.e. delegations may total up to 15x the self-stake on top of it)
 
 ## Undelegate
 
@@ -34,24 +34,22 @@ Once you Undelegate, the withdrawal period (required time before you can withdra
 
 At the end of the withdrawal period, you will then be able to call the `withdraw` command successfully.
 
-Set the `requestID` to any number which you have not assigned previously.
+The SFC assigns the `requestID` (wrID) itself — you do not choose it. `undelegate` takes only the validator ID and the amount.
 
-* The `requestID` you use here is what you reference later in the `withdraw` function to Withdraw that specific Undelegate request.
-  * For example, if you Undelegate 200,000 VC using `requestID` 0, then to withdraw this 200,000 you will need to use `requestID` 0 in the `withdraw` command.
-* If you leave `requestID` blank, it will automatically assign the next unused value starting from 0. So you will need to count (with the first being 0) how many Undelegate requests you have done to determine which `requestID` you need to use for the `withdraw` command.
+* After the transaction confirms, read the wrID from the `Undelegated(delegator, toValidatorID, wrID, amount)` event in the receipt. All three of `delegator`, `toValidatorID` and `wrID` are indexed, so the wrID is the third indexed topic (`topics[3]`). That is the value you pass to `withdraw`.
+* You can also list your open requests with `sfcc.getWrRequests(delegator_address, validatorID, offset, limit)`, which returns `(epoch, time, amount)` entries indexed by wrID starting at `offset`.
 
 **Undelegate Command:**
 
 ```
-sfcc.undelegate(validatorID, requestID, web3.toWei("amount", "vc"), {from: "0xAddress"})
+sfcc.undelegate(validatorID, web3.toWei("amount", "vc"), {from: "0xAddress"})
 ```
 
 **Checks**
 
 * Amount is greater than zero
 * Delegation's `unlocked stake` is greater or equal to the amount to undelegate
-* `requestID` isn't occupied by an existing withdrawal request for this delegation
-* If called for validator's self-delegation, then the following stays true after the operation: either `validator's stake` is less or equal to `15.0` \* `validator's self-stake` or the `self-stake` is `0`
+* If called for validator's self-delegation, then the following stays true after the operation: either `validator's stake` is less or equal to `16.0` \* `validator's self-stake` or the `self-stake` is `0`
 
 Withdrawal period in seconds and epochs can be retrieved via:
 

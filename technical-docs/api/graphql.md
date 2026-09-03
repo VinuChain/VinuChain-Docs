@@ -69,7 +69,7 @@ You can also use your favourite http client:
 ```
 curl 'https://vinuexplorer.org/graphiql'
   -H 'Authorization: Bearer YOUR_AUTH_TOKEN'
-  -d '{"query":""{transaction(hash:\"0x69e3923eef50eada197c3336d546936d0c994211492c9f947a24c02827568f9f\"){blockNumbertoAddressHashfromAddressHashcreatedContractAddressHashvaluestatusnoncehasherrorgasgasPricegasUsedcumulativeGasUsedidindexinputrsv}}""}'
+  -d '{"query":"{transaction(hash:\"0x20f4e2074d120a5db1fc96a371a2eb4581ea71bc99e076376b8cc923abb71b3f\"){blockNumber toAddressHash fromAddressHash createdContractAddressHash value status nonce hash error gas gasPrice gasUsed cumulativeGasUsed id index input r s v}}"}'
 ```
 
 ## **Queries**
@@ -80,10 +80,10 @@ Example Queries:
 
 | Query                                           | Description                 | Example                                                                                                                                  |
 | ----------------------------------------------- | --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| address(hash: AddressHash!): Address            | Gets an address by hash     | {address(hash: "0x1fddEc96688e0538A316C64dcFd211c491ECf0d8") {hash, contractCode} }                                                      |
-| addresses (hashes: \[AddressHash!]): \[Address] | Gets addresses by hashes    | {addresses(hashes: \["0x1fddEc96688e0538A316C64dcFd211c491ECf0d8", "0x3948c17c0f45017064858b8352580267a85a762c"]) {hash, contractCode} } |
+| address(hash: AddressHash!): Address            | Gets an address by hash     | {address(hash: "0xFC00FACE00000000000000000000000000000000") {hash, contractCode} }                                                      |
+| addresses (hashes: \[AddressHash!]): \[Address] | Gets addresses by hashes    | {addresses(hashes: \["0xFC00FACE00000000000000000000000000000000", "0xb2fbf7291b0500896ed7557a0c6bef74c514fa15"]) {hash, contractCode} } |
 | block(number: Int!): Block                      | Gets a block by number      | {block(number: 1) {parentHash, size, nonce\}}                                                                                            |
-| transaction (hash: FullHash!): Transaction      | Gets a transaction by hash. | {transaction(hash: "0xc391da8f433b3bea0b3eb45da40fdd194c7a0e07d1b5ad656bf98940f80a6cf6") {input, gasUsed\}}                              |
+| transaction (hash: FullHash!): Transaction      | Gets a transaction by hash. | {transaction(hash: "0x20f4e2074d120a5db1fc96a371a2eb4581ea71bc99e076376b8cc923abb71b3f") {input, gasUsed\}}                              |
 
 ```
 {

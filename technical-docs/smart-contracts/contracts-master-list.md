@@ -21,10 +21,13 @@
 These are predeploy / genesis-installed contracts that exist on every VinuChain network.
 
 {% hint style="warning" %}
-**Mainnet Payback and SFC addresses/bytecode change on 2026-08-29.** The ELEMONT
-upgrade repoints mainnet `Economy.QuotaCacheAddress` from the V1 proxy to a newly
-deployed `QuotaContractV2`, and replaces the mainnet SFC with its V2 bytecode.
-Entries below marked mainnet are pre-upgrade values. See the
+**Mainnet Payback and SFC were replaced by the ELEMONT upgrade on 2026-08-29.**
+`Economy.QuotaCacheAddress` on chain 207 now points at the newly deployed
+`QuotaContractV2` (`0x5D989A2d65d049e2198D91d8ddc31C918f2544AB`), and the mainnet
+SFC now runs its V2 bytecode (`version()` returns the `bytes3` `"305"`). The
+mainnet entries below are post-upgrade values, verified against
+`vc_getRules("latest")` on 2026-09-03. Stake left on the V1 Quota proxy stays
+withdrawable but no longer earns fee refunds. See the
 [Mainnet Upgrade Guide](../vinuchain-mainnet/chain-upgrade-guide.md).
 {% endhint %}
 
@@ -36,8 +39,8 @@ Entries below marked mainnet are pre-upgrade values. See the
 | **NodeDriver** | `0xd100A01E00000000000000000000000000000000` | (delegated by NodeDriverAuth) | EVM-facing relay between NodeDriverAuth and EvmWriter. Emits canonical events for validator weight/pubkey changes, rule updates, epoch advances. |
 | **EvmWriter** *(Go precompile)* | `0xd100ec0000000000000000000000000000000000` | n/a (precompile) | State-write precompile (`setBalance`, `copyCode`, `swapCode`, `setStorage`, `incNonce`). Only callable from `NodeDriver`. |
 | **NetInit** *(genesis-only)* | `0xd1005eed00000000000000000000000000000000` | n/a | Bootstraps SFC + drivers during genesis. No bytecode after init. |
-| **QuotaContract (Payback proxy)** | mainnet: `0x1c4269fbbd4a8254f69383eef6af720bcd0acda6` · testnet: `0x824B93dE7221cf8a35FBd29d5202f6eFa3A29C5D` | VinuChain Foundation — contact team | Payback / fee-refund Quota contract. **Active on mainnet** (the address `vc_getRules("latest")` reports as `Economy.QuotaCacheAddress` on chain 207). On testnet this proxy is **legacy** — superseded by QuotaContract V2. Stakers retain permissionless `unstake()`/`withdrawStake()` access. |
-| **QuotaContract V2** (testnet, PaybackV2 active) | testnet: `0x89D1cBD9DEAaB4dFf6f800a336FBDd9A5c6829e4` | `0xf9c82B1117e8BeA97843042521B8FBC93044f347` | Non-proxy replacement; the active **testnet** Quota contract (`Economy.QuotaCacheAddress` on chain 206). Same ABI as the proxy plus `stakeFor(address)` / `unstakeFor(address,uint256)` receiver-funded staking. Testnet only. |
+| **QuotaContract (Payback proxy)** | mainnet: `0x1c4269fbbd4a8254f69383eef6af720bcd0acda6` · testnet: `0x824B93dE7221cf8a35FBd29d5202f6eFa3A29C5D` | VinuChain Foundation — contact team | Payback / fee-refund Quota contract. **Legacy on both networks** — superseded by QuotaContract V2. `vc_getRules("latest")` now reports `Economy.QuotaCacheAddress` as `0x5D989A2d65d049e2198D91d8ddc31C918f2544AB` on mainnet (chain 207; repointed at the PaybackV2 seal on 2026-08-29) and `0x89D1cBD9DEAaB4dFf6f800a336FBDd9A5c6829e4` on testnet (chain 206). Stake left on these proxies stops earning fee refunds but stakers retain permissionless `unstake()`/`withdrawStake()` access — 10,919.041 VC is still parked on the mainnet proxy awaiting migration. |
+| **QuotaContract V2** (active Payback contract, both networks) | mainnet: `0x5D989A2d65d049e2198D91d8ddc31C918f2544AB` · testnet: `0x89D1cBD9DEAaB4dFf6f800a336FBDd9A5c6829e4` | `0xf9c82B1117e8BeA97843042521B8FBC93044f347` | Non-proxy replacement; the active Quota contract (`Economy.QuotaCacheAddress`) on **both** chain 207 and chain 206. Same ABI as the proxy plus `stakeFor(address)` / `unstakeFor(address,uint256)` receiver-funded staking. `minStake()` is 10 VC on mainnet and 1000 VC on testnet — always read it from the contract. |
 | **Staker Info** | mainnet: `0xb914a0b16111BaB228ae6214e6E1FD4a5EaE877C` · testnet: `0x6b39bcd174DddF5A17d065822BDC43353eB6112A` | VinuChain Foundation | Off-chain validator metadata registry (name / logo / website) read by explorers and staking UIs. See [Update Validator Info](../nodes-and-validators/update-validator-info.md). |
 
 ## Tokens (mainnet, chain 207)
