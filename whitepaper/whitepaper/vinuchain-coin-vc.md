@@ -46,7 +46,7 @@ the refund is applied in-protocol as a `feeRefund` on the transaction receipt
 rather than from a separate pool. Refunds are suppressed when the EIP-1559
 base fee is above its configured floor (congestion guard). See the
 [Feeless Transactions](../../technical-docs/smart-contracts/feeless-transactions.md)
-page for current parameters (mainnet Quota proxy
+page for current parameters (mainnet PaybackV2 Quota contract
 `0x5d989a2d65d049e2198d91d8ddc31c918f2544ab`, minStake 10 VC).
 {% endhint %}
 

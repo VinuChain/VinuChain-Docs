@@ -52,7 +52,7 @@ The published binary requires x86-64 Linux with glibc `2.34` or newer; Ubuntu
 22.04 and later satisfy this requirement. Validators also need to be present in
 the upgrade coordination channel. If you do not have that channel, contact the
 VinuChain team through the [official Discord](https://discord.gg/vinu) before
-the window opens.
+you start.
 
 Run every command block on this page in Bash. Your login shell may remain
 `sh`; start a temporary Bash session before the first command and return to

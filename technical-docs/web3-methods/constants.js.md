@@ -18,8 +18,9 @@ const TXHASH =
 
 // PLACEHOLDER - not a deployed contract. The Greeter example is no longer
 // live: this slot holds no bytecode on VinuChain mainnet (chainId 207) or
-// testnet (chainId 206), so greet()/setGreeting()/log subscriptions against
-// it fail with "contract does not have any code". Run deploy() in
+// testnet (chainId 206), so greet() fails with "Returned values aren't valid,
+// did it run Out of Gas?", setGreeting() succeeds as a no-op, and log
+// subscriptions never fire. Run deploy() in
 // web3.eth.contract.js first, then paste the deployed address here.
 // Keep the value a valid 20-byte hex address: web3 v1 throws
 // ("Provided address ... is invalid") inside the web3.eth.Contract

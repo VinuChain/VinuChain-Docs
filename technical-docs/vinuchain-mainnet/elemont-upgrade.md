@@ -61,10 +61,10 @@ expected, not an incomplete upgrade (see [Testnet parity](#testnet-parity)).
 0x5d989a2d65d049e2198d91d8ddc31c918f2544ab
 ```
 
-`vc_getRules` only reports the current rule set: it returns `null` for any
-historical block tag, so it cannot be used to inspect the pre-activation state.
-For reference, before activation `Upgrades` held only `Berlin`, `London`, `Llr`,
-and `Podgorica`, and `Economy.QuotaCacheAddress` was
+The public RPC answers `vc_getRules` only for `latest` (and `pending`); any
+other block tag returns `null`, so the pre-activation state cannot be re-queried
+there. For reference, before activation `Upgrades` held only `Berlin`, `London`,
+`Llr`, and `Podgorica`, and `Economy.QuotaCacheAddress` was
 `0x1c4269fbbd4a8254f69383eef6af720bcd0acda6`. That V1 proxy still holds
 withdrawable principal but no longer backs fee refunds.
 
@@ -148,9 +148,11 @@ against mainnet directly as well.
 | `P256VERIFY` and latest-EVM behavior | Seal 5 | Gate calls until `VinuLatestEVM` is true. |
 
 Mainnet is no longer a London-era EVM: `Shanghai`, `Cancun`, `Prague`,
-`VinuBLS12381` and `VinuLatestEVM` have all sealed. Shanghai-or-later bytecode and
-transaction types are accepted. Keep every transaction gas limit at or below the
-EIP-7825 cap of 16,777,216, which is now enforced.
+`VinuBLS12381` and `VinuLatestEVM` have all sealed. Shanghai, non-blob Cancun, and
+Prague bytecode is accepted, as are EIP-7702 set-code transactions (type `0x04`).
+Blob transactions (type `0x03`) are still rejected and `BLOBBASEFEE` stays
+disabled. Keep every transaction gas limit at or below the EIP-7825 cap of
+16,777,216, which is now enforced.
 
 ## Staking and rewards
 
@@ -200,9 +202,9 @@ curl --fail --max-time 15 -sS -X POST https://rpc.vinuchain.org \
   | python3 -m json.tool
 ```
 
-Starting the V1 unstake about one hold period before seal 1 can shorten the
-post-switch gap, but the unstaked amount stops contributing as soon as you call
-`unstake`. Do not stake on V2 until seal 1 is confirmed. If you lose the `wrID`,
+Seal 1 has passed, so there is no pre-seal timing left to optimize: stake left
+on V1 stopped earning fee refunds on 29 August 2026, and V2 stake can be placed
+as soon as the V1 withdrawal completes. If you lose the `wrID`,
 read the wallet's active withdrawal requests from the V1 contract; do not
 create another request to guess the ID.
 

@@ -50,6 +50,6 @@ sfcc.reactivateValidator(<VID>, { from: "<YOUR_VALIDATOR_AUTH_ADDRESS>" })
 * The validator must already exist and be deactivated. On the self-service (`auth` key) path the status must be offline-only (`status == 8`); any other status reverts with `"self-reactivation allowed only from offline status"`.
 * The validator must not be slashed / double-sign marked — `"cheaters cannot be reactivated"`.
 * Self-stake must still be greater than or equal to `sfcc.minSelfStake()`.
-* The anti-flap cooldown after `deactivatedTime` must have elapsed — otherwise `"reactivation cooldown not elapsed"`.
+* On the self-service (`auth` key) path only, the anti-flap cooldown after `deactivatedTime` must have elapsed — otherwise `"reactivation cooldown not elapsed"`. The SFC owner is not subject to this cooldown.
 
 If an external validator operator needs reactivation, they should first bring the node back online in synced validator mode, then call `reactivateValidator(<VID>)` themselves from the validator's `auth` address. Only contact official VinuChain channels if the `auth` key is lost (the SFC owner can call it as a fallback). See [Troubleshooting -> Reviving a dead or long-offline validator](troubleshooting.md#id-8.-reviving-a-dead-or-long-offline-validator-testnet).

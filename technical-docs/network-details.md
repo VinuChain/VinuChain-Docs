@@ -21,7 +21,7 @@
 | NodeDriverAuth                                 | both    | `0xD100ae0000000000000000000000000000000000` |
 | NodeDriver                                     | both    | `0xd100A01E00000000000000000000000000000000` |
 | QuotaContract V2 (Payback, active)             | mainnet | `0x5D989A2d65d049e2198D91d8ddc31C918f2544AB` |
-| QuotaContract V1 proxy (legacy, withdraw-only) | mainnet | `0x1c4269fbbd4a8254f69383eef6af720bcd0acda6` |
+| QuotaContract V1 proxy (legacy, withdrawable, no longer earns refunds) | mainnet | `0x1c4269fbbd4a8254f69383eef6af720bcd0acda6` |
 | QuotaContract V2 (Payback, active)             | testnet | `0x89D1cBD9DEAaB4dFf6f800a336FBDd9A5c6829e4` |
 
 The full contract table (including VNS) is in the [Master Contracts Reference](smart-contracts/contracts-master-list.md). Verify the active Quota contract at any time with `vc_getRules("latest")` → `Economy.QuotaCacheAddress`.

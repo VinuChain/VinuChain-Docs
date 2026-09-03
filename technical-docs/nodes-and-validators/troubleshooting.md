@@ -6,7 +6,7 @@
 **Testnet operators running or installing v2.x-elemont**: see the [Chain Upgrade Guide](../vinuchain-testnet/chain-upgrade-guide.md) first. Two failure modes need dedicated recovery steps that the legacy procedures on this page do not cover:
 
 - **Validator offline >1,000 epochs cannot rejoin** → upgrade to v2.0.8-elemont (removes the `validatePeerProgress` drift cap). See [Chain Upgrade Guide → stuck peercount](../vinuchain-testnet/chain-upgrade-guide.md#stuck-at-net.peercount-1-with-one-stale-peer).
-- **`WARN Incoming event rejected ... err="wrong event epoch hash"`** → resync from any published testnet genesis **does not work** on current binary rules because every one predates the sealed `SfcV2Patch10` activation. Restore the latest post-seal chaindata snapshot at `s3://vinu-blockchain-genesis/chaindata-snapshots/` — see [Chain Upgrade Guide → wrong event epoch hash](../vinuchain-testnet/chain-upgrade-guide.md#warn-incoming-event-rejected-...-err-wrong-event-epoch-hash) for the recovery procedure.
+- **`WARN Incoming event rejected ... err="wrong event epoch hash"`** → resync from any published testnet genesis **does not work** on current binary rules because every one predates the sealed `SfcV2Patch10` activation. Restore the latest post-seal chaindata snapshot at `s3://vinu-blockchain-genesis/chaindata-snapshots/` — see [Chain Upgrade Guide → wrong event epoch hash](../vinuchain-testnet/chain-upgrade-guide.md#warn-incoming-event-rejected-err-wrong-event-epoch-hash) for the recovery procedure.
 
 Latest public snapshot: `https://vinu-blockchain-genesis.s3.amazonaws.com/chaindata-snapshots/testnet-chaindata-v2.0.47-elemont-20260820T113052Z-clean.tar.gz` (published 2026-08-20, tip block 1,585,766 / epoch 6,375). SHA256 `56fb6ed4ca88f4fe202444180036b1a5920560d1879110716d6ae74befa2409d`. Excludes `nodekey` / `keystore/` / `static-nodes.json` so your validator identity is preserved during extraction. It includes `VinuBLS12381`, `VinuLatestEVM`, and `SfcV2Patch7`/`SfcV2Patch8`/`SfcV2Patch9`/`SfcV2Patch10` all active.
 {% endhint %}
@@ -54,9 +54,11 @@ Always pass `-L` (follow redirects) and `-f` (fail loudly on an HTTP error):
 curl -fLO https://github.com/VinuChain/VinuChain/releases/download/v2.0.49-elemont/opera-v2.0.49-elemont-linux-amd64
 curl -fLO https://github.com/VinuChain/VinuChain/releases/download/v2.0.49-elemont/opera-v2.0.49-elemont-linux-amd64.sha256
 sha256sum -c opera-v2.0.49-elemont-linux-amd64.sha256
+chmod 0755 opera-v2.0.49-elemont-linux-amd64
+./opera-v2.0.49-elemont-linux-amd64 version
 ```
 
-Expected: `opera-v2.0.49-elemont-linux-amd64: OK`, a 39,292,808-byte file, and `./opera-v2.0.49-elemont-linux-amd64 version` printing `Version: 2.0.49-elemont`.
+Expected: `opera-v2.0.49-elemont-linux-amd64: OK`, a 39,292,808-byte file, and `Version: 2.0.49-elemont`. `curl -O` writes mode 644, so the `chmod` is required — and it comes *after* the checksum so the file only becomes executable once it is verified.
 
 Diagnose by symptom:
 
@@ -395,7 +397,7 @@ Anything `>= v2.0.8-elemont` clears the drift-cap lockout; `v2.0.49-elemont` is 
 #### Restore chain state
 
 - **Datadir intact and not past a missed consensus seal** → just restart in read mode; with the drift caps gone it peers with the tip and syncs forward on its own.
-- **Long-dead, corrupted, or stale across a fork seal** → a stale datadir replays historical forks under the wrong rules and halts with `WARN Incoming event rejected ... err="wrong event epoch hash"`. Restore from the latest chaindata snapshot per [Chain Upgrade Guide → wrong event epoch hash](../vinuchain-testnet/chain-upgrade-guide.md#warn-incoming-event-rejected-...-err-wrong-event-epoch-hash). For any validator dead more than a few hours this is the reliable path.
+- **Long-dead, corrupted, or stale across a fork seal** → a stale datadir replays historical forks under the wrong rules and halts with `WARN Incoming event rejected ... err="wrong event epoch hash"`. Restore from the latest chaindata snapshot per [Chain Upgrade Guide → wrong event epoch hash](../vinuchain-testnet/chain-upgrade-guide.md#warn-incoming-event-rejected-err-wrong-event-epoch-hash). For any validator dead more than a few hours this is the reliable path.
 
 {% hint style="warning" %}
 **Preserve your identity files.** Back up `<datadir>/keystore/` and `<datadir>/go-opera/nodekey` before deleting any chaindata. The published snapshots deliberately exclude `nodekey`, `keystore/`, `static-nodes.json`, and `trusted-nodes.json`, so extracting one over your datadir keeps your validator identity intact. **Do not resync from any published testnet genesis** — every one predates the sealed `SfcV2Patch10` activation. Restore the verified post-Patch10 snapshot instead; see the [Chain Upgrade Guide's *Fresh install?* note](../vinuchain-testnet/chain-upgrade-guide.md).
