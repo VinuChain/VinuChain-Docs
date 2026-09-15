@@ -429,7 +429,7 @@ Verify catch-up — attach with `./opera attach` (or `./opera attach <datadir>/o
 - `eth_syncing` returns `false` and your tip matches the public RPC:
 
 ```bash
-curl -s -X POST https://vinufoundation-rpc.com -H 'content-type: application/json' \
+curl -s -X POST https://testnet-rpc.vinuchain.org -H 'content-type: application/json' \
   -d '{"jsonrpc":"2.0","method":"eth_getBlockByNumber","params":["latest",false],"id":1}' \
   | jq -r '"Block \(.result.number): \(.result.hash)"'
 ```

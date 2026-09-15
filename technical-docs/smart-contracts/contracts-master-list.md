@@ -12,7 +12,7 @@
 | Network | Chain ID (hex / dec) | Public RPC | Block Explorer |
 |---|---|---|---|
 | Mainnet | `0xcf` / `207` | `https://rpc.vinuchain.org` | `https://vinuexplorer.org` |
-| Testnet | `0xce` / `206` | `https://vinufoundation-rpc.com` | `https://testnet.vinuexplorer.org` |
+| Testnet | `0xce` / `206` | `https://testnet-rpc.vinuchain.org` | `https://testnet.vinuexplorer.org` |
 | Staging | `0xcd` / `205` | (internal) | (internal) |
 | Fakenet | `0x1b` / `27` | (local dev) | n/a |
 
@@ -136,14 +136,14 @@ Machine-readable address registries and ABIs live in the public
 
 ```bash
 # 1) Oracle is fresh (no StaleAnswer revert)
-curl -sS https://vinufoundation-rpc.com -X POST -H 'Content-Type: application/json' \
+curl -sS https://testnet-rpc.vinuchain.org -X POST -H 'Content-Type: application/json' \
   --data '{"jsonrpc":"2.0","method":"eth_call",
            "params":[{"to":"0xde7931dCA452Be9647e4AF13C92edCFac1f26d52",
                       "data":"0x50d25bcd"},"latest"],"id":1}'
 # expected: result is non-revert; decoded uint = $price * 1e8
 
 # 2) rentPrice("name", 31536000) on the controller
-curl -sS https://vinufoundation-rpc.com -X POST -H 'Content-Type: application/json' \
+curl -sS https://testnet-rpc.vinuchain.org -X POST -H 'Content-Type: application/json' \
   --data '{"jsonrpc":"2.0","method":"eth_call","params":[
             {"to":"0x67f98dD44B88bE9fAB06e3b94C77EB2444E81695",
              "data":"0x83e7f6ff00000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000001e1338000000000000000000000000000000000000000000000000000000000000000046e616d6500000000000000000000000000000000000000000000000000000000"},

@@ -39,7 +39,7 @@ any dated observation.
 | Release commit | `8b88cc49d11e56635385413fe8f9eaec1969c1ac` |
 | Pre-upgrade mainnet client | `v2.0.0-rc.1` |
 | Mainnet RPC | `https://rpc.vinuchain.org` |
-| Testnet RPC | `https://vinufoundation-rpc.com` |
+| Testnet RPC | `https://testnet-rpc.vinuchain.org` |
 
 Ask mainnet what is active now:
 
@@ -146,7 +146,7 @@ inventory.
 
 ## dApp and infrastructure checks
 
-Test on VinuChain testnet, chain ID `206`, at `https://vinufoundation-rpc.com`.
+Test on VinuChain testnet, chain ID `206`, at `https://testnet-rpc.vinuchain.org`.
 Mainnet has already sealed every capability below, so verify your integration
 against mainnet directly as well.
 

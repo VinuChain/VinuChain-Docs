@@ -9,8 +9,8 @@ Notes:
 * `TOPIC0` - hash of the event of interest - used for filtering contract logs (3 screenshot)
 
 ```
-const TESTNET_RPC = 'https://vinufoundation-rpc.com';
-const RPC2 = 'wss://vinufoundation-rpc.com:4100'; //or mainnet: 'wss://rpc.vinuchain.org';
+const TESTNET_RPC = 'https://testnet-rpc.vinuchain.org';
+const RPC2 = 'wss://testnet-rpc.vinuchain.org:4100'; //or mainnet: 'wss://rpc.vinuchain.org';
 const MAINNET_RPC = 'https://rpc.vinuchain.org';
 
 const TXHASH =

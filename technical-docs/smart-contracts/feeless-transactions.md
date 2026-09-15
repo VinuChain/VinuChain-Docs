@@ -77,7 +77,7 @@ would use as the refund cap for that wallet's next transaction.
 |---|---|---|
 | **Active Quota contract** | `0x5D989A2d65d049e2198D91d8ddc31C918f2544AB` (PaybackV2) | `0x89D1cBD9DEAaB4dFf6f800a336FBDd9A5c6829e4` (PaybackV2) |
 | **Chain ID** | `207` | `206` |
-| **RPC** | `https://rpc.vinuchain.org` | `https://vinufoundation-rpc.com` |
+| **RPC** | `https://rpc.vinuchain.org` | `https://testnet-rpc.vinuchain.org` |
 | **Explorer** | [vinuexplorer.org](https://vinuexplorer.org) | [testnet.vinuexplorer.org](https://testnet.vinuexplorer.org) |
 
 > Feeless transactions are live on **both** networks, and **both** now run
@@ -195,7 +195,7 @@ against mainnet at `https://rpc.vinuchain.org` (chain `207`).
 >   (≈ 11 VC).
 > * Run with `PRIVATE_KEY=0x... node feeless.mjs` — never hard-code keys.
 >
-> To run against **testnet** instead, swap in `https://vinufoundation-rpc.com`,
+> To run against **testnet** instead, swap in `https://testnet-rpc.vinuchain.org`,
 > the testnet QuotaContractV2 `0x89D1cBD9DEAaB4dFf6f800a336FBDd9A5c6829e4`,
 > chain `206`, and its `minStake` of 1000 VC (request testnet VC in the
 > [VinuChain Discord](https://discord.gg/vinu)).
