@@ -8,10 +8,10 @@
 | ------------------------- | -------------------------------------------- | ------------------------------------------------------------ |
 | **Chain ID / Network ID** | `207` (`0xcf`)                               | `206` (`0xce`)                                               |
 | **Currency**              | VC                                           | VC                                                           |
-| **Public RPC**            | `https://rpc.vinuchain.org`                  | `https://vinufoundation-rpc.com`                             |
+| **Public RPC**            | `https://rpc.vinuchain.org`                  | `https://testnet-rpc.vinuchain.org`                          |
 | **Block explorer**        | [vinuexplorer.org](https://vinuexplorer.org) | [testnet.vinuexplorer.org](https://testnet.vinuexplorer.org) |
 | **Faucet**                | —                                            | [Request in Discord](https://discord.gg/vinu)                |
-| WSS                       | `wss://rpc.vinuchain.org`                    | `wss://vinufoundation-rpc.com:4100`                           |
+| WSS                       | `wss://rpc.vinuchain.org`                    | `wss://testnet-rpc.vinuchain.org:4100`                       |
 
 ## Key contracts
 

@@ -7,7 +7,7 @@ Deploying a smart contract involves sending a VinuChain transaction containing
 your compiled bytecode with no recipient address. You need VC to cover gas fees.
 
 **Mainnet** (chain 207, `https://rpc.vinuchain.org`) is the primary deployment
-target. **Testnet** (chain 206, `https://vinufoundation-rpc.com`) is available
+target. **Testnet** (chain 206, `https://testnet-rpc.vinuchain.org`) is available
 for testing before mainnet deployment; request testnet VC in the
 [VinuChain Discord](https://discord.gg/vinu).
 
@@ -72,7 +72,7 @@ module.exports = {
   solidity: "0.8.24",
   networks: {
     vinuchainTestnet: {
-      url: "https://vinufoundation-rpc.com",
+      url: "https://testnet-rpc.vinuchain.org",
       chainId: 206,
       accounts: [process.env.DEPLOYER_PRIVATE_KEY].filter(Boolean),
     },

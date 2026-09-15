@@ -94,7 +94,7 @@ curl -s -X POST <bundler-endpoint> \
 SDKs such as [permissionless.js](https://docs.pimlico.io/permissionless),
 [userop.js](https://github.com/stackup-wallet/userop.js), and the
 [aa-sdk](https://accountkit.alchemy.com/) can be pointed at the VinuChain RPC
-(`https://rpc.vinuchain.org` for mainnet, `https://vinufoundation-rpc.com` for
+(`https://rpc.vinuchain.org` for mainnet, `https://testnet-rpc.vinuchain.org` for
 testnet) and a bundler endpoint.
 
 ## Exploring UserOperations

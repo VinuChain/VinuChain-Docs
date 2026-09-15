@@ -59,7 +59,7 @@ It was produced under the `20260820T113052Z` object name; `SNAPSHOT_INFO.txt` re
 | Network | Chain ID   | RPC                              | Status          |
 | ------- | ---------- | -------------------------------- | --------------- |
 | Mainnet | 207 (0xcf) | `https://rpc.vinuchain.org`      | **ELEMONT feature-parity upgrade complete (2026-08-29/30).** Active as checked 2026-09-03: Berlin, London, Shanghai, Cancun, Prague, VinuBLS12381, VinuLatestEVM, Llr, Podgorica, SfcV2 (+30% base-fee burn), Elemont, ElemontPubkeyValidation, PaybackV2; SFC **V2** (`version()` = `"305"`); Quota contract `0x5d989a2d…2544ab`. Only the `SfcV2Patch*` / `PaybackV2Patch` re-flash flags stay unset |
-| Testnet | 206 (0xce) | `https://vinufoundation-rpc.com` | v2.0.49-elemont deployed; the above plus the testnet-only re-flashes — SfcV2Patch7 + SfcV2Patch8 (self-service `reactivateValidator`) + SfcV2Patch9 (reward-cursor over-mint + repeated-reactivation fixes) + **SfcV2Patch10 (Cycle-165 lockup preservation under chunked settlement)** active; Quota proxy `0x89D1cBD9…29e4` |
+| Testnet | 206 (0xce) | `https://testnet-rpc.vinuchain.org` | v2.0.49-elemont deployed; the above plus the testnet-only re-flashes — SfcV2Patch7 + SfcV2Patch8 (self-service `reactivateValidator`) + SfcV2Patch9 (reward-cursor over-mint + repeated-reactivation fixes) + **SfcV2Patch10 (Cycle-165 lockup preservation under chunked settlement)** active; Quota proxy `0x89D1cBD9…29e4` |
 
 ---
 
@@ -705,7 +705,7 @@ If the transaction is already using corrected V2 and `feeRefund` is still `0x0`,
 Verify activation:
 
 ```bash
-curl -s -X POST https://vinufoundation-rpc.com \
+curl -s -X POST https://testnet-rpc.vinuchain.org \
   -H 'content-type: application/json' \
   -d '{"jsonrpc":"2.0","method":"vc_getRules","params":["latest"],"id":1}' | jq '{quotaCache: .result.Economy.QuotaCacheAddress, paybackV2: .result.Upgrades.PaybackV2, paybackV2Patch: .result.Upgrades.PaybackV2Patch, sfcV2Patch6: .result.Upgrades.SfcV2Patch6}'
 # Expect: {"quotaCache":"0x89d1cbd9deaab4dff6f800a336fbdd9a5c6829e4","paybackV2":true,"paybackV2Patch":true,"sfcV2Patch6":true}

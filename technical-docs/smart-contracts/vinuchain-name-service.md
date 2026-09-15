@@ -61,7 +61,7 @@ live VC/USD rate.
 Network details:
 
 * Chain ID: `206`
-* RPC: `https://vinufoundation-rpc.com`
+* RPC: `https://testnet-rpc.vinuchain.org`
 * Top-level domain: `.vinu`
 * `.vinu` namehash:
   `0x8b2c096e21786c9afa7a1fedd1b69a27848cce61a49ec6363cd582b31efa6694`
@@ -301,7 +301,7 @@ VNS_USD_ORACLE_ADDRESS='0xde7931dCA452Be9647e4AF13C92edCFac1f26d52' \
 VNS_ORACLE_CHAIN_ID='206' \
 VNS_PRICE_CHAIN_ID='207' \
 VNS_ORACLE_REQUIRE_POOL_GUARD='1' \
-VNS_ORACLE_RPC_URL='https://vinufoundation-rpc.com' \
+VNS_ORACLE_RPC_URL='https://testnet-rpc.vinuchain.org' \
 VNS_PRICE_RPC_URL='https://rpc.vinuchain.org' \
 VNS_ORACLE_MAX_DEVIATION_BPS='750' \
 npm run vns:oracle:dry-run
@@ -311,13 +311,13 @@ VNS_USD_ORACLE_ADDRESS='0xde7931dCA452Be9647e4AF13C92edCFac1f26d52' \
 VNS_ORACLE_CHAIN_ID='206' \
 VNS_PRICE_CHAIN_ID='207' \
 VNS_ORACLE_REQUIRE_POOL_GUARD='1' \
-VNS_ORACLE_RPC_URL='https://vinufoundation-rpc.com' \
+VNS_ORACLE_RPC_URL='https://testnet-rpc.vinuchain.org' \
 VNS_PRICE_RPC_URL='https://rpc.vinuchain.org' \
 VNS_ORACLE_MAX_DEVIATION_BPS='750' \
 npm run vns:oracle:update
 
 # 4. Verify post-refresh: latestAnswer should not revert
-curl -sS https://vinufoundation-rpc.com -X POST -H 'Content-Type: application/json' \
+curl -sS https://testnet-rpc.vinuchain.org -X POST -H 'Content-Type: application/json' \
   --data '{"jsonrpc":"2.0","method":"eth_call",
            "params":[{"to":"0xde7931dCA452Be9647e4AF13C92edCFac1f26d52","data":"0x50d25bcd"},
                      "latest"],"id":1}'

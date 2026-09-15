@@ -28,7 +28,7 @@ wss://rpc.vinuchain.org
 #### RPC
 
 ```
-https://vinufoundation-rpc.com
+https://testnet-rpc.vinuchain.org
 ChainID: 206
 Symbol: VC
 Explorer: https://testnet.vinuexplorer.org
@@ -37,7 +37,7 @@ Explorer: https://testnet.vinuexplorer.org
 #### WS
 
 ```
-wss://vinufoundation-rpc.com:4100
+wss://testnet-rpc.vinuchain.org:4100
 ```
 
 ---
