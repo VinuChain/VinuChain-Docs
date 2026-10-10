@@ -174,7 +174,7 @@ To shutdown a node permanently, you can simply stop running the node in validato
 
 If your node stake is locked, you will first need to call [unlockStake()](lockup-calls.md) to unlock it.
 
-* A penalty will apply for early unlocking before lockup is expired. &#x20;
+* A penalty will apply for early unlocking before lockup is expired, based on all lock-up rewards earned (including already-claimed ones). See [Unlock stake prematurely](lockup-calls.md#unlock-stake-prematurely). &#x20;
 
 Then you can call [undelegate()](delegation-calls.md), to unstake your stake.
 
