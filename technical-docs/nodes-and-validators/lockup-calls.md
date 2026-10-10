@@ -87,12 +87,18 @@ The following penalty will be withheld from the unlocked amount:
 In the SFC this is `lockupExtraReward + lockupBaseReward / 2`, taken from `getStashedLockupRewards(delegator, validatorID)` and scaled by `amount / lockedStake` for a partial unlock. The penalty is removed from your stake (`_rawUndelegate`) and counted in `totalPenalty`.
 
 {% hint style="warning" %}
-`getStashedLockupRewards` accumulates for the **whole lockup** and is **not reduced by `claimRewards`**. Rewards you already claimed or restaked still count towards the penalty. The penalty does not depend on how much of the lockup is left, and it is capped only at the amount being unlocked, so your staked balance can drop below the amount you originally delegated. Together with the rewards you received you still end up with at least your original stake.
+`getStashedLockupRewards` accumulates for the **whole lockup** and is **not reduced by `claimRewards`**. Rewards you already claimed or restaked still count towards the penalty. The contract gives no discount for the time remaining: the penalty is charged on all rewards accumulated up to the unlock, and it is capped only at the amount being unlocked, so your staked balance can drop below the amount you originally delegated. Together with the rewards you received you still end up with at least your original stake.
 {% endhint %}
 
-Read the exact penalty before unlocking:
+Read the exact penalty before unlocking. `unlockStake` first stashes any pending epochs and only then calculates the penalty, so bring the stash up to date first, otherwise the numbers below can be too low:
 
 ```
+// 1. Stash pending rewards. Each call advances at most 100 epochs; repeat until the cursor is current.
+//    (stashRewards reverts with "nothing to stash" once it is already current.)
+sfcc.stashRewards("0xAddress", validatorID, {from: "0xAddress"})
+sfcc.stashedRewardsUntilEpoch("0xAddress", validatorID)   // must equal sfcc.currentSealedEpoch()
+
+// 2. Read the stash and the lockup
 var s = sfcc.getStashedLockupRewards("0xAddress", validatorID)  // [lockupExtraReward, lockupBaseReward, unlockedReward]
 var lock = sfcc.getLockupInfo("0xAddress", validatorID)         // [lockedStake, fromEpoch, endTime, duration]
 // penalty for unlocking `amount` = (s[0] + s[1] / 2) * amount / lock[0]
