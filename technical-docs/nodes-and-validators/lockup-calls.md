@@ -90,7 +90,7 @@ In the SFC this is `lockupExtraReward + lockupBaseReward / 2`, taken from `getSt
 `getStashedLockupRewards` accumulates for the **whole lockup** and is **not reduced by `claimRewards`**. Rewards you already claimed or restaked still count towards the penalty. The contract gives no discount for the time remaining: the penalty is charged on all rewards accumulated up to the unlock, and it is capped only at the amount being unlocked, so your staked balance can drop below the amount you originally delegated. Together with the rewards you received you still end up with at least your original stake.
 {% endhint %}
 
-Read the exact penalty before unlocking. `unlockStake` first stashes any pending epochs and only then calculates the penalty, so bring the stash up to date first, otherwise the numbers below can be too low:
+Read the exact penalty before unlocking. `unlockStake` first stashes any pending epochs and only then calculates the penalty, so bring the stash up to date first, otherwise the numbers below can be too low. The result is exact only for the chain state at the moment you read it: if another epoch seals before your `unlockStake` is mined, that epoch's rewards are added and the penalty is slightly larger, especially if the transaction stays pending across an epoch boundary.
 
 ```
 // 1. Stash pending rewards. Each call advances at most 100 epochs; repeat until it reverts with
@@ -105,7 +105,8 @@ var lock = sfcc.getLockupInfo("0xAddress", validatorID)         // [lockedStake,
 // extraShare = s[0] * amount / lock[0]      (integer division)
 // baseShare  = s[1] * amount / lock[0]      (integer division)
 // penalty for unlocking `amount` = min(amount, extraShare + baseShare / 2)
-// Unlocking is penalty-free once the current time is past lock[2] (endTime)
+// Once the current time is past lock[2] (endTime) the stake counts as unlocked: do NOT call unlockStake
+// (it reverts with "not locked up"); undelegate it directly, with no penalty.
 ```
 
 ```
