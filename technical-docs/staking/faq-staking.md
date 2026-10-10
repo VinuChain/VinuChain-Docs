@@ -45,6 +45,14 @@ Yes. This is possible through the [VinuChain staking app](https://vinuchain.org/
 
 ### **Can I unlock my delegation before the lock-up period ends?** <a href="#can-i-unlock-my-delegation-before-the-lock-up-period-ends" id="can-i-unlock-my-delegation-before-the-lock-up-period-ends"></a>
 
-Yes, you can. However, you will pay a penalty for doing so. Since your rewards are always unlocked and withdrawable, the penalty will come from your staked amount. If you unlock earlier, regardless of how much of the lock-up period is left, you will only receive half of the base rewards; the additional rewards will be burned.
+Yes, but you pay a penalty. The penalty is calculated from the lock-up rewards you have earned **since the lock began**, including rewards you have already claimed or restaked. It does **not** depend on how much of the lock-up period is left, so unlocking one day early costs the same as unlocking months early.
 
-In any case, you will never end up with fewer tokens than you delegated.
+The penalty is about **85% of those lock-up rewards**: all of the lock-up bonus plus half of the base reward. It is taken from your staked balance and permanently removed. It is not refundable and is not paid to anyone.
+
+Because rewards you have already claimed are not given back, an early unlock can leave your staked balance **below the amount you originally delegated**. The rewards you were paid still count in your favour: your stake after the penalty plus the rewards you received will always be at least what you delegated, and about 15% of your lock-up rewards more. If you claim rewards regularly, the penalty will therefore remove roughly the rewards you have already taken out of your stake.
+
+**Example:** you lock 250,000 VC for about 362 days and earn about 74,000 VC in rewards, claiming nearly all of it. If you unlock early, the penalty is about 63,000 VC and about 187,000 VC remains staked. You kept about 72,000 VC of rewards, so in total you hold about 11,000 VC more than you started with. If you wait until the lock-up has ended, there is no penalty.
+
+{% hint style="warning" %}
+Check the lock-up end date before you unlock. Unlocking even a few hours early applies the full penalty. See [`unlockStake`](../nodes-and-validators/lockup-calls.md#unlock-stake-prematurely) for how to read the exact penalty on-chain before sending the transaction.
+{% endhint %}
