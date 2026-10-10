@@ -93,15 +93,18 @@ In the SFC this is `lockupExtraReward + lockupBaseReward / 2`, taken from `getSt
 Read the exact penalty before unlocking. `unlockStake` first stashes any pending epochs and only then calculates the penalty, so bring the stash up to date first, otherwise the numbers below can be too low:
 
 ```
-// 1. Stash pending rewards. Each call advances at most 100 epochs; repeat until the cursor is current.
-//    (stashRewards reverts with "nothing to stash" once it is already current.)
+// 1. Stash pending rewards. Each call advances at most 100 epochs; repeat until it reverts with
+//    "nothing to stash", which means the cursor is already at the last payable epoch.
+//    (That epoch is currentSealedEpoch(), or the validator's deactivatedEpoch if it was deactivated.)
 sfcc.stashRewards("0xAddress", validatorID, {from: "0xAddress"})
-sfcc.stashedRewardsUntilEpoch("0xAddress", validatorID)   // must equal sfcc.currentSealedEpoch()
+sfcc.stashedRewardsUntilEpoch("0xAddress", validatorID)
 
 // 2. Read the stash and the lockup
 var s = sfcc.getStashedLockupRewards("0xAddress", validatorID)  // [lockupExtraReward, lockupBaseReward, unlockedReward]
 var lock = sfcc.getLockupInfo("0xAddress", validatorID)         // [lockedStake, fromEpoch, endTime, duration]
-// penalty for unlocking `amount` = (s[0] + s[1] / 2) * amount / lock[0]
+// extraShare = s[0] * amount / lock[0]      (integer division)
+// baseShare  = s[1] * amount / lock[0]      (integer division)
+// penalty for unlocking `amount` = min(amount, extraShare + baseShare / 2)
 // Unlocking is penalty-free once the current time is past lock[2] (endTime)
 ```
 
