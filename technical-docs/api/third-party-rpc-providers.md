@@ -21,6 +21,8 @@ provider must serve the same chain: confirm `eth_chainId` returns `0xcf`
 
 ### NOWNodes
 
+<figure><img src="../../.gitbook/assets/nownodes-logo.svg" alt="NOWNodes logo" width="180"><figcaption></figcaption></figure>
+
 NOWNodes is a blockchain infrastructure provider that offers RPC, WSS and API
 access to more than 120 networks, VinuChain among them. Developers can build
 and scale applications without running their own nodes.
