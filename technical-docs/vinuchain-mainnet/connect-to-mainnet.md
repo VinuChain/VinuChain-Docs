@@ -18,3 +18,6 @@ Here are the network details to connect on Metamask / Trust Wallet:
 * Currency symbol: VC&#x20;
 * Block Explorer URL: [https://vinuexplorer.org](https://vinuexplorer.org)
 
+Managed RPC endpoints from independent providers are listed under
+[Third-Party RPC Providers](../api/third-party-rpc-providers.md).
+

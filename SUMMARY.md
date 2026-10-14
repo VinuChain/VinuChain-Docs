@@ -54,6 +54,7 @@
   * [Master Contracts Reference](technical-docs/smart-contracts/contracts-master-list.md)
 * [API](technical-docs/api/README.md)
   * [Public API Endpoints](technical-docs/api/public-api-endpoints.md)
+  * [Third-Party RPC Providers](technical-docs/api/third-party-rpc-providers.md)
   * [GraphQL](technical-docs/api/graphql.md)
   * [REST API](technical-docs/api/rest-api.md)
 * [Web3 Methods](technical-docs/web3-methods/README.md)

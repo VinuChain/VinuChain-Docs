@@ -21,7 +21,9 @@ Explorer: https://vinuexplorer.org
 wss://rpc.vinuchain.org
 ```
 
-
+Need dedicated rate limits or an SLA? See
+[Third-Party RPC Providers](third-party-rpc-providers.md) for managed
+mainnet endpoints.
 
 ### Testnet
 
