@@ -13,6 +13,8 @@
 | **Faucet**                | —                                            | [Request in Discord](https://discord.gg/vinu)                |
 | WSS                       | `wss://rpc.vinuchain.org`                    | `wss://testnet-rpc.vinuchain.org:4100`                       |
 
+Managed RPC endpoints from independent providers are listed under [Third-Party RPC Providers](api/third-party-rpc-providers.md).
+
 ## Key contracts
 
 | Contract                                       | Network | Address                                      |
