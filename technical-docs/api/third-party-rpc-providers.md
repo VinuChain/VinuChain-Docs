@@ -31,6 +31,7 @@ and scale applications without running their own nodes.
 | --- | --- |
 | **Network** | Mainnet (chain ID `207`) |
 | **RPC endpoint** | `https://vinu.nownodes.io/` |
+| **WebSocket** | Not offered for VinuChain. Use `wss://rpc.vinuchain.org` for subscriptions |
 | **Authentication** | API key, sent in the `api-key` HTTP header |
 | **VinuChain docs** | [docs.nownodes.io/vinu](https://docs.nownodes.io/vinu/) |
 | **Website** | [nownodes.io](https://nownodes.io/) |
