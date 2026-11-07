@@ -15,3 +15,5 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       - name: Docs consistency gate
         run: bash scripts/check-docs-consistency.sh
+      - name: How-to-buy page matches the vinuchain.org/buy copy
+        run: node scripts/check-how-to-buy-mirror.mjs
