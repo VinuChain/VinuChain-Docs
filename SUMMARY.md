@@ -76,3 +76,4 @@
   * [Native $VC vs Wrapped $VC](technical-docs/cross-chain-bridging/native-usdvc-vs-wrapped-usdvc.md)
   * [Wanbridge](technical-docs/cross-chain-bridging/wanbridge.md)
   * [Add bep20 VC to Trust Wallet](technical-docs/cross-chain-bridging/add-bep20-vc-to-trust-wallet.md)
+  * [How to get VC](technical-docs/cross-chain-bridging/how-to-buy-vc.md)

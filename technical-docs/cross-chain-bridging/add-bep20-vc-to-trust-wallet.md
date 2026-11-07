@@ -1,5 +1,5 @@
 ---
-description: How to connect to VinuChain Mainnet on Trust Wallet
+description: How to add BEP-20 VC (BNB Smart Chain) to Trust Wallet
 ---
 
 # Add bep20 VC to Trust Wallet
