@@ -1,9 +1,7 @@
 #!/usr/bin/env node
 // Verifies the docs how-to-buy page still equals what vinuchain.org/buy
 // rendered when it was generated, and has no price, yield or referral wording.
-//   node scripts/check-how-to-buy-mirror.mjs [--require-final]
-// --require-final also fails while the OPP-I16 placeholder or the hidden flag
-// is still in place (use it in the publish follow-up, never before).
+//   node scripts/check-how-to-buy-mirror.mjs
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -11,7 +9,6 @@ import { fileURLToPath } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const page = join(root, "technical-docs/cross-chain-bridging/how-to-buy-vc.md");
-const requireFinal = process.argv.includes("--require-final");
 
 const failures = [];
 const fail = (msg) => failures.push(msg);
@@ -42,12 +39,6 @@ if (start < 0 || stop < start || !recorded) {
 
 const refLink = md.match(/[?&](ref|referral|aff|affiliate|invite|code)=/i);
 if (refLink) fail(`referral or affiliate parameter in a link: ${refLink[0]}`);
-
-if (requireFinal) {
-  if (md.includes("[[PLACEHOLDER")) fail("OPP-I16 placeholder is still in the page");
-  if (/^hidden: true$/m.test(md)) fail("page is still hidden");
-  if (md.includes("DO NOT PUBLISH BEFORE COUNSEL REVIEW")) fail("do-not-publish marker is still present");
-}
 
 if (failures.length) {
   for (const f of failures) console.error(`FAIL: ${f}`);

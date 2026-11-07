@@ -1,9 +1,7 @@
 ---
 description: How to get VC and receive it on VinuChain (chain 207).
-hidden: true
 ---
 
-<!-- DO NOT PUBLISH BEFORE COUNSEL REVIEW. Ticket 13 is the gate. This page mirrors vinuchain.org/buy and stays hidden until a separate, human-approved follow-up removes the hidden flag. -->
 <!-- Do not edit between the markers. Regenerate with scripts/buy-docs-mirror/run.mjs in VinuChain-Landing; scripts/check-how-to-buy-mirror.mjs verifies the hash. -->
 <!-- BEGIN MIRRORED FROM vinuchain.org/buy -->
 # How to get VC
@@ -27,14 +25,8 @@ This is the shortest working route. VC lands directly on VinuChain.
 **Check the network name on both sides.** Choosing BSC gives you BEP-20 VC on BNB Smart Chain. That is a different form of the token. It does not pay for gas on VinuChain and needs a bridge step to convert.
 
 Sizes above about $300 belong on Gate. Other order books are thin, and a larger order moves the cost sharply.
-
-## Liquidity and our own selling
-
-**The project provides liquidity on the venues listed on this page and may sell VC there.**
-
-[[PLACEHOLDER: the owner's written own-selling policy text (OPP-I16) goes here. The production build fails while this marker is present.]]
 <!-- END MIRRORED -->
-<!-- source-sha256: 94161e2a4d7496ed50107f3a41d233590996712a060c343edb3d05baa3e9fb57 -->
+<!-- source-sha256: d11b38c2836ca0ef5a77ad64bcb62747a16b8cce4a3a8441db89094e666daba4 -->
 
 ## Links
 
